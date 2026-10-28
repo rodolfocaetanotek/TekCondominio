@@ -9,6 +9,11 @@ Plataforma SaaS multiempresa para administradoras de condomínios.
 | [docs/ARQUITETURA.md](docs/ARQUITETURA.md) | Requisitos, premissas de negócio, arquitetura, modelo de dados (ER), plano |
 | [docs/PROGRESSO.md](docs/PROGRESSO.md) | Funcionalidades concluídas, testadas e pendentes |
 | [docs/SEGURANCA.md](docs/SEGURANCA.md) | Checklist de segurança e LGPD |
+| [docs/AUDITORIA.md](docs/AUDITORIA.md) | Auditoria técnica: estado encontrado, riscos e pontos fortes |
+| [docs/BENCHMARK.md](docs/BENCHMARK.md) | Pesquisa de concorrentes (Sibrax, Superlógica, uCondo, TownSq, Group) com fontes e datas |
+| [docs/MATRIZ-COMPARATIVA.md](docs/MATRIZ-COMPARATIVA.md) | Matriz de funcionalidades, lacunas priorizadas e backlog técnico |
+| [docs/INTEGRACOES.md](docs/INTEGRACOES.md) | OFX, CNAB 240, boleto/PIX e demais dependências externas |
+| [docs/RELATORIO-FINAL.md](docs/RELATORIO-FINAL.md) | O que foi implementado nesta etapa, testes, limitações e próximos passos |
 | Swagger UI | `http://localhost:8080/swagger-ui.html` (com a API rodando) |
 
 ## Estrutura
@@ -79,11 +84,17 @@ condomínios, usuários e dados (isolados das demais). O menu mostra apenas o qu
    vínculos de proprietário/inquilino/morador com histórico, responsável financeiro e convite para o portal).
 4. **Financeiro** — abas: *Contas a pagar* e *a receber* (lançamento único ou recorrente, aprovação, baixa parcial
    com multa/juros calculados, estorno e cancelamento com justificativa, anexos); *Contas e extrato* (saldos,
-   extrato e conciliação); *Transferências*; *Orçamento* (previsto × realizado por conta e mês); *Configurações*
-   (multa até 2%, juros, dia de vencimento, exigência de aprovação, centros de custo, plano de contas).
+   extrato e conciliação manual); *Conciliação (OFX)* (importe o extrato do banco: o sistema concilia sozinho os pares
+   inequívocos e sugere os demais; tarifas e rendimentos podem ser lançados direto da linha); *Transferências*;
+   *Orçamento* (previsto × realizado); *Indicadores* (projeção de caixa pelos vencimentos e despesas fora do padrão);
+   *Fechamento mensal* (confere pendências, fecha o mês com fotografia dos saldos e bloqueia alterações retroativas;
+   reabertura só pelo administrador, com justificativa); *Configurações* (multa até 2%, juros, dia de vencimento,
+   exigência de aprovação, centros de custo, plano de contas).
 5. **Cobrança** — *Gerar cobranças*: escolha competência, conta e critério (fração ideal, igualitário, fixo ou
    consumo), **simule** e confirme. Aba *Inadimplência*: unidades em débito com valores atualizados; clique para ver o
-   **demonstrativo de débitos**, registrar contatos e criar **acordo de parcelamento**.
+   **demonstrativo de débitos**, registrar contatos e criar **acordo de parcelamento**. Aba *Retorno bancário*:
+   importe o arquivo de retorno **CNAB 240** do banco para baixar automaticamente as cobranças pagas (identificadas
+   pelo **número de cobrança** de cada título, que deve ir no "seu número" do boleto — ver docs/INTEGRACOES.md).
 6. **Fornecedores** e **Contratos** — vigência, reajuste e aviso prévio; contratos a vencer geram alerta.
 7. **Ocorrências** — triagem (prioridade, responsável, prazo), andamento com mensagens internas ou visíveis ao
    morador, anexos e indicadores (pendentes, fora do prazo, tempo médio).
@@ -91,13 +102,18 @@ condomínios, usuários e dados (isolados das demais). O menu mostra apenas o qu
 9. **Assembleias** — crie (pauta: um item por linha; `#` = item informativo), *Convocar* (publica comunicado),
    *Iniciar*, registre presença/procurações e votos (peso por unidade ou fração ideal), deliberações com responsável
    e prazo, gere o **rascunho da ata** a partir dos dados e *Encerrar*.
+9a. **Reservas** — cadastre as áreas comuns (horário, duração máxima, antecedência, limite mensal por unidade, taxa,
+   aprovação prévia, bloqueio de inadimplentes); aprove/recuse/cancele reservas. A taxa vira cobrança na unidade.
+9b. **Portaria** — libere a entrada pelo código de 6 dígitos gerado pelo morador, registre chegadas sem aviso e as
+   saídas. O morador é notificado; documentos aparecem mascarados e os registros são anonimizados após 180 dias.
 10. **Documentos** — convenção, regulamento, atas etc.; *Interno* ou *Moradores* (aparece no portal).
 11. **Relatórios** — 13 relatórios (receitas e despesas, balancete, fluxo de caixa, inadimplência, contas a pagar/
     receber, pagamentos, rateios, orçamento, movimentação bancária, despesas por fornecedor, ocorrências, contratos)
     com exportação **PDF, Excel e CSV**.
 12. **Início** — painel com indicadores e gráfico dos últimos 12 meses, filtrável por condomínio e período.
 13. **Portal do morador** — o morador entra com o convite recebido e vê suas unidades, cobranças (se proprietário ou
-    responsável financeiro), comunicados, documentos, solicitações/ocorrências, assembleias/atas e agenda.
+    responsável financeiro), comunicados, documentos, solicitações/ocorrências, **reservas**, **autorização de
+    visitantes** (gera o código para a portaria), assembleias/atas e agenda.
 14. **Segurança da conta** — *Esqueci minha senha* no login; *Alterar senha* no menu do usuário; *Auditoria* registra
     as ações críticas.
 
@@ -113,8 +129,18 @@ Agende o backup diário (cron), copie para fora do servidor e **teste a restaura
 ## Testes
 
 ```bash
-cd backend  && mvn test                    # 116 testes (unitários + integração com PostgreSQL real)
-cd frontend && npx ng test --watch=false   # 15 testes (Vitest)
+cd backend  && mvn test                    # 140 testes (unitários + integração com PostgreSQL real)
+cd frontend && npx ng test --watch=false   # 20 testes (Vitest)
+```
+
+**Validação ponta a ponta** contra a API em execução (cria uma administradora nova e percorre condomínio → rateio →
+retorno CNAB → OFX → inadimplência/acordo → fechamento → reservas → portaria → portal → isolamento):
+
+```bash
+# instância isolada, sem tocar nos dados de .local-dev
+cd backend && mvn spring-boot:test-run -Dspring-boot.run.main-class=br.com.tekcondo.LocalDevApplication \
+  "-Dspring-boot.run.jvmArguments=-Dtekcondo.localdev.dir=.local-dev-e2e -Dtekcondo.localdev.pg-port=54339 -Dserver.port=8090"
+python scripts/e2e_validation.py http://localhost:8090 backend/.local-dev-e2e     # 19 verificações
 ```
 
 ## Build para produção

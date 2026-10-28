@@ -18,7 +18,8 @@ Legenda: ✅ implementado e testado · 🟡 implementado parcialmente · ⬜ pen
 - ✅ Redefinição encerra todas as sessões; troca de senha mantém só a sessão atual — `PasswordIT`
 - ✅ Desativação de usuário tem efeito imediato (permissões lidas do banco) — `UserManagementIT`
 - ✅ Administradora nunca fica sem administrador ativo; ninguém desativa a si mesmo — `UserManagementIT`
-- ⬜ Limite de requisições por IP (login e API) — hoje há apenas bloqueio por conta
+- ✅ Limite de tentativas por IP em login, esqueci e redefinir senha (429 + Retry-After; padrão 20 / 5 min) — `AuthRateLimitFilterTest`. Em memória, por instância: com várias instâncias, replicar o limite no proxy reverso
+- ⬜ Limite de requisições por IP no restante da API
 - ⬜ MFA opcional para administradores
 
 ## Autorização e multiempresa
@@ -39,6 +40,11 @@ Legenda: ✅ implementado e testado · 🟡 implementado parcialmente · ⬜ pen
 - ✅ CORS desligado por padrão (mesma origem via nginx); lista de origens por ambiente
 - 🟡 HSTS/TLS: configuração documentada no `nginx.conf`, depende do ambiente de implantação
 
+## Integridade financeira (novos controles)
+- ✅ Fechamento mensal: nada retroativo (baixa, estorno, transferência, conciliação, lançamento) no período fechado; reabertura só com `FINANCE_CLOSE` e justificativa auditada — `PeriodClosingIT`
+- ✅ Importação de extrato e de retorno idempotentes (hash do arquivo + chaves únicas no banco) — `StatementImportIT`, `BankReturnIT`
+- ✅ Reservas sem sobreposição garantidas por restrição de exclusão no PostgreSQL — `ReservationIT`
+
 ## Arquivos e portal
 - ✅ Upload valida extensão **e** assinatura real do conteúdo; limite de 10 MB; nome original sanitizado — `OperationsIT`
 - ✅ Arquivos guardados com chave aleatória de 128 bits (nunca expostos); download apenas por endpoint autenticado, com `nosniff` e `no-store` — `OperationsIT`
@@ -57,7 +63,8 @@ Legenda: ✅ implementado e testado · 🟡 implementado parcialmente · ⬜ pen
 - ✅ Ícones e fontes auto-hospedados (nenhum dado do usuário enviado a CDNs de terceiros)
 - ⬜ Registro de bases legais e finalidades por tipo de dado (com o módulo de pessoas)
 - ⬜ Exportação e anonimização de dados do titular (direitos do art. 18)
-- ⬜ Política de retenção executada por job (premissa P12 em ARQUITETURA.md)
+- 🟡 Política de retenção executada por job: registros de portaria anonimizados após `TEKCONDO_VISITOR_RETENTION_DAYS` (padrão 180) — `PrivacyRetentionJob`, `VisitorIT`. Demais dados (P12): pendente
+- ✅ Portaria: documento do visitante exibido mascarado; código de acesso visível só para quem autorizou
 - ⬜ Termo de uso / aviso de privacidade no portal do morador
 
 ## Operação

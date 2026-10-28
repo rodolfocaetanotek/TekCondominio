@@ -10,6 +10,9 @@ tekcondo:
     jwt-secret: test-secret-only-for-automated-tests-0123456789
     refresh-cookie-secure: false
     max-failed-logins: 3
+    # A suíte inteira autentica a partir do mesmo IP; o limite por IP é testado em AuthRateLimitFilterTest.
+    auth-rate-limit:
+      max-requests: 1000000
 logging:
   level:
     root: WARN

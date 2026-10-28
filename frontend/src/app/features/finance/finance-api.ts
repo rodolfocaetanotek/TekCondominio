@@ -12,7 +12,7 @@ export interface Supplier { id: string; name: string; document?: string; categor
 export interface EntrySummary {
   id: string; kind: 'INCOME' | 'EXPENSE'; description: string; accountCode: string; accountName: string; supplierName?: string;
   unitLabel?: string; personName?: string; amount: number; paidAmount: number; remaining: number; dueDate: string; competence: string;
-  status: string; approval: string; overdue: boolean; installmentLabel?: string; documentNumber?: string;
+  status: string; approval: string; overdue: boolean; installmentLabel?: string; documentNumber?: string; collectionNumber?: number;
 }
 export interface Payment {
   id: string; bankAccountId: string; bankAccountName: string; paidOn: string; principal: number; fine: number; interest: number;
@@ -43,6 +43,15 @@ export interface DebtLine { entryId: string; description: string; competence: st
 export interface Note { id: string; contactType: string; contactDate: string; note: string; createdByName?: string; createdAt: string; }
 export interface Agreement { id: string; unitId: string; unitLabel?: string; originalAmount: number; chargesAmount: number; discount: number; totalAmount: number; installments: number; firstDueDate: string; status: string; paidInstallments: number; notes?: string; cancelReason?: string; createdAt: string; installmentEntries: EntrySummary[]; }
 export interface UnitDebt { unitId: string; unitLabel: string; responsibleName?: string; asOf: string; openPrincipal: number; openCharges: number; openTotal: number; lines: DebtLine[]; notes: Note[]; agreements: Agreement[]; }
+
+export interface ClosingHistory { id: string; action: 'CLOSE' | 'REOPEN'; closedUntil?: string; previousUntil?: string; notes?: string; snapshot?: { income: string; expense: string; unreconciledMovements: number; balances: { account: string; balance: string; reconciled: string }[] }; createdAt: string; createdByName?: string; }
+export interface ClosingStatus { closedUntil?: string; suggestedUntil?: string; history: ClosingHistory[]; }
+export interface ClosingCheck { from: string; until: string; unreconciledMovements: number; pendingApprovals: number; income: number; expense: number; balances: { id: string; name: string; balance: number; reconciledBalance: number }[]; }
+export interface ImportResult { importId: string; fileName: string; periodStart?: string; periodEnd?: string; linesInFile: number; newLines: number; duplicates: number; autoMatched: number; pending: number; }
+export interface StatementSuggestion { type: string; id: string; date: string; amount: number; description: string; }
+export interface StatementLineView { id: string; fitId: string; postedOn: string; amount: number; trnType?: string; memo?: string; status: 'UNMATCHED' | 'MATCHED' | 'IGNORED'; matchedType?: string; matchedId?: string; note?: string; suggestions: StatementSuggestion[]; }
+export interface ReturnFile { id: string; bankAccountId: string; fileName: string; bankCode: string; generatedOn?: string; itemsTotal: number; settled: number; pending: number; createdAt: string; createdByName?: string; }
+export interface ReturnItem { id: string; fileId: string; sequence: number; movementCode: string; movementLabel: string; ourNumber?: string; yourNumber?: string; dueDate?: string; faceValue: number; fees: number; discount: number; paidAmount: number; bankFee: number; occurrenceDate?: string; creditDate?: string; status: 'SETTLED' | 'PENDING' | 'INFO' | 'IGNORED'; entryId?: string; entryDescription?: string; unitLabel?: string; message?: string; }
 
 @Injectable({ providedIn: 'root' })
 export class FinanceApi {
@@ -93,6 +102,38 @@ export class FinanceApi {
   reversePayment(c: string, paymentId: string, reason: string): Observable<EntryDetail> {
     return this.http.post<EntryDetail>(`${this.b(c)}/finance/payments/${paymentId}/reverse`, { reason });
   }
+  // fechamento mensal
+  closing(c: string): Observable<ClosingStatus> { return this.http.get<ClosingStatus>(`${this.b(c)}/finance/closing`); }
+  closingCheck(c: string, until: string): Observable<ClosingCheck> { return this.http.get<ClosingCheck>(`${this.b(c)}/finance/closing/check`, { params: { until } }); }
+  close(c: string, until: string, notes: string | null): Observable<ClosingStatus> { return this.http.post<ClosingStatus>(`${this.b(c)}/finance/closing`, { until, notes }); }
+  reopen(c: string, until: string | null, reason: string): Observable<ClosingStatus> { return this.http.post<ClosingStatus>(`${this.b(c)}/finance/closing/reopen`, { until, reason }); }
+
+  // extrato OFX e conciliação
+  importStatement(c: string, accountId: string, file: File, ignoreAccountCheck = false): Observable<ImportResult> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<ImportResult>(`${this.b(c)}/finance/bank-accounts/${accountId}/statement-imports`, form, { params: { ignoreAccountCheck } });
+  }
+  statementLines(c: string, accountId: string, status?: string): Observable<StatementLineView[]> {
+    return this.http.get<StatementLineView[]>(`${this.b(c)}/finance/bank-accounts/${accountId}/statement-lines`, { params: status ? { status } : {} });
+  }
+  matchLine(c: string, id: string, type: string, movementId: string): Observable<StatementLineView> { return this.http.post<StatementLineView>(`${this.b(c)}/finance/statement-lines/${id}/match`, { type, movementId }); }
+  unmatchLine(c: string, id: string): Observable<StatementLineView> { return this.http.post<StatementLineView>(`${this.b(c)}/finance/statement-lines/${id}/unmatch`, null); }
+  ignoreLine(c: string, id: string, note: string): Observable<StatementLineView> { return this.http.post<StatementLineView>(`${this.b(c)}/finance/statement-lines/${id}/ignore`, { note }); }
+  registerLine(c: string, id: string, body: Record<string, unknown>): Observable<StatementLineView> { return this.http.post<StatementLineView>(`${this.b(c)}/finance/statement-lines/${id}/register`, body); }
+
+  // retorno bancário (CNAB 240)
+  processReturn(c: string, bankAccountId: string, file: File): Observable<ReturnFile> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<ReturnFile>(`${this.b(c)}/billing/bank-returns`, form, { params: { bankAccountId } });
+  }
+  returnFiles(c: string): Observable<ReturnFile[]> { return this.http.get<ReturnFile[]>(`${this.b(c)}/billing/bank-returns`); }
+  returnItems(c: string, fileId: string): Observable<ReturnItem[]> { return this.http.get<ReturnItem[]>(`${this.b(c)}/billing/bank-returns/${fileId}/items`); }
+  pendingReturnItems(c: string): Observable<ReturnItem[]> { return this.http.get<ReturnItem[]>(`${this.b(c)}/billing/bank-return-items/pending`); }
+  settleReturnItem(c: string, id: string, entryId: string): Observable<ReturnItem> { return this.http.post<ReturnItem>(`${this.b(c)}/billing/bank-return-items/${id}/settle`, { entryId }); }
+  ignoreReturnItem(c: string, id: string, note: string): Observable<ReturnItem> { return this.http.post<ReturnItem>(`${this.b(c)}/billing/bank-return-items/${id}/ignore`, { note }); }
+
   transfers(c: string): Observable<Transfer[]> { return this.http.get<Transfer[]>(`${this.b(c)}/finance/transfers`); }
   transfer(c: string, body: Record<string, unknown>): Observable<Transfer> { return this.http.post<Transfer>(`${this.b(c)}/finance/transfers`, body); }
   reverseTransfer(c: string, id: string, reason: string): Observable<Transfer> { return this.http.post<Transfer>(`${this.b(c)}/finance/transfers/${id}/reverse`, { reason }); }

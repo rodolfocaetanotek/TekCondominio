@@ -16,7 +16,7 @@ import { applyServerErrors } from '../forms/server-errors';
 export interface FieldDef {
   key: string;
   label: string;
-  type?: 'text' | 'number' | 'date' | 'datetime' | 'select' | 'textarea' | 'checkbox' | 'email';
+  type?: 'text' | 'number' | 'date' | 'time' | 'datetime' | 'select' | 'textarea' | 'checkbox' | 'email';
   required?: boolean;
   options?: { value: string | null; label: string }[];
   value?: unknown;

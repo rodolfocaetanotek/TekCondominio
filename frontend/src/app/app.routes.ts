@@ -128,6 +128,18 @@ export const routes: Routes = [
         loadComponent: () => import('./features/ops/assembly-detail').then((m) => m.AssemblyDetailPage),
       },
       {
+        path: 'reservas',
+        canActivate: [permissionGuard('RESERVATION_VIEW')],
+        title: 'Reservas · Tek Condomínio',
+        loadComponent: () => import('./features/reservations/reservation-page').then((m) => m.ReservationPage),
+      },
+      {
+        path: 'portaria',
+        canActivate: [permissionGuard('ACCESS_VIEW')],
+        title: 'Portaria · Tek Condomínio',
+        loadComponent: () => import('./features/visitors/gate-page').then((m) => m.GatePage),
+      },
+      {
         path: 'documentos',
         canActivate: [permissionGuard('DOCUMENT_VIEW')],
         title: 'Documentos · Tek Condomínio',

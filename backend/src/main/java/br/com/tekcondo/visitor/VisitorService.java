@@ -1,0 +1,262 @@
+package br.com.tekcondo.visitor;
+
+import java.security.SecureRandom;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+
+import br.com.tekcondo.audit.service.AuditAction;
+import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.condominium.entity.Condominium;
+import br.com.tekcondo.condominium.service.CondominiumAccess;
+import br.com.tekcondo.identity.access.Permission;
+import br.com.tekcondo.identity.repository.UserRepository;
+import br.com.tekcondo.notification.NotificationService;
+import br.com.tekcondo.people.repository.OccupancyRepository;
+import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.structure.entity.Unit;
+import br.com.tekcondo.structure.repository.UnitRepository;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Portaria: autorizações de visitantes, prestadores e entregas. O morador pré-autoriza pelo portal (recebe um código
+ * de 6 dígitos); a portaria registra entrada (pelo código ou na chegada) e saída. O morador é avisado da entrada.
+ */
+@Service
+public class VisitorService {
+
+    static final ZoneId ZONE = ZoneId.of("America/Sao_Paulo");
+    private static final SecureRandom RANDOM = new SecureRandom();
+
+    public record PassRequest(@NotNull(message = "Informe a unidade.") UUID unitId,
+                              @NotNull(message = "Informe o tipo.") VisitorPass.Kind kind,
+                              @NotBlank(message = "Informe o nome.") @Size(max = 150) String name,
+                              @Size(max = 20) String document,
+                              @Size(max = 120) String company,
+                              @Pattern(regexp = "^$|^[A-Za-z]{3}-?[0-9][A-Za-z0-9][0-9]{2}$", message = "Placa inválida.") String vehiclePlate,
+                              LocalDate validFrom,
+                              LocalDate validUntil,
+                              @Size(max = 500) String notes) {
+    }
+
+    public record CodeRequest(@NotBlank(message = "Informe o código.") @Pattern(regexp = "\\d{6}", message = "O código tem 6 dígitos.") String code) {
+    }
+
+    /** {@code document} sai mascarado (apenas os 3 últimos caracteres). */
+    public record PassResponse(UUID id, UUID unitId, String unitLabel, VisitorPass.Kind kind, String name, String document,
+                               String company, String vehiclePlate, LocalDate validFrom, LocalDate validUntil, String accessCode,
+                               VisitorPass.Status status, boolean byResident, String authorizedByName, Instant enteredAt,
+                               String enteredByName, Instant leftAt, String notes) {
+    }
+
+    private final VisitorPassRepository passes;
+    private final UnitRepository units;
+    private final OccupancyRepository occupancies;
+    private final UserRepository users;
+    private final CondominiumAccess access;
+    private final NotificationService notifications;
+    private final AuditService auditService;
+    private final Clock clock;
+
+    public VisitorService(VisitorPassRepository passes, UnitRepository units, OccupancyRepository occupancies,
+                          UserRepository users, CondominiumAccess access, NotificationService notifications, AuditService auditService, Clock clock) {
+        this.passes = passes;
+        this.units = units;
+        this.occupancies = occupancies;
+        this.users = users;
+        this.access = access;
+        this.notifications = notifications;
+        this.auditService = auditService;
+        this.clock = clock;
+    }
+
+    // ------------------------------------------------------------------ portaria
+
+    @Transactional(readOnly = true)
+    public List<PassResponse> today(UUID condominiumId) {
+        access.require(condominiumId, Permission.ACCESS_VIEW);
+        LocalDate day = today();
+        Instant start = day.atStartOfDay(ZONE).toInstant();
+        return passes.findForDay(condominiumId, day, start, day.plusDays(1).atStartOfDay(ZONE).toInstant()).stream()
+                .map(v -> toResponse(v, false)).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PassResponse> history(UUID condominiumId, LocalDate from, LocalDate to) {
+        access.require(condominiumId, Permission.ACCESS_VIEW);
+        LocalDate end = to == null ? today() : to;
+        LocalDate start = from == null ? end.minusDays(30) : from;
+        if (start.isAfter(end) || start.plusDays(366).isBefore(end)) {
+            throw ApiException.badRequest("INVALID_PERIOD", "Informe um período de até 1 ano.");
+        }
+        return passes.findCreatedBetween(condominiumId, start.atStartOfDay(ZONE).toInstant(), end.plusDays(1).atStartOfDay(ZONE).toInstant())
+                .stream().map(v -> toResponse(v, false)).toList();
+    }
+
+    /** Chegada sem pré-autorização: a portaria registra e a entrada já fica marcada. */
+    @Transactional
+    public PassResponse registerArrival(UUID condominiumId, PassRequest request) {
+        Condominium condominium = access.requireActive(condominiumId, Permission.ACCESS_EDIT);
+        var user = access.user();
+        LocalDate day = today();
+        VisitorPass v = create(condominium, request, day, day, false, user.userId(), user.name());
+        v.enter(day, Instant.now(clock), user.name());
+        passes.flush();
+        afterEntry(v);
+        return toResponse(v, false);
+    }
+
+    @Transactional
+    public PassResponse checkInByCode(UUID condominiumId, String code) {
+        access.requireActive(condominiumId, Permission.ACCESS_EDIT);
+        VisitorPass v = passes.findExpectedByCode(condominiumId, code)
+                .orElseThrow(() -> ApiException.notFound("Autorização com este código"));
+        return checkIn(v);
+    }
+
+    @Transactional
+    public PassResponse checkIn(UUID condominiumId, UUID id) {
+        access.requireActive(condominiumId, Permission.ACCESS_EDIT);
+        return checkIn(load(condominiumId, id));
+    }
+
+    @Transactional
+    public PassResponse checkOut(UUID condominiumId, UUID id) {
+        access.require(condominiumId, Permission.ACCESS_EDIT);
+        VisitorPass v = load(condominiumId, id);
+        v.leave(Instant.now(clock), access.user().name());
+        passes.flush();
+        auditService.record(AuditAction.VISITOR_LEFT, "VisitorPass", v.getId(), Map.of("unit", unitLabel(v)));
+        return toResponse(v, false);
+    }
+
+    // ------------------------------------------------------------------ portal (unidades já validadas pelo chamador)
+
+    public PassResponse authorizeAsResident(Condominium condominium, PassRequest request, UUID userId, String userName) {
+        LocalDate from = request.validFrom() == null ? today() : request.validFrom();
+        LocalDate until = request.validUntil() == null ? from : request.validUntil();
+        if (from.isBefore(today())) {
+            throw ApiException.businessRule("PASS_IN_PAST", "A autorização não pode começar no passado.");
+        }
+        if (until.isBefore(from) || from.plusDays(90).isBefore(until)) {
+            throw ApiException.badRequest("INVALID_PERIOD", "Período de validade de até 90 dias.");
+        }
+        VisitorPass v = create(condominium, request, from, until, true, userId, userName);
+        v.code(uniqueCode(condominium.getId()));
+        passes.flush();
+        return toResponse(v, true);
+    }
+
+    public List<PassResponse> ofUnits(UUID condominiumId, Collection<UUID> unitIds) {
+        return passes.findByUnits(condominiumId, unitIds).stream().map(v -> toResponse(v, true)).toList();
+    }
+
+    public PassResponse cancelAsResident(UUID condominiumId, UUID id, Collection<UUID> unitIds) {
+        VisitorPass v = passes.findByIdAndCondominiumId(id, condominiumId).filter(x -> unitIds.contains(x.getUnitId()))
+                .orElseThrow(() -> ApiException.notFound("Autorização"));
+        v.cancel();
+        auditService.record(AuditAction.VISITOR_PASS_CANCELLED, "VisitorPass", id, Map.of("unit", unitLabel(v)));
+        return toResponse(v, true);
+    }
+
+    // ------------------------------------------------------------------ LGPD
+
+    /** Anonimiza os registros cujo período terminou há mais de {@code retentionDays} dias. */
+    @Transactional
+    public int anonymizeOlderThan(int retentionDays) {
+        Instant now = Instant.now(clock);
+        List<VisitorPass> list = passes.findToAnonymize(today().minusDays(retentionDays));
+        list.forEach(v -> v.anonymize(now));
+        return list.size();
+    }
+
+    // ------------------------------------------------------------------
+
+    private VisitorPass create(Condominium condominium, PassRequest r, LocalDate from, LocalDate until, boolean byResident,
+                               UUID userId, String userName) {
+        Unit unit = units.findByIdAndCondominiumId(r.unitId(), condominium.getId()).orElseThrow(() -> ApiException.notFound("Unidade"));
+        VisitorPass v = passes.save(new VisitorPass(condominium.getOrganizationId(), condominium.getId(), unit.getId(), r.kind(),
+                r.name().trim(), blank(r.document()), blank(r.company()),
+                blank(r.vehiclePlate()) == null ? null : r.vehiclePlate().replace("-", "").toUpperCase(Locale.ROOT),
+                from, until, blank(r.notes()), byResident, userId, userName));
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("unit", unit.label());
+        details.put("kind", r.kind().name());
+        details.put("validFrom", from.toString());
+        details.put("validUntil", until.toString());
+        auditService.record(AuditAction.VISITOR_PASS_CREATED, "VisitorPass", v.getId(), details);
+        return v;
+    }
+
+    private PassResponse checkIn(VisitorPass v) {
+        v.enter(today(), Instant.now(clock), access.user().name());
+        passes.flush();
+        afterEntry(v);
+        return toResponse(v, false);
+    }
+
+    /** Auditoria e aviso aos moradores da unidade com acesso ao portal. */
+    private void afterEntry(VisitorPass v) {
+        auditService.record(AuditAction.VISITOR_ENTERED, "VisitorPass", v.getId(), Map.of("unit", unitLabel(v), "kind", v.getKind().name()));
+        List<UUID> withPortal = notifications.usersWithPermission(v.getOrganizationId(), v.getCondominiumId(), Permission.PORTAL_ACCESS);
+        List<UUID> residents = occupancies.findCurrentByUnits(List.of(v.getUnitId())).stream()
+                .map(o -> users.findByPersonId(o.getPerson().getId())).flatMap(java.util.Optional::stream)
+                .map(u -> u.getId()).filter(withPortal::contains).distinct().toList();
+        notifications.notify(v.getOrganizationId(), residents, switch (v.getKind()) {
+            case VISITOR -> "Visitante na portaria";
+            case SERVICE_PROVIDER -> "Prestador de serviço na portaria";
+            case DELIVERY -> "Entrega na portaria";
+        }, v.getName() + " — entrada registrada para a unidade " + unitLabel(v), "/portal", null);
+    }
+
+    private String uniqueCode(UUID condominiumId) {
+        for (int i = 0; i < 20; i++) {
+            String code = String.format("%06d", RANDOM.nextInt(1_000_000));
+            if (passes.findExpectedByCode(condominiumId, code).isEmpty()) {
+                return code;
+            }
+        }
+        throw new IllegalStateException("Não foi possível gerar código de acesso único");
+    }
+
+    private VisitorPass load(UUID condominiumId, UUID id) {
+        return passes.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.notFound("Autorização"));
+    }
+
+    private String unitLabel(VisitorPass v) {
+        return units.findById(v.getUnitId()).map(Unit::label).orElse("?");
+    }
+
+    /** O código só é exibido a quem autorizou (portal); a portaria digita o código informado pelo visitante. */
+    private PassResponse toResponse(VisitorPass v, boolean showCode) {
+        return new PassResponse(v.getId(), v.getUnitId(), unitLabel(v), v.getKind(), v.getName(), mask(v.getDocument()), v.getCompany(),
+                v.getVehiclePlate(), v.getValidFrom(), v.getValidUntil(), showCode ? v.getAccessCode() : null, v.getStatus(),
+                v.isByResident(), v.getAuthorizedByName(), v.getEnteredAt(), null, v.getLeftAt(), v.getNotes());
+    }
+
+    static String mask(String document) {
+        if (document == null) return null;
+        String d = document.replaceAll("[^0-9A-Za-z]", "");
+        return d.length() <= 3 ? "***" : "*".repeat(Math.min(d.length() - 3, 8)) + d.substring(d.length() - 3);
+    }
+
+    private LocalDate today() {
+        return LocalDate.now(clock.withZone(ZONE));
+    }
+
+    private static String blank(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
+    }
+}

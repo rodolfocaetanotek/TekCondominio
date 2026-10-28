@@ -37,6 +37,8 @@ import br.com.tekcondo.occurrence.OccurrenceRepository;
 import br.com.tekcondo.occurrence.OccurrenceService;
 import br.com.tekcondo.people.entity.Occupancy;
 import br.com.tekcondo.people.repository.OccupancyRepository;
+import br.com.tekcondo.reservation.ReservationService;
+import br.com.tekcondo.visitor.VisitorService;
 import br.com.tekcondo.shared.exception.ApiException;
 import br.com.tekcondo.shared.security.CurrentUser;
 import br.com.tekcondo.shared.security.CurrentUserProvider;
@@ -92,6 +94,8 @@ public class PortalService {
     private final OccurrenceInteractionRepository interactions;
     private final OccurrenceService occurrenceService;
     private final AssemblyRepository assemblies;
+    private final ReservationService reservations;
+    private final VisitorService visitors;
     private final Clock clock;
 
     public PortalService(CurrentUserProvider currentUserProvider, UserRepository users, AccessService accessService,
@@ -99,7 +103,7 @@ public class PortalService {
                          AnnouncementRepository announcements, AnnouncementService announcementService,
                          DocumentRepository documents, DocumentService documentService, OccurrenceRepository occurrences,
                          OccurrenceInteractionRepository interactions, OccurrenceService occurrenceService,
-                         AssemblyRepository assemblies, Clock clock) {
+                         AssemblyRepository assemblies, ReservationService reservations, VisitorService visitors, Clock clock) {
         this.currentUserProvider = currentUserProvider;
         this.users = users;
         this.accessService = accessService;
@@ -114,6 +118,8 @@ public class PortalService {
         this.interactions = interactions;
         this.occurrenceService = occurrenceService;
         this.assemblies = assemblies;
+        this.reservations = reservations;
+        this.visitors = visitors;
         this.clock = clock;
     }
 
@@ -228,6 +234,68 @@ public class PortalService {
                 .map(a -> new AssemblyInfo(a.getId(), a.getTitle(), a.getKind(), a.getScheduledAt(), a.getLocation(), a.getStatus(),
                         a.getStatus() == Assembly.Status.CLOSED ? a.getMinutes() : null))
                 .toList();
+    }
+
+    // ------------------------------------------------------------------ reservas de áreas comuns
+
+    @Transactional(readOnly = true)
+    public List<ReservationService.AreaResponse> commonAreas(UUID condominiumId) {
+        ctx(condominiumId);
+        return reservations.activeAreas(condominiumId);
+    }
+
+    /** Ocupação dos horários (sem identificar unidades de terceiros). */
+    @Transactional(readOnly = true)
+    public List<ReservationService.Slot> areaOccupancy(UUID condominiumId, UUID areaId, LocalDate from, LocalDate to) {
+        ctx(condominiumId);
+        return reservations.occupancy(condominiumId, areaId, from, to);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReservationService.ReservationResponse> myReservations(UUID condominiumId) {
+        Ctx ctx = ctx(condominiumId);
+        return reservations.ofUnits(condominiumId, ctx.unitIds());
+    }
+
+    @Transactional
+    public ReservationService.ReservationResponse reserve(UUID condominiumId, ReservationService.ReservationRequest request) {
+        Ctx ctx = ctx(condominiumId);
+        if (!ctx.unitIds().contains(request.unitId())) {
+            throw new AccessDeniedException("Unidade não vinculada ao morador");
+        }
+        if (ctx.condominium().getStatus() != br.com.tekcondo.condominium.entity.CondominiumStatus.ACTIVE) {
+            throw ApiException.businessRule("CONDOMINIUM_INACTIVE", "O condomínio está inativo.");
+        }
+        return reservations.bookAsResident(ctx.condominium(), request, ctx.user().userId(), ctx.account().getName());
+    }
+
+    @Transactional
+    public ReservationService.ReservationResponse cancelReservation(UUID condominiumId, UUID id, String reason) {
+        Ctx ctx = ctx(condominiumId);
+        return reservations.cancelAsResident(condominiumId, id, ctx.unitIds(), reason);
+    }
+
+    // ------------------------------------------------------------------ portaria (autorizações do morador)
+
+    @Transactional(readOnly = true)
+    public List<VisitorService.PassResponse> visitorPasses(UUID condominiumId) {
+        Ctx ctx = ctx(condominiumId);
+        return visitors.ofUnits(condominiumId, ctx.unitIds());
+    }
+
+    @Transactional
+    public VisitorService.PassResponse authorizeVisitor(UUID condominiumId, VisitorService.PassRequest request) {
+        Ctx ctx = ctx(condominiumId);
+        if (!ctx.unitIds().contains(request.unitId())) {
+            throw new AccessDeniedException("Unidade não vinculada ao morador");
+        }
+        return visitors.authorizeAsResident(ctx.condominium(), request, ctx.user().userId(), ctx.account().getName());
+    }
+
+    @Transactional
+    public VisitorService.PassResponse cancelVisitor(UUID condominiumId, UUID id) {
+        Ctx ctx = ctx(condominiumId);
+        return visitors.cancelAsResident(condominiumId, id, ctx.unitIds());
     }
 
     /** Calendário: assembleias e vencimentos das cobranças em aberto (de 30 dias atrás a 90 dias à frente). */

@@ -27,6 +27,7 @@ import br.com.tekcondo.finance.entity.FinancialEntry;
 import br.com.tekcondo.finance.repository.ChartAccountRepository;
 import br.com.tekcondo.finance.repository.FinancialEntryRepository;
 import br.com.tekcondo.finance.service.FinanceSetupService;
+import br.com.tekcondo.finance.service.PeriodLock;
 import br.com.tekcondo.identity.access.Permission;
 import br.com.tekcondo.people.entity.Occupancy;
 import br.com.tekcondo.people.entity.Person;
@@ -47,19 +48,22 @@ public class AllocationService {
     private final UnitRepository units;
     private final OccupancyRepository occupancies;
     private final FinanceSetupService setup;
+    private final PeriodLock periodLock;
     private final CondominiumAccess access;
     private final AuditService auditService;
     private final Clock clock;
 
     public AllocationService(AllocationRepository allocations, FinancialEntryRepository entries,
                              ChartAccountRepository chartAccounts, UnitRepository units, OccupancyRepository occupancies,
-                             FinanceSetupService setup, CondominiumAccess access, AuditService auditService, Clock clock) {
+                             FinanceSetupService setup, PeriodLock periodLock, CondominiumAccess access, AuditService auditService,
+                             Clock clock) {
         this.allocations = allocations;
         this.entries = entries;
         this.chartAccounts = chartAccounts;
         this.units = units;
         this.occupancies = occupancies;
         this.setup = setup;
+        this.periodLock = periodLock;
         this.access = access;
         this.auditService = auditService;
         this.clock = clock;
@@ -77,6 +81,7 @@ public class AllocationService {
     @Transactional
     public AllocationResponse generate(UUID condominiumId, AllocationRequest request) {
         Plan plan = plan(condominiumId, request);
+        periodLock.ensureOpen(condominiumId, plan.competence());
         UUID userId = access.user().userId();
         Allocation allocation = allocations.save(new Allocation(plan.condominium().getOrganizationId(), condominiumId,
                 plan.competence(), request.description().trim(), plan.account().getId(), request.method(),
@@ -117,6 +122,7 @@ public class AllocationService {
         access.require(condominiumId, Permission.FINANCE_CANCEL);
         Allocation allocation = allocations.findByIdAndCondominiumId(id, condominiumId)
                 .orElseThrow(() -> ApiException.notFound("Rateio"));
+        periodLock.ensureOpen(condominiumId, allocation.getCompetence());
         List<FinancialEntry> charges = entries.findByAllocationId(id);
         if (charges.stream().anyMatch(e -> e.getPaidAmount().signum() > 0)) {
             throw ApiException.businessRule("ALLOCATION_HAS_PAYMENTS",

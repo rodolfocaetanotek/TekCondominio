@@ -21,6 +21,9 @@ export const LABELS: Record<string, Record<string, string>> = {
   contractStatus: { ACTIVE: 'Vigente', TERMINATED: 'Encerrado' },
   docCategory: { CONVENTION: 'Convenção', INTERNAL_RULES: 'Regulamento interno', MINUTES: 'Ata', CONTRACT: 'Contrato', INVOICE: 'Nota fiscal', RECEIPT: 'Comprovante', FINANCIAL_STATEMENT: 'Demonstrativo financeiro', UNIT: 'Documento de unidade', OCCURRENCE: 'Ocorrência', OTHER: 'Outro' },
   visibility: { INTERNAL: 'Interno', RESIDENTS: 'Moradores' },
+  visitorKind: { VISITOR: 'Visitante', SERVICE_PROVIDER: 'Prestador de serviço', DELIVERY: 'Entrega' },
+  visitorStatus: { EXPECTED: 'Aguardando chegada', INSIDE: 'No condomínio', LEFT: 'Saiu', CANCELLED: 'Cancelada' },
+  reservationStatus: { PENDING: 'Aguardando aprovação', CONFIRMED: 'Confirmada', REJECTED: 'Recusada', CANCELLED: 'Cancelada' },
 };
 
 export function label(group: string, code: string | null | undefined): string {

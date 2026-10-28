@@ -30,4 +30,6 @@ public interface FinancialEntryRepository extends JpaRepository<FinancialEntry, 
               and e.unit.id = :unitId order by e.dueDate
             """)
     List<FinancialEntry> findReceivablesOfUnit(UUID condominiumId, UUID unitId);
+
+    Optional<FinancialEntry> findByCondominiumIdAndCollectionNumber(UUID condominiumId, Long collectionNumber);
 }

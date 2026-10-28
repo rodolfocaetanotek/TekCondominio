@@ -1,3 +1,5 @@
+import { PortalReservations } from '../reservations/portal-reservations';
+import { PortalVisitors } from '../visitors/portal-visitors';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
@@ -27,7 +29,7 @@ import { PortalApi } from './portal-api';
 @Component({
   selector: 'tc-portal-page',
   imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, MatTabsModule, MatButtonModule, MatIconModule, MatSelectModule, MatFormFieldModule,
-    MatInputModule, MatExpansionModule, MatProgressBarModule, PageHeader, EmptyState, IsoDatePipe, LabelPipe],
+    MatInputModule, MatExpansionModule, MatProgressBarModule, PageHeader, EmptyState, IsoDatePipe, LabelPipe, PortalReservations, PortalVisitors],
   template: `
     <div class="tc-page narrow">
       @if (error(); as message) {
@@ -115,6 +117,16 @@ import { PortalApi } from './portal-api';
                   </mat-expansion-panel>
                 } @empty { <section class="tc-card"><tc-empty-state icon="build" title="Nenhuma solicitação" /></section> }
               </mat-accordion>
+            </ng-template>
+          </mat-tab>
+          <mat-tab label="Reservas">
+            <ng-template matTabContent>
+              @if (condo(); as c) { <tc-portal-reservations [condominiumId]="c.id" [units]="c.units" /> }
+            </ng-template>
+          </mat-tab>
+          <mat-tab label="Visitantes">
+            <ng-template matTabContent>
+              @if (condo(); as c) { <tc-portal-visitors [condominiumId]="c.id" [units]="c.units" /> }
             </ng-template>
           </mat-tab>
           <mat-tab label="Assembleias">

@@ -99,6 +99,8 @@ export class Shell {
       items: [
         { label: 'Ocorrências', icon: 'build', link: '/ocorrencias', visible: this.inCondo('OCCURRENCE_VIEW') },
         { label: 'Comunicados', icon: 'campaign', link: '/comunicados', visible: this.inCondo('ANNOUNCEMENT_VIEW') },
+        { label: 'Reservas', icon: 'event_available', link: '/reservas', visible: this.inCondo('RESERVATION_VIEW') },
+        { label: 'Portaria', icon: 'badge', link: '/portaria', visible: this.inCondo('ACCESS_VIEW') },
         { label: 'Assembleias', icon: 'groups', link: '/assembleias', visible: this.inCondo('ASSEMBLY_VIEW') },
         { label: 'Contratos', icon: 'contract', link: '/contratos', visible: this.inCondo('SUPPLIER_VIEW') },
         { label: 'Documentos', icon: 'folder', link: '/documentos', visible: this.inCondo('DOCUMENT_VIEW') },

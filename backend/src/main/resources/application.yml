@@ -74,10 +74,18 @@ tekcondo:
     max-failed-logins: ${TEKCONDO_MAX_FAILED_LOGINS:5}
     lockout-duration: ${TEKCONDO_LOCKOUT_DURATION:PT15M}
     cors-allowed-origins: ${TEKCONDO_CORS_ORIGINS:}
+    # Limite por IP nos endpoints públicos de autenticação (login, esqueci/redefinir senha)
+    auth-rate-limit:
+      max-requests: ${TEKCONDO_AUTH_RATE_LIMIT:20}
+      window: ${TEKCONDO_AUTH_RATE_WINDOW:PT5M}
   app:
     public-url: ${TEKCONDO_PUBLIC_URL:http://localhost:4200}
   jobs:
     reminders-cron: ${TEKCONDO_JOBS_REMINDERS_CRON:0 0 7 * * *}
+    retention-cron: ${TEKCONDO_JOBS_RETENTION_CRON:0 30 3 * * *}
+  privacy:
+    # LGPD: registros de portaria são anonimizados após este prazo (dias após o fim da validade)
+    visitor-retention-days: ${TEKCONDO_VISITOR_RETENTION_DAYS:180}
   storage:
     dir: ${TEKCONDO_STORAGE_DIR:.local-dev/storage}
   mail:

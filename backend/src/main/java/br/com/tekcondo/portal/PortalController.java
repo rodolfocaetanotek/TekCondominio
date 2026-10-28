@@ -7,6 +7,11 @@ import br.com.tekcondo.announcement.AnnouncementService;
 import br.com.tekcondo.document.controller.DocumentController;
 import br.com.tekcondo.document.service.DocumentService;
 import br.com.tekcondo.occurrence.OccurrenceService;
+import br.com.tekcondo.reservation.ReservationService;
+import br.com.tekcondo.visitor.VisitorService;
+import java.time.LocalDate;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.RequestParam;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -83,6 +88,51 @@ public class PortalController {
     @GetMapping("/{c}/assemblies")
     public List<PortalService.AssemblyInfo> assemblies(@PathVariable UUID c) {
         return service.assemblies(c);
+    }
+
+    @GetMapping("/{c}/common-areas")
+    public List<ReservationService.AreaResponse> commonAreas(@PathVariable UUID c) {
+        return service.commonAreas(c);
+    }
+
+    @GetMapping("/{c}/common-areas/{areaId}/occupancy")
+    public List<ReservationService.Slot> occupancy(@PathVariable UUID c, @PathVariable UUID areaId,
+                                                   @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                                   @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return service.areaOccupancy(c, areaId, from, to);
+    }
+
+    @GetMapping("/{c}/reservations")
+    public List<ReservationService.ReservationResponse> reservations(@PathVariable UUID c) {
+        return service.myReservations(c);
+    }
+
+    @PostMapping("/{c}/reservations")
+    public ResponseEntity<ReservationService.ReservationResponse> reserve(@PathVariable UUID c,
+                                                                          @Valid @RequestBody ReservationService.ReservationRequest request) {
+        return ResponseEntity.status(201).body(service.reserve(c, request));
+    }
+
+    @PostMapping("/{c}/reservations/{id}/cancel")
+    public ReservationService.ReservationResponse cancelReservation(@PathVariable UUID c, @PathVariable UUID id,
+                                                                    @Valid @RequestBody ReservationService.CancelRequest request) {
+        return service.cancelReservation(c, id, request.reason());
+    }
+
+    @GetMapping("/{c}/visitors")
+    public List<VisitorService.PassResponse> visitors(@PathVariable UUID c) {
+        return service.visitorPasses(c);
+    }
+
+    @PostMapping("/{c}/visitors")
+    public ResponseEntity<VisitorService.PassResponse> authorizeVisitor(@PathVariable UUID c,
+                                                                        @Valid @RequestBody VisitorService.PassRequest request) {
+        return ResponseEntity.status(201).body(service.authorizeVisitor(c, request));
+    }
+
+    @PostMapping("/{c}/visitors/{id}/cancel")
+    public VisitorService.PassResponse cancelVisitor(@PathVariable UUID c, @PathVariable UUID id) {
+        return service.cancelVisitor(c, id);
     }
 
     @GetMapping("/{c}/calendar")

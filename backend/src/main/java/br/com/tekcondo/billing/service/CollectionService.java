@@ -37,6 +37,7 @@ import br.com.tekcondo.finance.repository.ChartAccountRepository;
 import br.com.tekcondo.finance.repository.FinancialEntryRepository;
 import br.com.tekcondo.finance.service.EntryService;
 import br.com.tekcondo.finance.service.LateFeeCalculator;
+import br.com.tekcondo.finance.service.PeriodLock;
 import br.com.tekcondo.identity.access.Permission;
 import br.com.tekcondo.people.entity.Occupancy;
 import br.com.tekcondo.people.entity.Person;
@@ -66,13 +67,15 @@ public class CollectionService {
     private final UnitRepository units;
     private final OccupancyRepository occupancies;
     private final EntryService entryService;
+    private final PeriodLock periodLock;
     private final CondominiumAccess access;
     private final AuditService auditService;
     private final Clock clock;
 
     public CollectionService(FinancialEntryRepository entries, AgreementRepository agreements, CollectionNoteRepository notes,
                              ChartAccountRepository chartAccounts, UnitRepository units, OccupancyRepository occupancies,
-                             EntryService entryService, CondominiumAccess access, AuditService auditService, Clock clock) {
+                             EntryService entryService, PeriodLock periodLock, CondominiumAccess access, AuditService auditService,
+                             Clock clock) {
         this.entries = entries;
         this.agreements = agreements;
         this.notes = notes;
@@ -80,6 +83,7 @@ public class CollectionService {
         this.units = units;
         this.occupancies = occupancies;
         this.entryService = entryService;
+        this.periodLock = periodLock;
         this.access = access;
         this.auditService = auditService;
         this.clock = clock;
@@ -260,6 +264,7 @@ public class CollectionService {
             throw ApiException.businessRule("AGREEMENT_HAS_PAYMENTS",
                     "O acordo possui parcelas pagas e não pode ser cancelado. Registre o descumprimento no histórico de cobrança.");
         }
+        periodLock.ensureOpen(condominiumId, parcels.stream().map(FinancialEntry::getCompetence).toArray(LocalDate[]::new));
         UUID by = access.user().userId();
         Instant now = Instant.now(clock);
         agreement.cancel(reason.trim(), by, now);

@@ -11,6 +11,7 @@ export type Permission =
   | 'PEOPLE_VIEW'
   | 'PEOPLE_EDIT'
   | 'FINANCE_VIEW'
+  | 'FINANCE_CLOSE'
   | 'FINANCE_EDIT'
   | 'FINANCE_APPROVE'
   | 'FINANCE_CANCEL'
@@ -28,6 +29,10 @@ export type Permission =
   | 'ASSEMBLY_EDIT'
   | 'DOCUMENT_VIEW'
   | 'DOCUMENT_EDIT'
+  | 'RESERVATION_VIEW'
+  | 'RESERVATION_EDIT'
+  | 'ACCESS_VIEW'
+  | 'ACCESS_EDIT'
   | 'PORTAL_ACCESS';
 
 export interface TokenResponse {

@@ -96,7 +96,7 @@ public final class FinanceDtos {
                                String accountName, String supplierName, String unitLabel, String personName,
                                BigDecimal amount, BigDecimal paidAmount, BigDecimal remaining, LocalDate dueDate,
                                LocalDate competence, FinancialEntry.Status status, FinancialEntry.Approval approval,
-                               boolean overdue, String installmentLabel, String documentNumber) {
+                               boolean overdue, String installmentLabel, String documentNumber, Long collectionNumber) {
     }
 
     public record PaymentResponse(UUID id, UUID bankAccountId, String bankAccountName, LocalDate paidOn,

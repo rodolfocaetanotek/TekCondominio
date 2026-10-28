@@ -22,6 +22,7 @@ import br.com.tekcondo.finance.entity.BankTransfer;
 import br.com.tekcondo.finance.entity.EntryPayment;
 import br.com.tekcondo.finance.repository.BankTransferRepository;
 import br.com.tekcondo.finance.repository.EntryPaymentRepository;
+import br.com.tekcondo.finance.repository.StatementLineRepository;
 import br.com.tekcondo.identity.access.Permission;
 import br.com.tekcondo.shared.exception.ApiException;
 import org.springframework.stereotype.Service;
@@ -33,18 +34,23 @@ public class TreasuryService {
 
     private final BankTransferRepository transfers;
     private final EntryPaymentRepository payments;
+    private final StatementLineRepository statementLines;
     private final FinanceSetupService setup;
     private final FinanceQueries queries;
+    private final PeriodLock periodLock;
     private final CondominiumAccess access;
     private final AuditService auditService;
     private final Clock clock;
 
-    public TreasuryService(BankTransferRepository transfers, EntryPaymentRepository payments, FinanceSetupService setup,
-                           FinanceQueries queries, CondominiumAccess access, AuditService auditService, Clock clock) {
+    public TreasuryService(BankTransferRepository transfers, EntryPaymentRepository payments,
+                           StatementLineRepository statementLines, FinanceSetupService setup,
+                           FinanceQueries queries, PeriodLock periodLock, CondominiumAccess access, AuditService auditService, Clock clock) {
         this.transfers = transfers;
         this.payments = payments;
+        this.statementLines = statementLines;
         this.setup = setup;
         this.queries = queries;
+        this.periodLock = periodLock;
         this.access = access;
         this.auditService = auditService;
         this.clock = clock;
@@ -64,6 +70,7 @@ public class TreasuryService {
         if (request.date().isAfter(LocalDate.now(clock))) {
             throw ApiException.businessRule("FUTURE_TRANSFER", "A data da transferência não pode ser futura.");
         }
+        periodLock.ensureOpen(condominiumId, request.date());
         BigDecimal available = queries.balances(condominiumId, request.date()).getOrDefault(from.getId(), from.getOpeningBalance());
         if (from.getKind() == BankAccount.Kind.CASH && available.compareTo(request.amount()) < 0) {
             throw ApiException.businessRule("INSUFFICIENT_CASH", "Saldo de caixa insuficiente na data (R$ " + available.toPlainString() + ").");
@@ -80,6 +87,7 @@ public class TreasuryService {
         access.require(condominiumId, Permission.FINANCE_CANCEL);
         BankTransfer transfer = transfers.findByIdAndCondominiumId(id, condominiumId)
                 .orElseThrow(() -> ApiException.notFound("Transferência"));
+        periodLock.ensureOpen(condominiumId, transfer.getTransferDate());
         transfer.reverse(reason.trim(), access.user().userId(), Instant.now(clock));
         auditService.record(AuditAction.TRANSFER_REVERSED, "BankTransfer", id, Map.of("reason", reason.trim()));
         return toResponse(transfer);
@@ -114,8 +122,18 @@ public class TreasuryService {
         if (foundPayments.size() != paymentIds.size() || foundTransfers.size() != transferIds.size()) {
             throw ApiException.notFound("Movimentação");
         }
+        periodLock.ensureOpen(condominiumId, java.util.stream.Stream.concat(foundPayments.stream().map(EntryPayment::getPaidOn),
+                foundTransfers.stream().map(BankTransfer::getTransferDate)).toArray(LocalDate[]::new));
         foundPayments.forEach(p -> p.reconcile(reconciled, by, now));
         foundTransfers.forEach(t -> t.reconcile(reconciled, by, now));
+        if (!reconciled) {
+            // A linha do extrato importado casada com a movimentação volta a ficar pendente.
+            foundPayments.forEach(p -> statementLines.findByPaymentId(p.getId()).ifPresent(br.com.tekcondo.finance.entity.StatementLine::reset));
+            foundTransfers.forEach(t -> {
+                statementLines.findByBankAccountIdAndTransferId(t.getFromAccount().getId(), t.getId()).ifPresent(br.com.tekcondo.finance.entity.StatementLine::reset);
+                statementLines.findByBankAccountIdAndTransferId(t.getToAccount().getId(), t.getId()).ifPresent(br.com.tekcondo.finance.entity.StatementLine::reset);
+            });
+        }
         int count = foundPayments.size() + foundTransfers.size();
         auditService.record(AuditAction.RECONCILIATION_CHANGED, "Condominium", condominiumId,
                 Map.of("items", count, "reconciled", reconciled));

@@ -273,6 +273,7 @@ resident-portal ─> people + billing + communication + documents
 | 11 | Dashboard e relatórios (PDF/Excel/CSV) | ✅ |
 | 12 | Assembleias, ocorrências, contratos, documentos, comunicação | ✅ |
 | 13 | Portal do morador | ✅ |
-| 14 | Qualidade e implantação: RLS, rate limit por IP, backups, hardening | 🟡 backups ✅; RLS e rate limit pendentes |
+| 14 | Qualidade e implantação: RLS, rate limit por IP, backups, hardening | 🟡 backups ✅; rate limit na autenticação ✅; RLS pendente |
+| 15 | Benchmarking e lacunas: fechamento mensal, OFX, retorno CNAB 240, reservas, portaria, indicadores (ver MATRIZ-COMPARATIVA.md) | ✅ |
 
 O acompanhamento detalhado está em [`PROGRESSO.md`](PROGRESSO.md).

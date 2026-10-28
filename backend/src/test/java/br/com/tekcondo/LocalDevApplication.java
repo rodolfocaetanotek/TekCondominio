@@ -18,16 +18,18 @@ import org.springframework.boot.SpringApplication;
  *
  * Se TEKCONDO_BOOTSTRAP_ADMIN_EMAIL/PASSWORD não estiverem definidos, gera credenciais aleatórias do administrador
  * da plataforma na primeira execução e as grava em {@code backend/.local-dev/credentials.txt} (fora do git).
+ * Para uma segunda instância isolada (ex.: validação ponta a ponta): {@code -Dtekcondo.localdev.dir=.local-dev-e2e
+ * -Dtekcondo.localdev.pg-port=54339 -Dserver.port=8090}.
  */
 public final class LocalDevApplication {
 
-    private static final int PG_PORT = 54329;
+    private static final int PG_PORT = Integer.getInteger("tekcondo.localdev.pg-port", 54329);
 
     private LocalDevApplication() {
     }
 
     public static void main(String[] args) throws IOException {
-        Path base = Path.of(".local-dev").toAbsolutePath();
+        Path base = Path.of(System.getProperty("tekcondo.localdev.dir", ".local-dev")).toAbsolutePath();
         Files.createDirectories(base);
         EmbeddedPostgres pg = EmbeddedPostgres.builder()
                 .setDataDirectory(base.resolve("pgdata"))
@@ -46,6 +48,8 @@ public final class LocalDevApplication {
         System.setProperty("spring.datasource.username", "postgres");
         System.setProperty("spring.datasource.password", "postgres");
         System.setProperty("spring.profiles.active", "dev");
+        System.setProperty("tekcondo.storage.dir", base.resolve("storage").toString());
+        System.setProperty("tekcondo.mail.outbox-dir", base.resolve("outbox").toString());
         configureDevAdmin(base);
 
         SpringApplication.run(TekCondoApplication.class, args);

@@ -21,6 +21,8 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import org.hibernate.annotations.Generated;
+import org.hibernate.generator.EventType;
 
 /**
  * Título financeiro: conta a pagar (EXPENSE) ou a receber (INCOME). Cobranças condominiais são títulos a receber
@@ -161,6 +163,11 @@ public class FinancialEntry {
 
     @Column(name = "updated_by")
     private UUID updatedBy;
+
+    /** Número de cobrança (gerado pelo banco de dados): enviado ao banco no boleto e usado na baixa pelo retorno. */
+    @Generated(event = EventType.INSERT)
+    @Column(name = "collection_number", insertable = false, updatable = false)
+    private Long collectionNumber;
 
     @Version
     private Long version;
@@ -390,6 +397,10 @@ public class FinancialEntry {
 
     public LocalDate getCompetence() {
         return competence;
+    }
+
+    public Long getCollectionNumber() {
+        return collectionNumber;
     }
 
     public String getDocumentNumber() {

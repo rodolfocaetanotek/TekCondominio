@@ -20,6 +20,7 @@ public enum Permission {
     FINANCE_EDIT,
     FINANCE_APPROVE,
     FINANCE_CANCEL,
+    FINANCE_CLOSE,
     BILLING_VIEW,
     BILLING_EDIT,
     REPORT_VIEW,
@@ -34,5 +35,9 @@ public enum Permission {
     ASSEMBLY_EDIT,
     DOCUMENT_VIEW,
     DOCUMENT_EDIT,
+    RESERVATION_VIEW,
+    RESERVATION_EDIT,
+    ACCESS_VIEW,
+    ACCESS_EDIT,
     PORTAL_ACCESS
 }

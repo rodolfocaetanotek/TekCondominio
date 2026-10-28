@@ -56,19 +56,21 @@ public class EntryService {
     private final UnitRepository units;
     private final PersonRepository people;
     private final FinanceSetupService setup;
+    private final PeriodLock periodLock;
     private final CondominiumAccess access;
     private final AuditService auditService;
     private final Clock clock;
 
     public EntryService(FinancialEntryRepository entries, EntryPaymentRepository payments, SupplierRepository suppliers,
                         UnitRepository units, PersonRepository people, FinanceSetupService setup,
-                        CondominiumAccess access, AuditService auditService, Clock clock) {
+                        PeriodLock periodLock, CondominiumAccess access, AuditService auditService, Clock clock) {
         this.entries = entries;
         this.payments = payments;
         this.suppliers = suppliers;
         this.units = units;
         this.people = people;
         this.setup = setup;
+        this.periodLock = periodLock;
         this.access = access;
         this.auditService = auditService;
         this.clock = clock;
@@ -128,7 +130,7 @@ public class EntryService {
         int repeat = request.repeat() == null ? 1 : request.repeat();
         UUID group = repeat > 1 ? UUID.randomUUID() : null;
         Refs refs = resolve(condominiumId, request);
-        List<EntryDetail> created = new ArrayList<>();
+        List<FinancialEntry> created = new ArrayList<>();
         for (int i = 0; i < repeat; i++) {
             FinancialEntry entry = new FinancialEntry(condominium.getOrganizationId(), condominiumId, request.kind(),
                     repeat > 1 ? FinancialEntry.Origin.RECURRENCE : FinancialEntry.Origin.MANUAL, userId);
@@ -147,11 +149,13 @@ public class EntryService {
                 entry.lateFees(condominium.getFinePercent(), condominium.getInterestMonthlyPercent());
             }
             ensureNoDuplicateDocument(condominiumId, entry);
+            periodLock.ensureOpen(condominiumId, entry.getCompetence());
             entries.save(entry);
             auditService.record(AuditAction.ENTRY_CREATED, ENTITY, entry.getId(), auditDetails(entry));
-            created.add(detail(entry));
+            created.add(entry);
         }
-        return created;
+        entries.flush(); // o número de cobrança é gerado pelo banco no INSERT
+        return created.stream().map(this::detail).toList();
     }
 
     @Transactional
@@ -164,6 +168,7 @@ public class EntryService {
         if (request.kind() != entry.getKind()) {
             throw ApiException.businessRule("ENTRY_KIND_IMMUTABLE", "Não é possível trocar receita por despesa. Cancele e lance novamente.");
         }
+        periodLock.ensureOpen(condominiumId, entry.getCompetence(), request.competence() == null ? request.dueDate() : request.competence());
         Map<String, Object> before = auditDetails(entry);
         BigDecimal previousAmount = entry.getAmount();
         Refs refs = resolve(condominiumId, request);
@@ -203,6 +208,7 @@ public class EntryService {
     public EntryDetail cancel(UUID condominiumId, UUID id, String reason) {
         access.require(condominiumId, Permission.FINANCE_CANCEL);
         FinancialEntry entry = load(condominiumId, id);
+        periodLock.ensureOpen(condominiumId, entry.getCompetence());
         entry.cancel(reason.trim(), access.user().userId(), Instant.now(clock));
         entries.flush();
         auditService.record(AuditAction.ENTRY_CANCELLED, ENTITY, id, Map.of("reason", reason.trim(),
@@ -227,6 +233,7 @@ public class EntryService {
         if (request.paidOn().isAfter(LocalDate.now(clock))) {
             throw ApiException.businessRule("FUTURE_PAYMENT", "A data do pagamento não pode ser futura.");
         }
+        periodLock.ensureOpen(condominiumId, request.paidOn());
         BankAccount bankAccount = setup.loadBankAccount(condominiumId, request.bankAccountId());
         if (!bankAccount.isActive()) {
             throw ApiException.businessRule("BANK_ACCOUNT_INACTIVE", "A conta bancária está inativa.");
@@ -254,6 +261,7 @@ public class EntryService {
         access.require(condominiumId, Permission.FINANCE_CANCEL);
         EntryPayment payment = payments.findInCondominium(paymentId, condominiumId)
                 .orElseThrow(() -> ApiException.notFound("Baixa"));
+        periodLock.ensureOpen(condominiumId, payment.getPaidOn());
         payment.reverse(reason.trim(), access.user().userId(), Instant.now(clock));
         FinancialEntry entry = payment.getEntry();
         entry.reversePayment(payment.getPrincipal(), access.user().userId());
@@ -302,7 +310,7 @@ public class EntryService {
                 e.getChartAccount().getName(), e.getSupplier() == null ? null : e.getSupplier().getName(),
                 e.getUnit() == null ? null : e.getUnit().label(), e.getPerson() == null ? null : e.getPerson().getName(),
                 e.getAmount(), e.getPaidAmount(), e.remaining(), e.getDueDate(), e.getCompetence(), e.getStatus(),
-                e.getApproval(), e.isOverdue(today), installment, e.getDocumentNumber());
+                e.getApproval(), e.isOverdue(today), installment, e.getDocumentNumber(), e.getCollectionNumber());
     }
 
     private EntryDetail detail(FinancialEntry e) {

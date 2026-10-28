@@ -18,11 +18,12 @@ import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
 import { PageHeader } from '../../shared/ui/page-header';
 import { Agreement, Allocation, Delinquency, FinanceApi } from '../finance/finance-api';
 import { AllocationDialog } from './allocation-dialog';
+import { BankReturnTab } from './bank-return-tab';
 
 @Component({
   selector: 'tc-billing-page',
   imports: [CurrencyPipe, DecimalPipe, RouterLink, MatTabsModule, MatButtonModule, MatIconModule, PageHeader, CondominiumRequired,
-    EmptyState, IsoDatePipe, LabelPipe],
+    EmptyState, IsoDatePipe, LabelPipe, BankReturnTab],
   template: `
     <div class="tc-page">
       <tc-page-header eyebrow="Cobrança" title="Cobrança condominial" [subtitle]="context.selected()?.name">
@@ -108,6 +109,7 @@ import { AllocationDialog } from './allocation-dialog';
               </section>
             </ng-template>
           </mat-tab>
+          <mat-tab label="Retorno bancário"><ng-template matTabContent><tc-bank-return-tab /></ng-template></mat-tab>
         </mat-tab-group>
       }
     </div>
