@@ -45,7 +45,7 @@ public class FinancialEntry {
     }
 
     public enum Origin {
-        MANUAL, RECURRENCE, ALLOCATION, AGREEMENT
+        MANUAL, RECURRENCE, ALLOCATION, AGREEMENT, IMPORT
     }
 
     @Id

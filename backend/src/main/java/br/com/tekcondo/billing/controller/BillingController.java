@@ -1,5 +1,6 @@
 package br.com.tekcondo.billing.controller;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -9,17 +10,21 @@ import br.com.tekcondo.billing.dto.BillingDtos.AgreementResponse;
 import br.com.tekcondo.billing.dto.BillingDtos.AllocationPreview;
 import br.com.tekcondo.billing.dto.BillingDtos.AllocationRequest;
 import br.com.tekcondo.billing.dto.BillingDtos.AllocationResponse;
+import br.com.tekcondo.billing.dto.BillingDtos.DebtImportResult;
 import br.com.tekcondo.billing.dto.BillingDtos.DelinquencyReport;
 import br.com.tekcondo.billing.dto.BillingDtos.NoteRequest;
 import br.com.tekcondo.billing.dto.BillingDtos.NoteResponse;
 import br.com.tekcondo.billing.dto.BillingDtos.UnitDebt;
 import br.com.tekcondo.billing.service.AllocationService;
 import br.com.tekcondo.billing.service.CollectionService;
+import br.com.tekcondo.billing.service.DebtImportService;
 import br.com.tekcondo.finance.dto.FinanceDtos.ReasonRequest;
+import br.com.tekcondo.shared.exception.ApiException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,19 +32,37 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/condominiums/{c}/billing")
 @Tag(name = "Cobrança e inadimplência")
 public class BillingController {
 
+    private static final long MAX_IMPORT_BYTES = 2L * 1024 * 1024;
+
     private final AllocationService allocations;
     private final CollectionService collection;
+    private final DebtImportService debtImport;
 
-    public BillingController(AllocationService allocations, CollectionService collection) {
+    public BillingController(AllocationService allocations, CollectionService collection, DebtImportService debtImport) {
         this.allocations = allocations;
         this.collection = collection;
+        this.debtImport = debtImport;
+    }
+
+    @PostMapping(value = "/debts/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Importa débitos em aberto de outro sistema (CSV)",
+            description = "Colunas: bloco; unidade; competencia (MM/AAAA); vencimento (DD/MM/AAAA); valor; descricao; "
+                    + "documento; conta (padrão 1.01). Use dryRun=true para validar sem gravar. Com qualquer erro, nada é gravado.")
+    public DebtImportResult importDebts(@PathVariable UUID c, @RequestPart("file") MultipartFile file,
+                                        @RequestParam(defaultValue = "false") boolean dryRun) throws IOException {
+        if (file.isEmpty() || file.getSize() > MAX_IMPORT_BYTES) {
+            throw ApiException.badRequest("INVALID_FILE", "Envie um arquivo CSV de até 2 MB.");
+        }
+        return debtImport.importDebts(c, file.getBytes(), dryRun);
     }
 
     @GetMapping("/allocations")

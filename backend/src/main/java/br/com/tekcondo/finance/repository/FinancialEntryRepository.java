@@ -20,6 +20,8 @@ public interface FinancialEntryRepository extends JpaRepository<FinancialEntry, 
             """)
     boolean existsSupplierDocument(UUID condominiumId, UUID supplierId, String documentNumber, UUID excludeId);
 
+    boolean existsByCondominiumIdAndOriginAndDocumentNumber(UUID condominiumId, FinancialEntry.Origin origin, String documentNumber);
+
     List<FinancialEntry> findByAllocationId(UUID allocationId);
 
     List<FinancialEntry> findByAgreementId(UUID agreementId);

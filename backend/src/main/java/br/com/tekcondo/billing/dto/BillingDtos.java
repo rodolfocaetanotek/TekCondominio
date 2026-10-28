@@ -13,6 +13,7 @@ import br.com.tekcondo.billing.entity.CollectionNote;
 import br.com.tekcondo.billing.service.AllocationCalculator;
 import br.com.tekcondo.finance.dto.FinanceDtos.EntrySummary;
 import br.com.tekcondo.finance.entity.FinancialEntry;
+import br.com.tekcondo.structure.dto.StructureDtos.ImportError;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
@@ -103,5 +104,9 @@ public final class BillingDtos {
                                     BigDecimal discount, BigDecimal totalAmount, int installments, LocalDate firstDueDate,
                                     Agreement.Status status, long paidInstallments, String notes, String cancelReason,
                                     Instant createdAt, List<EntrySummary> installmentEntries) {
+    }
+
+    public record DebtImportResult(boolean dryRun, int lines, int debts, BigDecimal total,
+                                   List<ImportError> errors) {
     }
 }

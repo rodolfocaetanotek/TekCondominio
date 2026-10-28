@@ -19,6 +19,7 @@ import { PageHeader } from '../../shared/ui/page-header';
 import { Agreement, Allocation, Delinquency, FinanceApi } from '../finance/finance-api';
 import { AllocationDialog } from './allocation-dialog';
 import { BankReturnTab } from './bank-return-tab';
+import { DebtImportDialog } from './debt-import-dialog';
 
 @Component({
   selector: 'tc-billing-page',
@@ -28,6 +29,7 @@ import { BankReturnTab } from './bank-return-tab';
     <div class="tc-page">
       <tc-page-header eyebrow="Cobrança" title="Cobrança condominial" [subtitle]="context.selected()?.name">
         @if (canEdit()) {
+          <button mat-stroked-button (click)="importDebts()"><mat-icon>upload_file</mat-icon> Importar débitos</button>
           <button mat-flat-button (click)="generate()"><mat-icon>request_quote</mat-icon> Gerar cobranças</button>
         }
       </tc-page-header>
@@ -163,6 +165,11 @@ export class BillingPage {
         this.notify.success('Cobranças geradas.');
         this.tick.update((t) => t + 1);
       });
+  }
+
+  importDebts(): void {
+    this.dialog.open(DebtImportDialog, { data: { condominiumId: this.context.id()! }, width: '640px', maxWidth: '95vw' })
+      .afterClosed().pipe(filter((r) => !!r)).subscribe(() => this.tick.update((t) => t + 1));
   }
 
   cancelAllocation(a: Allocation): void {

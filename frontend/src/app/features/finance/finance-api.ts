@@ -41,6 +41,7 @@ export interface DelinquencyRow { unitId: string; unitLabel: string; responsible
 export interface Delinquency { asOf: string; totalPrincipal: number; totalCharges: number; total: number; issuedLast12Months: number; delinquencyRate: number; unitsInDebt: number; activeUnits: number; rows: DelinquencyRow[]; }
 export interface DebtLine { entryId: string; description: string; competence: string; dueDate: string; amount: number; paid: number; remaining: number; status: string; daysLate: number; fine: number; interest: number; updatedTotal: number; }
 export interface Note { id: string; contactType: string; contactDate: string; note: string; createdByName?: string; createdAt: string; }
+export interface DebtImportResult { dryRun: boolean; lines: number; debts: number; total: number; errors: { line: number; message: string }[]; }
 export interface Agreement { id: string; unitId: string; unitLabel?: string; originalAmount: number; chargesAmount: number; discount: number; totalAmount: number; installments: number; firstDueDate: string; status: string; paidInstallments: number; notes?: string; cancelReason?: string; createdAt: string; installmentEntries: EntrySummary[]; }
 export interface UnitDebt { unitId: string; unitLabel: string; responsibleName?: string; asOf: string; openPrincipal: number; openCharges: number; openTotal: number; lines: DebtLine[]; notes: Note[]; agreements: Agreement[]; }
 
@@ -158,6 +159,11 @@ export class FinanceApi {
   delinquency(c: string, asOf?: string): Observable<Delinquency> { return this.http.get<Delinquency>(`${this.b(c)}/billing/delinquency`, { params: asOf ? { asOf } : {} }); }
   unitDebt(c: string, unitId: string): Observable<UnitDebt> { return this.http.get<UnitDebt>(`${this.b(c)}/billing/units/${unitId}/debt`); }
   addNote(c: string, unitId: string, body: Record<string, unknown>): Observable<Note> { return this.http.post<Note>(`${this.b(c)}/billing/units/${unitId}/notes`, body); }
+  importDebts(c: string, file: File, dryRun: boolean): Observable<DebtImportResult> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<DebtImportResult>(`${this.b(c)}/billing/debts/import`, form, { params: { dryRun } });
+  }
   agreements(c: string): Observable<Agreement[]> { return this.http.get<Agreement[]>(`${this.b(c)}/billing/agreements`); }
   createAgreement(c: string, body: Record<string, unknown>): Observable<Agreement> { return this.http.post<Agreement>(`${this.b(c)}/billing/agreements`, body); }
   cancelAgreement(c: string, id: string, reason: string): Observable<Agreement> { return this.http.post<Agreement>(`${this.b(c)}/billing/agreements/${id}/cancel`, { reason }); }
