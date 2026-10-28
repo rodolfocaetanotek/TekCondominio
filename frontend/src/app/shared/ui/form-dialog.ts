@@ -12,6 +12,7 @@ import { MaskKind } from '../format/br-format';
 import { MaskDirective } from '../format/mask.directive';
 import { FieldError } from '../forms/field-error';
 import { applyServerErrors } from '../forms/server-errors';
+import { DialogClose } from './dialog-close';
 
 export interface FieldDef {
   key: string;
@@ -41,10 +42,12 @@ export interface FormDialogData<T> {
  */
 @Component({
   selector: 'tc-form-dialog',
-  imports: [ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule,
+  imports: [DialogClose, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule,
     MatCheckboxModule, MaskDirective, FieldError],
   template: `
-    <h2 mat-dialog-title>{{ data.title }}</h2>
+    <h2 mat-dialog-title>
+      {{ data.title }} <tc-dialog-close />
+    </h2>
     <form [formGroup]="form" (ngSubmit)="save()" novalidate>
       <mat-dialog-content>
         @if (data.intro) {

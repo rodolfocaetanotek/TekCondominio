@@ -37,7 +37,8 @@ import { AgendaItem, AssemblyDetail, OpsApi } from './ops-api';
       } @else if (a(); as d) {
         <tc-page-header [eyebrow]="'Assembleia ' + (d.kind | label: 'assemblyKind')" [title]="d.title"
           [subtitle]="(d.scheduledAt | date: 'dd/MM/yyyy HH:mm') + ' · ' + d.location + ' · ' + (d.voteWeight | label: 'voteWeight')">
-          <span class="tc-status big" [class.is-active]="d.status === 'CLOSED'" [class.is-pending]="d.status === 'CALLED' || d.status === 'IN_PROGRESS'">{{ d.status | label: 'assemblyStatus' }}</span>
+          <span class="tc-status big" [class.is-success]="d.status === 'CLOSED'" [class.is-pending]="d.status === 'CALLED'" [class.is-info]="d.status === 'IN_PROGRESS'"
+            [class.is-inactive]="d.status === 'CANCELLED' || d.status === 'DRAFT'">{{ d.status | label: 'assemblyStatus' }}</span>
         </tc-page-header>
 
         @if (canEdit()) {
@@ -59,25 +60,36 @@ import { AgendaItem, AssemblyDetail, OpsApi } from './ops-api';
           </div>
         }
 
-        <section class="quorum tc-card">
-          <div><span class="tc-muted">Unidades presentes</span><strong>{{ d.quorum.unitsPresent }} / {{ d.quorum.totalUnits }}</strong></div>
-          <div><span class="tc-muted">Frações presentes</span><strong>{{ d.quorum.fractionPresent | number: '1.2-4' }}%</strong></div>
-          @if (d.cancelReason) { <div><span class="tc-muted">Cancelamento</span><strong>{{ d.cancelReason }}</strong></div> }
+        <section class="tc-kpis" aria-label="Quórum">
+          <div class="tc-kpi tc-card">
+            <span class="icon"><mat-icon aria-hidden="true">door_front</mat-icon></span>
+            <span class="label">Unidades presentes</span><span class="value">{{ d.quorum.unitsPresent }} / {{ d.quorum.totalUnits }}</span>
+          </div>
+          <div class="tc-kpi tc-card tone-info">
+            <span class="icon"><mat-icon aria-hidden="true">pie_chart</mat-icon></span>
+            <span class="label">Frações presentes</span><span class="value">{{ d.quorum.fractionPresent | number: '1.2-4' }}%</span>
+          </div>
+          @if (d.cancelReason) {
+            <div class="tc-kpi tc-card tone-danger reason">
+              <span class="icon"><mat-icon aria-hidden="true">event_busy</mat-icon></span>
+              <span class="label">Cancelamento</span><span class="value">{{ d.cancelReason }}</span>
+            </div>
+          }
         </section>
 
         <div class="layout">
           <section class="tc-card">
-            <h3 class="tc-section-title">Pauta e votação</h3>
+            <h3 class="tc-section-title first">Pauta e votação</h3>
             @for (i of d.agenda; track i.id) {
               <div class="item">
-                <strong>{{ i.position }}. {{ i.title }}</strong>
+                <strong class="item-title">{{ i.position }}. {{ i.title }}</strong>
                 @if (i.voting) {
                   <div class="tally">
-                    <span>Sim <b>{{ i.tally.yes | number: '1.0-4' }}</b></span><span>Não <b>{{ i.tally.no | number: '1.0-4' }}</b></span>
-                    <span>Abst. <b>{{ i.tally.abstain | number: '1.0-4' }}</b></span><span class="tc-muted">{{ i.tally.votes }} voto(s)</span>
+                    <span class="vote yes">Sim <b>{{ i.tally.yes | number: '1.0-4' }}</b></span><span class="vote no">Não <b>{{ i.tally.no | number: '1.0-4' }}</b></span>
+                    <span class="vote">Abst. <b>{{ i.tally.abstain | number: '1.0-4' }}</b></span><span class="tc-muted">{{ i.tally.votes }} voto(s)</span>
                     @if (canEdit() && d.status === 'IN_PROGRESS') { <button mat-button (click)="vote(d, i)"><mat-icon>how_to_vote</mat-icon> Registrar voto</button> }
                   </div>
-                } @else { <small class="tc-muted"> informativo</small> }
+                } @else { <small class="tc-chip-soft info"> informativo</small> }
                 @if (i.deliberation) { <p class="delib">{{ i.deliberation }}{{ i.responsible ? ' — resp.: ' + i.responsible : '' }}{{ i.deadline ? ' (prazo ' + (i.deadline | isoDate) + ')' : '' }}</p> }
                 @if (canEdit() && (d.status === 'IN_PROGRESS' || d.status === 'CLOSED')) { <button mat-button (click)="deliberate(i)">Deliberação</button> }
               </div>
@@ -110,16 +122,25 @@ import { AgendaItem, AssemblyDetail, OpsApi } from './ops-api';
   styles: `
     .narrow { max-width: 1080px; } .back { margin: -8px 0 8px -12px; }
     .bar { justify-content: flex-start; margin-bottom: 16px; }
-    .quorum { display: flex; gap: 32px; flex-wrap: wrap; margin-bottom: 16px; } .quorum div { display: grid; }
+    .reason .value { font-size: 15px; font-weight: 600; letter-spacing: 0; overflow-wrap: anywhere; }
     .layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr); gap: 16px; align-items: start; margin-bottom: 16px; }
-    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
-    .item { padding: 10px 0; border-bottom: 1px solid var(--mat-sys-outline-variant); }
-    .tally { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
-    .delib { background: var(--mat-sys-surface-container-low); padding: 8px; border-radius: 8px; margin: 6px 0; }
-    .head { display: flex; justify-content: space-between; align-items: center; } .head h3 { margin: 0; }
-    .att { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; }
+    @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+    .tc-section-title.first { margin-top: 0; }
+    .item { display: grid; gap: 4px; justify-items: start; padding: 12px 0; border-bottom: 1px solid var(--tc-border); }
+    .item:last-child { border-bottom: 0; padding-bottom: 0; }
+    .item-title { overflow-wrap: anywhere; }
+    .info { margin-left: 4px; }
+    .tally { display: flex; gap: 8px 14px; align-items: center; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+    .vote b { font-weight: 650; }
+    .vote.yes b { color: var(--tc-success); }
+    .vote.no b { color: var(--tc-danger); }
+    .delib { background: var(--tc-surface-muted); border: 1px solid var(--tc-border); padding: 8px 12px; border-radius: var(--tc-radius-sm); margin: 4px 0; justify-self: stretch; white-space: pre-wrap; }
+    .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .head h3 { margin: 0; }
+    .att { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--tc-border); }
+    .att:last-child { border-bottom: 0; }
+    .att span { min-width: 0; overflow-wrap: anywhere; }
     .minutes { margin-bottom: 16px; } .full { width: 100%; margin-top: 8px; }
-    .tc-status.big { font: var(--mat-sys-label-large); padding: 4px 14px; align-self: center; }
   `,
 })
 export class AssemblyDetailPage {

@@ -14,14 +14,15 @@ import { FieldError } from '../../shared/forms/field-error';
 import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
 import { StructureService } from '../structure/structure.service';
 import { AllocationPreview, AllocationRequest, FinanceApi } from '../finance/finance-api';
+import { DialogClose } from '../../shared/ui/dialog-close';
 
 /** Geração das cobranças da competência: simula o rateio por unidade e só grava após confirmação. */
 @Component({
   selector: 'tc-allocation-dialog',
-  imports: [CurrencyPipe, DecimalPipe, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule,
+  imports: [DialogClose, CurrencyPipe, DecimalPipe, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, FieldError, IsoDatePipe],
   template: `
-    <h2 mat-dialog-title>Gerar cobranças</h2>
+    <h2 mat-dialog-title>Gerar cobranças <tc-dialog-close /></h2>
     <mat-dialog-content>
       @if (error(); as message) { <p class="tc-alert" role="alert">{{ message }}</p> }
       <form [formGroup]="form" class="tc-grid">
@@ -47,7 +48,7 @@ import { AllocationPreview, AllocationRequest, FinanceApi } from '../finance/fin
         <p class="tc-muted">Informe o consumo (R$) de cada unidade; deixe em branco para não cobrar.</p>
         <div class="consumption">
           @for (u of units(); track u.id) {
-            <label>{{ u.label }} <input type="number" step="0.01" min="0" [value]="consumption[u.id] ?? ''" (input)="setConsumption(u.id, $event)" /></label>
+            <label>{{ u.label }} <input type="number" class="consumption-input" step="0.01" min="0" [value]="consumption[u.id] ?? ''" (input)="setConsumption(u.id, $event)" /></label>
           }
         </div>
       }
@@ -55,7 +56,7 @@ import { AllocationPreview, AllocationRequest, FinanceApi } from '../finance/fin
         <div class="preview">
           <p><strong>{{ p.units }} cobrança(s)</strong> totalizando <strong>{{ p.total | currency: 'BRL' }}</strong>, vencimento {{ p.dueDate | isoDate }}.
             @if (p.unitsWithoutResponsible) { <span class="warn">{{ p.unitsWithoutResponsible }} unidade(s) sem responsável financeiro cadastrado.</span> }</p>
-          <table>
+          <table class="lines">
             <thead><tr><th>Unidade</th><th>Fração</th><th>Responsável</th><th class="money">Valor</th></tr></thead>
             <tbody>
               @for (l of p.lines; track l.unitId) {
@@ -77,13 +78,15 @@ import { AllocationPreview, AllocationRequest, FinanceApi } from '../finance/fin
     </mat-dialog-actions>
   `,
   styles: `
-    .preview { margin-top: 8px; max-height: 320px; overflow: auto; }
-    .preview table { width: 100%; border-collapse: collapse; }
-    .preview th, .preview td { padding: 4px 8px; border-bottom: 1px solid var(--mat-sys-outline-variant); text-align: left; }
-    .preview .money { text-align: right; }
-    .warn { color: var(--mat-sys-error); display: block; }
+    .preview { margin-top: 8px; max-height: 320px; overflow: auto; border: 1px solid var(--tc-border); border-radius: var(--tc-radius-sm); }
+    .preview > p { margin: 0; padding: 12px; background: var(--tc-surface-muted); border-bottom: 1px solid var(--tc-border); }
+    .preview thead th { position: sticky; top: 0; z-index: 1; }
+    .warn { color: var(--tc-danger); display: block; margin-top: 4px; }
     .consumption { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; max-height: 220px; overflow: auto; }
-    .consumption input { width: 90px; margin-left: 6px; }
+    .consumption label { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; }
+    .consumption-input { width: 90px; padding: 6px 8px; font: inherit; color: var(--tc-text); background: var(--tc-field-bg);
+      border: 1px solid var(--tc-border-strong); border-radius: var(--tc-radius-sm); }
+    .consumption-input:focus { outline: 2px solid var(--mat-sys-primary); outline-offset: 0; border-color: transparent; }
   `,
 })
 export class AllocationDialog {

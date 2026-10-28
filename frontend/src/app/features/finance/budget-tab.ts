@@ -20,11 +20,11 @@ const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', '
       <button mat-icon-button (click)="year.set(year() - 1)" aria-label="Ano anterior"><mat-icon>chevron_left</mat-icon></button>
       <strong class="year">{{ year() }}</strong>
       <button mat-icon-button (click)="year.set(year() + 1)" aria-label="Próximo ano"><mat-icon>chevron_right</mat-icon></button>
-      <span class="tc-muted">Previsto × realizado (regime de caixa). {{ canEdit() ? 'Clique em uma conta para editar o previsto mês a mês.' : '' }}</span>
+      <span class="tc-muted hint">Previsto × realizado (regime de caixa). {{ canEdit() ? 'Clique em uma conta para editar o previsto mês a mês.' : '' }}</span>
     </div>
     <section class="tc-table-card">
       <div class="table-scroll">
-        <table class="grid">
+        <table class="lines tc-cards-mobile">
           <thead>
             <tr><th>Conta</th><th class="money">Previsto</th><th class="money">Realizado</th><th class="money">Diferença</th><th>Execução</th></tr>
           </thead>
@@ -37,8 +37,8 @@ const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', '
                 <td class="money" [class.negative]="over(r)">{{ r.totalRealized - r.totalBudgeted | currency: 'BRL' }}</td>
                 <td>
                   @if (r.totalBudgeted > 0) {
-                    <div class="meter" [attr.aria-label]="pct(r) + '% executado'"><span [style.width.%]="min(pct(r), 100)" [class.over]="over(r)"></span></div>
-                    <small>{{ pct(r) | number: '1.0-0' }}%{{ over(r) ? ' (acima do previsto)' : '' }}</small>
+                    <div class="exec"><div class="meter" [attr.aria-label]="pct(r) + '% executado'"><span [style.width.%]="min(pct(r), 100)" [class.over]="over(r)"></span></div>
+                    <small [class.over-text]="over(r)">{{ pct(r) | number: '1.0-0' }}%{{ over(r) ? ' (acima do previsto)' : '' }}</small></div>
                   } @else { <small class="tc-muted">sem previsão</small> }
                 </td>
               </tr>
@@ -49,14 +49,14 @@ const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', '
     </section>
   `,
   styles: `
-    .head { display: flex; align-items: center; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
-    .year { font: var(--mat-sys-title-large); }
-    .grid { width: 100%; border-collapse: collapse; }
-    .grid th, .grid td { padding: 8px 12px; border-bottom: 1px solid var(--mat-sys-outline-variant); text-align: left; }
-    .grid .money { text-align: right; }
-    .meter { width: 120px; height: 8px; border-radius: 4px; background: var(--mat-sys-surface-container-high); overflow: hidden; }
+    .head { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; flex-wrap: wrap; }
+    .year { font: var(--mat-sys-title-large); font-weight: 650; font-variant-numeric: tabular-nums; }
+    .hint { flex: 1 1 260px; margin-left: 8px; }
+    .exec { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .meter { width: 120px; height: 8px; border-radius: 4px; background: var(--tc-surface-muted); box-shadow: inset 0 0 0 1px var(--tc-border); overflow: hidden; }
     .meter span { display: block; height: 100%; background: var(--mat-sys-primary); border-radius: 4px; }
-    .meter span.over { background: var(--mat-sys-error); }
+    .meter span.over { background: var(--tc-danger); }
+    .over-text { color: var(--tc-danger); font-weight: 600; }
   `,
 })
 export class BudgetTab {

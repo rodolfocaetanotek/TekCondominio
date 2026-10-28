@@ -35,7 +35,9 @@ import { OccurrenceDetail, OpsApi } from './ops-api';
       } @else if (o(); as d) {
         <tc-page-header [eyebrow]="'Ocorrência nº ' + d.summary.number" [title]="d.summary.title"
           [subtitle]="(d.summary.category | label: 'occurrenceCategory') + ' · prioridade ' + (d.summary.priority | label: 'priority') + (d.summary.unitLabel ? ' · Unid. ' + d.summary.unitLabel : '')">
-          <span class="tc-status big" [class.is-active]="d.summary.status === 'RESOLVED'" [class.is-pending]="d.summary.status === 'OPEN'">{{ d.summary.status | label: 'occurrenceStatus' }}</span>
+          <span class="tc-status big" [class.is-success]="d.summary.status === 'RESOLVED'"
+            [class.is-pending]="d.summary.status === 'OPEN' || d.summary.status === 'WAITING'" [class.is-info]="d.summary.status === 'IN_PROGRESS'"
+            [class.is-inactive]="d.summary.status === 'CANCELLED'">{{ d.summary.status | label: 'occurrenceStatus' }}</span>
         </tc-page-header>
         <div class="layout">
           <div class="main">
@@ -45,7 +47,7 @@ import { OccurrenceDetail, OpsApi } from './ops-api';
                 · responsável: {{ d.summary.assigneeName ?? 'não definido' }} · prazo: {{ d.summary.dueDate ? (d.summary.dueDate | isoDate) : '—' }}</p>
               @if (d.resolution) { <p class="resolution"><strong>Solução:</strong> {{ d.resolution }}</p> }
               @if (canEdit()) {
-                <div class="tc-actions">
+                <div class="tc-actions status-acts">
                   <button mat-button (click)="triage(d)">Triagem</button>
                   @for (s of nextStatuses(d); track s.value) {
                     <button mat-stroked-button (click)="changeStatus(s.value)">{{ s.label }}</button>
@@ -54,7 +56,7 @@ import { OccurrenceDetail, OpsApi } from './ops-api';
               }
             </section>
             <section class="tc-card">
-              <h3 class="tc-section-title">Andamento</h3>
+              <h3 class="tc-section-title first">Andamento</h3>
               @for (i of d.interactions; track i.id) {
                 <div class="msg" [class.internal]="i.internal">
                   <strong>{{ i.authorName }}</strong> <small class="tc-muted">{{ i.createdAt | date: 'dd/MM/yy HH:mm' }}
@@ -64,7 +66,7 @@ import { OccurrenceDetail, OpsApi } from './ops-api';
               } @empty { <p class="tc-muted">Sem interações.</p> }
               @if (canEdit()) {
                 <mat-form-field class="full"><mat-label>Nova mensagem</mat-label><textarea matInput rows="3" [formControl]="message" maxlength="2000"></textarea></mat-form-field>
-                <div class="tc-actions">
+                <div class="tc-actions send">
                   <mat-checkbox [formControl]="internal">Interna (não aparece para o morador)</mat-checkbox>
                   <button mat-flat-button (click)="send()" [disabled]="message.invalid">Enviar</button>
                 </div>
@@ -81,16 +83,22 @@ import { OccurrenceDetail, OpsApi } from './ops-api';
   styles: `
     .narrow { max-width: 1080px; } .back { margin: -8px 0 8px -12px; }
     .layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 16px; align-items: start; }
-    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
-    .main { display: grid; gap: 16px; }
-    .desc { white-space: pre-wrap; margin-top: 0; }
+    @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+    .main { display: grid; gap: 16px; min-width: 0; }
+    .desc { white-space: pre-wrap; margin-top: 0; overflow-wrap: anywhere; }
     .small { font: var(--mat-sys-body-small); }
-    .resolution { background: var(--tc-success-container); padding: 10px 12px; border-radius: 10px; }
-    .msg { border-left: 3px solid var(--mat-sys-primary); padding: 4px 12px; margin-bottom: 12px; }
-    .msg.internal { border-color: var(--mat-sys-tertiary); background: var(--mat-sys-surface-container-low); }
-    .msg p { margin: 4px 0 0; white-space: pre-wrap; }
-    .full { width: 100%; }
-    .tc-status.big { font: var(--mat-sys-label-large); padding: 4px 14px; align-self: center; }
+    .resolution { background: var(--tc-success-container); border-left: 3px solid var(--tc-success); padding: 10px 12px; border-radius: var(--tc-radius-sm); white-space: pre-wrap; }
+    .status-acts { justify-content: flex-start; gap: 8px; padding-top: 12px; border-top: 1px solid var(--tc-border); }
+    .tc-section-title.first { margin-top: 0; }
+    .msg { border-left: 3px solid var(--mat-sys-primary); padding: 6px 12px; margin-bottom: 12px; border-radius: 0 var(--tc-radius-sm) var(--tc-radius-sm) 0; }
+    .msg.internal { border-color: var(--tc-accent); background: var(--tc-accent-soft); }
+    .msg p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .full { width: 100%; margin-top: 4px; }
+    .send { justify-content: space-between; align-items: center; }
+    @media (max-width: 600px) {
+      .status-acts > button { flex: 1 1 auto; }
+      .send > button { flex: 1 1 100%; }
+    }
   `,
 })
 export class OccurrenceDetailPage {

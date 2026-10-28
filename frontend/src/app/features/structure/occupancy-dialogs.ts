@@ -12,14 +12,15 @@ import { todayIso } from '../../shared/ui/dates';
 import { PersonPicker } from './person-picker';
 import { Occupancy, OCCUPANCY_ROLE_LABELS, OccupancyRole, PersonSummary } from './structure.models';
 import { StructureService } from './structure.service';
+import { DialogClose } from '../../shared/ui/dialog-close';
 
 /** Vincular pessoa a uma unidade. */
 @Component({
   selector: 'tc-occupancy-dialog',
-  imports: [ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule,
+  imports: [DialogClose, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule,
     MatCheckboxModule, FieldError, PersonPicker],
   template: `
-    <h2 mat-dialog-title>Vincular pessoa · {{ data.unitLabel }}</h2>
+    <h2 mat-dialog-title>Vincular pessoa · {{ data.unitLabel }} <tc-dialog-close /></h2>
     <form [formGroup]="form" (ngSubmit)="save()" novalidate>
       <mat-dialog-content>
         @if (error(); as message) {
@@ -90,9 +91,9 @@ export class OccupancyDialog {
 /** Encerrar vínculo (o histórico é mantido). */
 @Component({
   selector: 'tc-end-occupancy-dialog',
-  imports: [ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, FieldError],
+  imports: [DialogClose, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, FieldError],
   template: `
-    <h2 mat-dialog-title>Encerrar vínculo</h2>
+    <h2 mat-dialog-title>Encerrar vínculo <tc-dialog-close /></h2>
     <form [formGroup]="form" (ngSubmit)="save()" novalidate>
       <mat-dialog-content>
         <p>{{ data.occupancy.personName }} — {{ data.occupancy.unitLabel }}</p>

@@ -26,23 +26,24 @@ import { BankAccount, FinanceApi, ReturnItem } from '../finance/finance-api';
     MatTooltipModule, IsoDatePipe],
   template: `
     <section class="tc-card">
-      <div class="bar">
-        <mat-form-field class="grow"><mat-label>Conta de cobrança</mat-label>
+      <div class="filters">
+        <mat-form-field class="search"><mat-label>Conta de cobrança</mat-label>
           <mat-select [formControl]="account">
             @for (a of accounts() ?? []; track a.id) { <mat-option [value]="a.id">{{ a.name }}{{ a.bankCode ? ' · banco ' + a.bankCode : '' }}</mat-option> }
           </mat-select></mat-form-field>
         @if (canEdit() && account.value) {
-          <label class="file"><input type="file" accept=".ret,.RET,.txt,.TXT,.cnab" (change)="upload($event)" [disabled]="busy()" />
+          <label class="tc-file-button"><input type="file" accept=".ret,.RET,.txt,.TXT,.cnab" (change)="upload($event)" [disabled]="busy()" />
             <mat-icon>upload_file</mat-icon> {{ busy() ? 'Processando…' : 'Processar retorno CNAB 240' }}</label>
         }
       </div>
-      <p class="tc-muted small">Layout FEBRABAN 240 posições (segmentos T e U). A cobrança é localizada pelo "seu número" ou nosso número
+      <p class="tc-muted small hint">Layout FEBRABAN 240 posições (segmentos T e U). A cobrança é localizada pelo "seu número" ou nosso número
         igual ao <strong>número de cobrança</strong> do título. Cada banco exige homologação do layout antes do uso em produção.</p>
     </section>
 
-    <section class="tc-card scroll">
+    <section class="tc-card">
       <h3 class="tc-section-title">Pendências de baixa ({{ pending()?.length ?? 0 }})</h3>
-      <table class="lines">
+      <div class="scroll">
+      <table class="lines tc-cards-mobile">
         <thead><tr><th>Pago em</th><th>Seu nº / nosso nº</th><th class="money">Valor pago</th><th>Motivo</th><th></th></tr></thead>
         <tbody>
           @for (i of pending() ?? []; track i.id) {
@@ -63,35 +64,34 @@ import { BankAccount, FinanceApi, ReturnItem } from '../finance/finance-api';
           }
         </tbody>
       </table>
+      </div>
     </section>
 
-    <section class="tc-card scroll">
+    <section class="tc-card">
       <h3 class="tc-section-title">Arquivos processados</h3>
-      <table class="lines">
+      <div class="scroll">
+      <table class="lines tc-cards-mobile">
         <thead><tr><th>Processado em</th><th>Arquivo</th><th>Banco</th><th>Títulos</th><th>Baixados</th><th>Pendentes</th><th>Por</th></tr></thead>
         <tbody>
           @for (f of files() ?? []; track f.id) {
             <tr><td>{{ f.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td><td>{{ f.fileName }}</td><td>{{ f.bankCode }}</td>
-              <td>{{ f.itemsTotal }}</td><td>{{ f.settled }}</td><td [class.negative]="f.pending > 0">{{ f.pending }}</td><td>{{ f.createdByName }}</td></tr>
+              <td>{{ f.itemsTotal }}</td><td>{{ f.settled }}</td><td [class.warn]="f.pending > 0">{{ f.pending }}</td><td>{{ f.createdByName }}</td></tr>
           } @empty {
             <tr><td colspan="7" class="tc-muted">Nenhum retorno processado.</td></tr>
           }
         </tbody>
       </table>
+      </div>
     </section>
   `,
   styles: `
-    :host { display: grid; gap: 16px; margin-top: 16px; }
-    .bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-    .grow { flex: 1 1 260px; }
+    :host { display: grid; gap: 16px; }
     .small { font: var(--mat-sys-body-small); }
-    .file { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border: 1px dashed var(--mat-sys-outline); border-radius: 12px; cursor: pointer; }
-    .file input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-    .file:focus-within { outline: 2px solid var(--mat-sys-primary); }
+    .hint { margin: 0; }
+    .tc-section-title { margin-top: 0; }
     .scroll { overflow-x: auto; }
-    .lines { width: 100%; border-collapse: collapse; }
-    .lines th, .lines td { padding: 6px 8px; border-bottom: 1px solid var(--mat-sys-outline-variant); text-align: left; }
-    .lines .money { text-align: right; white-space: nowrap; } .acts { white-space: nowrap; }
+    .warn { color: var(--tc-danger); font-weight: 600; }
+    .acts { white-space: nowrap; }
   `,
 })
 export class BankReturnTab {

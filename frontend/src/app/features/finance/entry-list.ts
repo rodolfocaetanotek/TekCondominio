@@ -29,13 +29,13 @@ import { EntrySummary, FinanceApi } from './finance-api';
   imports: [CurrencyPipe, ReactiveFormsModule, MatTableModule, MatPaginatorModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatIconModule, MatProgressBarModule, EmptyState, IsoDatePipe, LabelPipe],
   template: `
-    <div class="bar">
-      <mat-form-field class="grow">
+    <div class="filters">
+      <mat-form-field class="search">
         <mat-label>Buscar</mat-label>
         <mat-icon matPrefix>search</mat-icon>
         <input matInput [formControl]="search" placeholder="Descrição ou nº do documento" autocomplete="off" />
       </mat-form-field>
-      <mat-form-field class="w">
+      <mat-form-field>
         <mat-label>Situação</mat-label>
         <mat-select [formControl]="status">
           <mat-option value="open">Em aberto</mat-option>
@@ -45,14 +45,14 @@ import { EntrySummary, FinanceApi } from './finance-api';
           <mat-option value="all">Todos</mat-option>
         </mat-select>
       </mat-form-field>
-      <mat-form-field class="w"><mat-label>Vencimento de</mat-label><input matInput type="date" [formControl]="from" /></mat-form-field>
-      <mat-form-field class="w"><mat-label>até</mat-label><input matInput type="date" [formControl]="to" /></mat-form-field>
+      <mat-form-field><mat-label>Vencimento de</mat-label><input matInput type="date" [formControl]="from" /></mat-form-field>
+      <mat-form-field><mat-label>até</mat-label><input matInput type="date" [formControl]="to" /></mat-form-field>
       @if (canEdit()) {
         <button mat-flat-button (click)="create()"><mat-icon>add</mat-icon>{{ kind() === 'EXPENSE' ? 'Nova despesa' : 'Nova receita' }}</button>
       }
     </div>
-    <section class="tc-table-card" [attr.aria-busy]="loading()">
-      @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
+    <section class="tc-table-card" aria-live="polite" [attr.aria-busy]="loading()">
+      <mat-progress-bar [mode]="loading() ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="!loading()" />
       @if (error(); as message) {
         <tc-empty-state icon="cloud_off" title="Não foi possível carregar" [description]="message" />
       } @else if (page(); as p) {
@@ -84,7 +84,9 @@ import { EntrySummary, FinanceApi } from './finance-api';
               <ng-container matColumnDef="status">
                 <th mat-header-cell *matHeaderCellDef>Situação</th>
                 <td mat-cell *matCellDef="let e">
-                  <span class="tc-status" [class.is-active]="e.status === 'PAID'" [class.is-pending]="e.approval === 'PENDING' || e.overdue"
+                  <span class="tc-status" [class.is-active]="e.status === 'PAID'"
+                    [class.is-pending]="e.approval === 'PENDING' || (!e.overdue && (e.status === 'OPEN' || e.status === 'PARTIAL'))"
+                    [class.is-danger]="e.approval !== 'PENDING' && e.overdue"
                     [class.is-inactive]="e.status === 'CANCELLED' || e.status === 'RENEGOTIATED'">
                     {{ e.approval === 'PENDING' ? 'Aguardando aprovação' : e.overdue ? 'Vencido' : (e.status | label: 'entryStatus') }}
                   </span>
@@ -102,12 +104,9 @@ import { EntrySummary, FinanceApi } from './finance-api';
     </section>
   `,
   styles: `
-    .bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 16px 0; }
-    .grow { flex: 1 1 240px; }
-    .w { flex: 0 1 170px; }
     .block { display: block; }
     .small { font: var(--mat-sys-body-small); }
-    .late { color: var(--mat-sys-error); font-weight: 600; }
+    .late { color: var(--tc-danger); font-weight: 600; }
   `,
 })
 export class EntryList {

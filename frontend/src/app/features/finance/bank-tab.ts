@@ -33,13 +33,17 @@ import { BankAccount, FinanceApi, Statement } from './finance-api';
     </div>
     <div class="accounts">
       @for (a of accounts() ?? []; track a.id) {
-        <button class="account tc-card" [class.selected]="selected() === a.id" [class.inactive]="!a.active" (click)="selected.set(a.id)">
-          <span class="tc-muted small">{{ a.kind | label: 'bankKind' }}{{ a.bankCode ? ' · ' + a.bankCode + ' ag. ' + a.agency + ' c/c ' + a.accountNumber : '' }}</span>
-          <strong>{{ a.name }}</strong>
-          <span class="balance money" [class.negative]="a.balance < 0">{{ a.balance | currency: 'BRL' }}</span>
+        <button type="button" class="account tc-kpi tc-card" [class.tone-danger]="a.balance < 0" [class.selected]="selected() === a.id"
+          [class.inactive]="!a.active" [attr.aria-pressed]="selected() === a.id" (click)="selected.set(a.id)">
+          <span class="icon"><mat-icon aria-hidden="true">{{ a.kind === 'CASH' ? 'payments' : 'account_balance' }}</mat-icon></span>
+          <span class="label">{{ a.name }}</span>
+          <span class="value money" [class.negative]="a.balance < 0">{{ a.balance | currency: 'BRL' }}</span>
+          <span class="sub">{{ a.kind | label: 'bankKind' }}{{ a.bankCode ? ' · ' + a.bankCode + ' ag. ' + a.agency + ' c/c ' + a.accountNumber : '' }}</span>
         </button>
       } @empty {
-        <tc-empty-state icon="account_balance" title="Nenhuma conta cadastrada" description="Cadastre a conta corrente e o caixa do condomínio para registrar pagamentos." />
+        <section class="tc-card empty">
+          <tc-empty-state icon="account_balance" title="Nenhuma conta cadastrada" description="Cadastre a conta corrente e o caixa do condomínio para registrar pagamentos." />
+        </section>
       }
     </div>
 
@@ -52,48 +56,53 @@ import { BankAccount, FinanceApi, Statement } from './finance-api';
         </div>
         @if (statement(); as s) {
           <div class="summary">
-            <span>Saldo anterior: <strong>{{ s.openingBalance | currency: 'BRL' }}</strong></span>
-            <span>Saldo final: <strong>{{ s.closingBalance | currency: 'BRL' }}</strong></span>
-            <span>Saldo conciliado: <strong>{{ s.reconciledBalance | currency: 'BRL' }}</strong></span>
+            <div><span class="tc-section-label">Saldo anterior</span><strong class="money">{{ s.openingBalance | currency: 'BRL' }}</strong></div>
+            <div><span class="tc-section-label">Saldo final</span><strong class="money">{{ s.closingBalance | currency: 'BRL' }}</strong></div>
+            <div><span class="tc-section-label">Saldo conciliado</span><strong class="money">{{ s.reconciledBalance | currency: 'BRL' }}</strong></div>
           </div>
-          <table class="lines">
-            <thead><tr><th>Conciliado</th><th>Data</th><th>Histórico</th><th class="money">Valor</th><th class="money">Saldo</th></tr></thead>
-            <tbody>
-              @for (l of s.lines; track l.id + l.type) {
-                <tr>
-                  <td><mat-checkbox [checked]="l.reconciled" [disabled]="!canEdit()" (change)="toggle(l.type, l.id, $event.checked)"
-                    [attr.aria-label]="'Conciliar ' + l.description" /></td>
-                  <td>{{ l.date | isoDate }}</td>
-                  <td>{{ l.description }}</td>
-                  <td class="money" [class.negative]="l.amount < 0" [class.positive]="l.amount > 0">{{ l.amount | currency: 'BRL' }}</td>
-                  <td class="money">{{ l.balance | currency: 'BRL' }}</td>
-                </tr>
-              } @empty {
-                <tr><td colspan="5" class="tc-muted">Sem movimentações no período.</td></tr>
-              }
-            </tbody>
-          </table>
+          <div class="scroll">
+            <table class="lines">
+              <thead><tr><th>Conciliado</th><th>Data</th><th>Histórico</th><th class="money">Valor</th><th class="money">Saldo</th></tr></thead>
+              <tbody>
+                @for (l of s.lines; track l.id + l.type) {
+                  <tr>
+                    <td><mat-checkbox [checked]="l.reconciled" [disabled]="!canEdit()" (change)="toggle(l.type, l.id, $event.checked)"
+                      [attr.aria-label]="'Conciliar ' + l.description" /></td>
+                    <td>{{ l.date | isoDate }}</td>
+                    <td>{{ l.description }}</td>
+                    <td class="money" [class.negative]="l.amount < 0" [class.positive]="l.amount > 0">{{ l.amount | currency: 'BRL' }}</td>
+                    <td class="money">{{ l.balance | currency: 'BRL' }}</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="5" class="tc-muted">Sem movimentações no período.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
           <p class="tc-muted small">Marque as movimentações conferidas no extrato do banco. Movimentações conciliadas não podem ser estornadas sem desfazer a conciliação.</p>
         }
       </section>
     }
   `,
   styles: `
-    .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 16px 0; flex-wrap: wrap; }
+    .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0 0 16px; flex-wrap: wrap; }
     .head p { margin: 0; }
-    .accounts { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-bottom: 16px; }
-    .account { display: grid; gap: 2px; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+    .accounts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 12px; margin-bottom: 16px; }
+    .accounts .empty { grid-column: 1 / -1; }
+    .account { width: 100%; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+    .account:hover { border-color: color-mix(in srgb, var(--mat-sys-primary) 45%, var(--tc-border)); }
     .account.selected { border-color: var(--mat-sys-primary); box-shadow: 0 0 0 1px var(--mat-sys-primary); }
     .account.inactive { opacity: .6; }
-    .balance { font: var(--mat-sys-title-large); text-align: left; }
+    .account .value { text-align: left; }
+    .account .label, .account .sub { overflow-wrap: anywhere; }
     .small { font: var(--mat-sys-body-small); }
-    .filters { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-    .filters h3 { margin: 0; flex: 1; }
-    .summary { display: flex; gap: 24px; flex-wrap: wrap; margin: 8px 0 12px; }
-    .lines { width: 100%; border-collapse: collapse; }
-    .lines th, .lines td { padding: 6px 8px; border-bottom: 1px solid var(--mat-sys-outline-variant); text-align: left; }
-    .lines th.money, .lines td.money { text-align: right; }
-    .statement { overflow-x: auto; }
+    .filters h3 { margin: 0; flex: 1 1 auto; }
+    .summary { display: flex; gap: 12px 32px; flex-wrap: wrap; margin: 0 0 16px; padding: 12px 16px; border-radius: var(--tc-radius-sm);
+      background: var(--tc-surface-muted); border: 1px solid var(--tc-border); }
+    .summary div { display: grid; gap: 2px; }
+    .summary .tc-section-label { margin: 0; }
+    .summary strong { font: var(--mat-sys-title-medium); font-weight: 650; text-align: left; }
+    .scroll { overflow-x: auto; }
   `,
 })
 export class BankTab {

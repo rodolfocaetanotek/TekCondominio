@@ -46,16 +46,16 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
       } @else {
         @if (data(); as d) {
           <section class="summary">
-            <div class="fraction" [class.ok]="d.summary.balanced" role="status">
-              <mat-icon>{{ d.summary.balanced ? 'check_circle' : 'warning' }}</mat-icon>
-              <div>
-                <strong>Frações ideais: {{ d.summary.total | number: '1.2-6' }}%</strong>
-                <span>{{ d.summary.activeUnits }} unidade(s) ativa(s) ·
-                  {{ d.summary.balanced ? 'soma correta, rateio por fração liberado' : 'faltam ' + (d.summary.difference | number: '1.2-6') + ' p.p. para 100%' }}</span>
-              </div>
+            <div class="tc-kpi tc-card fraction" [class.tone-success]="d.summary.balanced" [class.tone-warning]="!d.summary.balanced" role="status">
+              <span class="icon"><mat-icon aria-hidden="true">{{ d.summary.balanced ? 'check_circle' : 'warning' }}</mat-icon></span>
+              <span class="label">Frações ideais</span>
+              <span class="value">{{ d.summary.total | number: '1.2-6' }}%</span>
+              <span class="sub">{{ d.summary.activeUnits }} unidade(s) ativa(s) ·
+                {{ d.summary.balanced ? 'soma correta, rateio por fração liberado' : 'faltam ' + (d.summary.difference | number: '1.2-6') + ' p.p. para 100%' }}</span>
             </div>
-            <div class="buildings">
-              <span class="tc-muted label">Blocos:</span>
+            <div class="tc-card buildings">
+              <p class="tc-section-label">Blocos</p>
+              <div class="chips">
               @for (b of d.buildings; track b.id) {
                 <button mat-stroked-button class="chip" [class.inactive]="!b.active" [matMenuTriggerFor]="bm" [disabled]="!canEdit()"
                   [matTooltip]="b.activeUnits + ' unidade(s) ativa(s)'">{{ b.name }} ({{ b.activeUnits }})</button>
@@ -69,6 +69,7 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
               @if (canEdit()) {
                 <button mat-button (click)="openBuilding()"><mat-icon>add</mat-icon> Bloco</button>
               }
+              </div>
             </div>
           </section>
         }
@@ -79,7 +80,7 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
             <mat-icon matPrefix>search</mat-icon>
             <input matInput [formControl]="search" autocomplete="off" />
           </mat-form-field>
-          <mat-form-field class="narrow">
+          <mat-form-field>
             <mat-label>Bloco</mat-label>
             <mat-select [formControl]="building">
               <mat-option value="">Todos</mat-option>
@@ -88,7 +89,7 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
               }
             </mat-select>
           </mat-form-field>
-          <mat-form-field class="narrow">
+          <mat-form-field>
             <mat-label>Situação</mat-label>
             <mat-select [formControl]="active">
               <mat-option value="">Todas</mat-option>
@@ -99,9 +100,7 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
         </div>
 
         <section class="tc-table-card" [attr.aria-busy]="loading()">
-          @if (loading()) {
-            <mat-progress-bar mode="indeterminate" />
-          }
+          <mat-progress-bar [mode]="loading() ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="!loading()" />
           @if (error(); as message) {
             <tc-empty-state icon="cloud_off" title="Não foi possível carregar" [description]="message" />
           } @else if (data(); as d) {
@@ -150,19 +149,12 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
     </div>
   `,
   styles: `
-    .summary { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
-    .fraction { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-radius: 12px;
-      background: var(--mat-sys-tertiary-container); color: var(--mat-sys-on-tertiary-container); }
-    .fraction.ok { background: var(--tc-success-container); color: var(--tc-success); }
-    .fraction div { display: grid; }
-    .fraction span { font: var(--mat-sys-body-small); }
-    .buildings { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-    .buildings .label { margin-right: 4px; }
+    .summary { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 12px; margin-bottom: 16px; }
+    .buildings { padding: 16px; }
+    .chips { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
     .chip.inactive { opacity: .6; text-decoration: line-through; }
-    .filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-    .filters .search { flex: 1 1 240px; }
-    .filters .narrow { flex: 0 1 180px; }
     .num { text-align: right; }
+    @media (max-width: 720px) { .summary { grid-template-columns: minmax(0, 1fr); } }
   `,
 })
 export class UnitList {

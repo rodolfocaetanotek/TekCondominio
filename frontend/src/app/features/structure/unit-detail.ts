@@ -40,18 +40,18 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
           }
         </tc-page-header>
 
-        <section class="facts tc-card">
-          <div><span class="tc-muted">Fração ideal</span><strong class="mono">{{ s.unit.idealFraction | number: '1.2-6' }}%</strong></div>
-          <div><span class="tc-muted">Área</span><strong>{{ s.unit.area ? (s.unit.area | number: '1.2-2') + ' m²' : '—' }}</strong></div>
-          <div><span class="tc-muted">Proprietário(s)</span><strong>{{ s.unit.ownerName ?? '—' }}</strong></div>
-          <div><span class="tc-muted">Responsável financeiro</span><strong>{{ s.unit.financialResponsibleName ?? 'não definido' }}</strong></div>
+        <section class="facts tc-dl cols tc-card">
+          <div><span class="k">Fração ideal</span><strong class="mono">{{ s.unit.idealFraction | number: '1.2-6' }}%</strong></div>
+          <div><span class="k">Área</span><strong>{{ s.unit.area ? (s.unit.area | number: '1.2-2') + ' m²' : '—' }}</strong></div>
+          <div><span class="k">Proprietário(s)</span><strong>{{ s.unit.ownerName ?? '—' }}</strong></div>
+          <div><span class="k">Responsável financeiro</span><strong>{{ s.unit.financialResponsibleName ?? 'não definido' }}</strong></div>
           @if (s.unit.notes) {
-            <div class="wide"><span class="tc-muted">Observações</span><span>{{ s.unit.notes }}</span></div>
+            <div class="wide"><span class="k">Observações</span><span>{{ s.unit.notes }}</span></div>
           }
         </section>
 
         <section class="tc-table-card">
-          <div class="head">
+          <div class="tc-card-head is-divided">
             <h2 class="tc-section-title">Pessoas vinculadas e histórico de ocupação</h2>
             @if (canEditPeople() && s.unit.active) {
               <button mat-flat-button (click)="link(s.unit, s.occupancies)"><mat-icon>person_add</mat-icon> Vincular pessoa</button>
@@ -59,13 +59,14 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
           </div>
           @for (o of s.occupancies; track o.id) {
             <div class="occ" [class.ended]="!o.current">
-              <mat-icon aria-hidden="true">{{ o.role === 'OWNER' ? 'key' : o.role === 'TENANT' ? 'real_estate_agent' : 'person' }}</mat-icon>
+              <mat-icon class="tc-ico" aria-hidden="true">{{ o.role === 'OWNER' ? 'key' : o.role === 'TENANT' ? 'real_estate_agent' : 'person' }}</mat-icon>
               <div class="who">
                 <a [routerLink]="['/pessoas', o.personId]"><strong>{{ o.personName }}</strong></a>
                 <span class="tc-muted">{{ roleLabel(o) }} · desde {{ o.startDate | isoDate }}
                   @if (!o.current) { até {{ o.endDate | isoDate }}{{ o.endReason ? ' — ' + o.endReason : '' }} }
                 </span>
               </div>
+              <div class="occ-end">
               @if (o.financialResponsible) {
                 <span class="tc-chip-soft"><mat-icon inline>payments</mat-icon> Resp. financeiro</span>
               }
@@ -79,6 +80,7 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
                 }
                 <button mat-icon-button (click)="end(o)" matTooltip="Encerrar vínculo" aria-label="Encerrar vínculo"><mat-icon>event_busy</mat-icon></button>
               }
+              </div>
             </div>
           } @empty {
             <tc-empty-state icon="group_off" title="Nenhuma pessoa vinculada" description="Vincule proprietário, inquilino ou moradores." />
@@ -92,16 +94,14 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
   styles: `
     .narrow { max-width: 1000px; }
     .back { margin: -8px 0 8px -12px; }
-    .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 16px; }
-    .facts div { display: grid; gap: 2px; }
-    .facts .wide { grid-column: 1 / -1; }
-    .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; flex-wrap: wrap; }
-    .head .tc-section-title { margin: 0; }
-    .occ { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--mat-sys-outline-variant); }
-    .occ > mat-icon { color: var(--mat-sys-primary); }
+    .facts { --tc-dl-min: 180px; gap: 16px 24px; margin-bottom: 16px; }
+    .facts .wide { padding-top: 12px; border-top: 1px solid var(--tc-border); }
+    .occ { display: flex; align-items: center; gap: 8px 12px; padding: 12px 20px; flex-wrap: wrap; }
+    .occ + .occ { border-top: 1px solid var(--tc-border); }
     .occ.ended { opacity: .7; }
-    .who { flex: 1; display: grid; }
-    .tc-status.big { font: var(--mat-sys-label-large); padding: 4px 14px; align-self: center; }
+    .who { flex: 1 1 200px; min-width: 0; display: grid; gap: 2px; }
+    .occ-end { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+    @media (max-width: 600px) { .occ { padding: 12px 16px; } }
   `,
 })
 export class UnitDetail {

@@ -67,8 +67,8 @@ const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', '
   `,
   styles: `
     .viz-root {
-      --series-1: light-dark(#2a78d6, #3987e5);
-      --series-2: light-dark(#eb6834, #d95926);
+      --series-1: light-dark(#0b7f7a, #4cc3b8);
+      --series-2: light-dark(#ee7a0c, #f59a45);
       --ink-muted: var(--mat-sys-on-surface-variant);
       --grid: var(--mat-sys-outline-variant);
     }

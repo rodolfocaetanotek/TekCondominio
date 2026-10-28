@@ -1,9 +1,10 @@
 <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
 
-<mat-sidenav-container class="container">
+<mat-sidenav-container class="container" autosize>
   <mat-sidenav
     #drawer
     class="sidenav"
+    [class.mini]="mini()"
     [mode]="isHandset() ? 'over' : 'side'"
     [opened]="!isHandset()"
     [attr.role]="isHandset() ? 'dialog' : 'navigation'"
@@ -11,34 +12,108 @@
   >
     <div class="brand">
       <img src="favicon.svg" alt="" width="34" height="34" />
-      <div>
-        <strong>Tek Condomínio</strong>
-        <span>Gestão de Condomínios</span>
-      </div>
+      @if (!mini()) {
+        <div class="brand-text">
+          <strong>Tek Condomínio</strong>
+          <span>Gestão de condomínios</span>
+        </div>
+      }
+      @if (isHandset()) {
+        <button mat-icon-button class="close-drawer" (click)="drawer.close()" aria-label="Fechar menu">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
     </div>
 
-    @for (group of nav(); track group.title) {
-      @if (group.title) {
-        <p class="group-title">{{ group.title }}</p>
-      }
-      <mat-nav-list>
-        @for (item of group.items; track item.link) {
-          <a
-            mat-list-item
-            [routerLink]="item.link"
-            routerLinkActive="is-active"
-            [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
-            #rla="routerLinkActive"
-            [activated]="rla.isActive"
-            [attr.aria-current]="rla.isActive ? 'page' : null"
-            (click)="isHandset() && drawer.close()"
+    <nav class="nav" aria-label="Seções do sistema">
+      @for (group of nav(); track group.title) {
+        @if (!group.title || mini()) {
+          @if (mini() && group.title) {
+            <hr class="mini-divider" />
+          }
+          <ul class="items top">
+            @for (item of group.items; track item.link) {
+              <li>
+                <a
+                  class="item"
+                  [routerLink]="item.link"
+                  routerLinkActive="is-active"
+                  [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+                  #rla="routerLinkActive"
+                  [attr.aria-current]="rla.isActive ? 'page' : null"
+                  [matTooltip]="mini() ? item.label : ''"
+                  matTooltipPosition="right"
+                  (click)="isHandset() && drawer.close()"
+                >
+                  <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+                  @if (!mini()) {
+                    <span>{{ item.label }}</span>
+                  } @else {
+                    <span class="sr-only">{{ item.label }}</span>
+                  }
+                </a>
+              </li>
+            }
+          </ul>
+        } @else {
+          <button
+            type="button"
+            class="group"
+            [class.has-active]="activeGroup() === group.title"
+            [attr.aria-expanded]="isOpen(group.title)"
+            [attr.aria-controls]="'nav-' + $index"
+            (click)="toggleGroup(group.title)"
           >
-            <mat-icon matListItemIcon aria-hidden="true">{{ item.icon }}</mat-icon>
-            <span matListItemTitle>{{ item.label }}</span>
-          </a>
+            <mat-icon aria-hidden="true">{{ group.icon }}</mat-icon>
+            <span>{{ group.title }}</span>
+            <mat-icon class="chevron" aria-hidden="true">expand_more</mat-icon>
+          </button>
+          @if (isOpen(group.title)) {
+            <ul class="items" [id]="'nav-' + $index">
+              @for (item of group.items; track item.link) {
+                <li>
+                  <a
+                    class="item sub"
+                    [routerLink]="item.link"
+                    routerLinkActive="is-active"
+                    [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+                    #rla="routerLinkActive"
+                    [attr.aria-current]="rla.isActive ? 'page' : null"
+                    (click)="isHandset() && drawer.close()"
+                  >
+                    <span>{{ item.label }}</span>
+                  </a>
+                </li>
+              }
+            </ul>
+          }
         }
-      </mat-nav-list>
-    }
+      }
+    </nav>
+
+    <div class="side-footer">
+      @if (!mini()) {
+        <div class="who">
+          <span class="avatar small" aria-hidden="true">{{ initials() }}</span>
+          <span class="who-text">
+            <strong>{{ auth.user()?.name }}</strong>
+            <small>{{ auth.user()?.organizationName ?? (auth.user()?.platformAdmin ? 'Administração da plataforma' : '') }}</small>
+          </span>
+        </div>
+      }
+      @if (!isHandset()) {
+        <button
+          mat-icon-button
+          class="collapse"
+          (click)="toggleCollapsed()"
+          [attr.aria-label]="mini() ? 'Expandir menu' : 'Recolher menu'"
+          [matTooltip]="mini() ? 'Expandir menu' : 'Recolher menu'"
+          matTooltipPosition="right"
+        >
+          <mat-icon>{{ mini() ? 'left_panel_open' : 'left_panel_close' }}</mat-icon>
+        </button>
+      }
+    </div>
   </mat-sidenav>
 
   <mat-sidenav-content>
@@ -71,6 +146,20 @@
         }
       </div>
       <span class="tc-spacer"></span>
+      <button mat-icon-button [matMenuTriggerFor]="themeMenu" aria-label="Aparência" matTooltip="Aparência">
+        <mat-icon>{{ themeIcon() }}</mat-icon>
+      </button>
+      <mat-menu #themeMenu="matMenu" xPosition="before">
+        <button mat-menu-item (click)="setTheme('system')" [attr.aria-checked]="theme.mode() === 'system'" role="menuitemradio">
+          <mat-icon>brightness_auto</mat-icon><span>Seguir o sistema</span>
+        </button>
+        <button mat-menu-item (click)="setTheme('light')" [attr.aria-checked]="theme.mode() === 'light'" role="menuitemradio">
+          <mat-icon>light_mode</mat-icon><span>Claro</span>
+        </button>
+        <button mat-menu-item (click)="setTheme('dark')" [attr.aria-checked]="theme.mode() === 'dark'" role="menuitemradio">
+          <mat-icon>dark_mode</mat-icon><span>Escuro</span>
+        </button>
+      </mat-menu>
       @if (auth.isOrganizationMember()) {
         <tc-notification-bell />
       }
@@ -98,7 +187,7 @@
       </mat-menu>
     </mat-toolbar>
 
-    <main id="conteudo" tabindex="-1">
+    <main id="conteudo" tabindex="-1" tcResponsiveTables>
       <router-outlet />
     </main>
   </mat-sidenav-content>

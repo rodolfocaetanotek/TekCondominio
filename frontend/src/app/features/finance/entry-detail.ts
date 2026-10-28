@@ -35,27 +35,41 @@ import { EntryDetail, FinanceApi, Payment } from './finance-api';
       } @else if (entry(); as e) {
         <tc-page-header [eyebrow]="(e.summary.kind | label: 'entryKind') + (e.summary.installmentLabel ? ' · parcela ' + e.summary.installmentLabel : '')"
           [title]="e.summary.description" [subtitle]="e.summary.accountCode + ' ' + e.summary.accountName">
-          <span class="tc-status big" [class.is-active]="e.summary.status === 'PAID'" [class.is-pending]="e.summary.approval === 'PENDING' || e.summary.overdue"
+          <span class="tc-status big" [class.is-active]="e.summary.status === 'PAID'"
+            [class.is-pending]="e.summary.approval === 'PENDING' || (!e.summary.overdue && (e.summary.status === 'OPEN' || e.summary.status === 'PARTIAL'))"
+            [class.is-danger]="e.summary.approval !== 'PENDING' && e.summary.overdue"
             [class.is-inactive]="e.summary.status === 'CANCELLED' || e.summary.status === 'RENEGOTIATED'">
             {{ e.summary.approval === 'PENDING' ? 'Aguardando aprovação' : (e.summary.status | label: 'entryStatus') }}
           </span>
         </tc-page-header>
 
-        <section class="facts tc-card">
-          <div><span class="tc-muted">Valor</span><strong class="money left">{{ e.summary.amount | currency: 'BRL' }}</strong></div>
-          <div><span class="tc-muted">{{ e.summary.kind === 'INCOME' ? 'Recebido' : 'Pago' }}</span><strong>{{ e.summary.paidAmount | currency: 'BRL' }}</strong></div>
-          <div><span class="tc-muted">Em aberto</span><strong [class.late]="e.summary.overdue">{{ e.summary.remaining | currency: 'BRL' }}</strong></div>
-          <div><span class="tc-muted">Vencimento</span><strong [class.late]="e.summary.overdue">{{ e.summary.dueDate | isoDate }}</strong></div>
-          <div><span class="tc-muted">Competência</span><strong>{{ e.summary.competence.slice(5, 7) }}/{{ e.summary.competence.slice(0, 4) }}</strong></div>
-          @if (e.summary.supplierName) { <div><span class="tc-muted">Fornecedor</span><strong>{{ e.summary.supplierName }}</strong></div> }
-          @if (e.summary.unitLabel) { <div><span class="tc-muted">Unidade</span><strong>{{ e.summary.unitLabel }}</strong></div> }
-          @if (e.summary.personName) { <div><span class="tc-muted">Pagador</span><strong>{{ e.summary.personName }}</strong></div> }
-          @if (e.summary.documentNumber) { <div><span class="tc-muted">Documento</span><strong>{{ e.summary.documentNumber }}</strong></div> }
-          @if (e.costCenterName) { <div><span class="tc-muted">Centro de custo</span><strong>{{ e.costCenterName }}</strong></div> }
-          @if (e.finePercent !== null && e.finePercent !== undefined) { <div><span class="tc-muted">Encargos</span><strong>multa {{ e.finePercent }}% · juros {{ e.interestMonthlyPercent }}% a.m.</strong></div> }
-          @if (e.notes) { <div class="wide"><span class="tc-muted">Observações</span><span>{{ e.notes }}</span></div> }
-          @if (e.approvalNote) { <div class="wide"><span class="tc-muted">Parecer da aprovação</span><span>{{ e.approvalNote }}</span></div> }
-          @if (e.cancelReason) { <div class="wide"><span class="tc-muted">Motivo</span><span>{{ e.cancelReason }}</span></div> }
+        <section class="tc-kpis" aria-label="Valores do lançamento">
+          <div class="tc-kpi tc-card">
+            <span class="icon"><mat-icon aria-hidden="true">receipt_long</mat-icon></span>
+            <span class="label">Valor</span><span class="value">{{ e.summary.amount | currency: 'BRL' }}</span>
+          </div>
+          <div class="tc-kpi tc-card tone-success">
+            <span class="icon"><mat-icon aria-hidden="true">task_alt</mat-icon></span>
+            <span class="label">{{ e.summary.kind === 'INCOME' ? 'Recebido' : 'Pago' }}</span><span class="value">{{ e.summary.paidAmount | currency: 'BRL' }}</span>
+          </div>
+          <div class="tc-kpi tc-card" [class.tone-danger]="e.summary.overdue" [class.tone-warning]="!e.summary.overdue && e.summary.remaining > 0">
+            <span class="icon"><mat-icon aria-hidden="true">{{ e.summary.overdue ? 'warning' : 'schedule' }}</mat-icon></span>
+            <span class="label">Em aberto</span><span class="value">{{ e.summary.remaining | currency: 'BRL' }}</span>
+          </div>
+        </section>
+
+        <section class="facts tc-dl cols tc-card">
+          <div><span class="k">Vencimento</span><strong [class.late]="e.summary.overdue">{{ e.summary.dueDate | isoDate }}</strong></div>
+          <div><span class="k">Competência</span><strong>{{ e.summary.competence.slice(5, 7) }}/{{ e.summary.competence.slice(0, 4) }}</strong></div>
+          @if (e.summary.supplierName) { <div><span class="k">Fornecedor</span><strong>{{ e.summary.supplierName }}</strong></div> }
+          @if (e.summary.unitLabel) { <div><span class="k">Unidade</span><strong>{{ e.summary.unitLabel }}</strong></div> }
+          @if (e.summary.personName) { <div><span class="k">Pagador</span><strong>{{ e.summary.personName }}</strong></div> }
+          @if (e.summary.documentNumber) { <div><span class="k">Documento</span><strong>{{ e.summary.documentNumber }}</strong></div> }
+          @if (e.costCenterName) { <div><span class="k">Centro de custo</span><strong>{{ e.costCenterName }}</strong></div> }
+          @if (e.finePercent !== null && e.finePercent !== undefined) { <div><span class="k">Encargos</span><strong>multa {{ e.finePercent }}% · juros {{ e.interestMonthlyPercent }}% a.m.</strong></div> }
+          @if (e.notes) { <div class="wide"><span class="k">Observações</span><span>{{ e.notes }}</span></div> }
+          @if (e.approvalNote) { <div class="wide"><span class="k">Parecer da aprovação</span><span>{{ e.approvalNote }}</span></div> }
+          @if (e.cancelReason) { <div class="wide"><span class="k">Motivo</span><span>{{ e.cancelReason }}</span></div> }
         </section>
 
         <div class="tc-actions actions">
@@ -76,7 +90,7 @@ import { EntryDetail, FinanceApi, Payment } from './finance-api';
 
         <div class="layout">
           <section class="tc-table-card">
-            <h3 class="tc-section-title pad">Baixas</h3>
+            <h3 class="tc-section-title tc-card-head">Baixas</h3>
             @for (p of e.payments; track p.id) {
               <div class="pay" [class.reversed]="p.reversed">
                 <div class="who">
@@ -93,7 +107,7 @@ import { EntryDetail, FinanceApi, Payment } from './finance-api';
                 }
               </div>
             } @empty {
-              <p class="tc-muted pad">Nenhuma baixa registrada.</p>
+              <tc-empty-state icon="payments" title="Nenhuma baixa registrada" />
             }
           </section>
           <tc-attachments [condominiumId]="context.id()!" entityType="FinancialEntry" [entityId]="e.summary.id"
@@ -107,20 +121,16 @@ import { EntryDetail, FinanceApi, Payment } from './finance-api';
   styles: `
     .narrow { max-width: 1080px; }
     .back { margin: -8px 0 8px -12px; }
-    .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
-    .facts div { display: grid; gap: 2px; }
-    .facts .wide { grid-column: 1 / -1; }
-    .left { text-align: left; }
-    .late { color: var(--mat-sys-error); }
+    .facts { gap: 16px; }
+    .late { color: var(--tc-danger); }
     .actions { margin: 16px 0; justify-content: flex-start; }
     .layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 16px; align-items: start; }
-    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
-    .pad { padding: 14px 20px 6px; margin: 0; }
-    .pay { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-top: 1px solid var(--mat-sys-outline-variant); }
+    @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+    .pay { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 12px 20px; border-top: 1px solid var(--tc-border); }
     .pay.reversed { opacity: .6; text-decoration: line-through; }
-    .who { flex: 1; display: grid; }
-    .tc-status.big { font: var(--mat-sys-label-large); padding: 4px 14px; align-self: center; }
-    .danger-text { --mat-button-text-label-text-color: var(--mat-sys-error); }
+    .who { flex: 1 1 220px; display: grid; gap: 2px; min-width: 0; }
+    .who strong { font-variant-numeric: tabular-nums; }
+    .danger-text { --mat-button-text-label-text-color: var(--tc-danger); }
   `,
 })
 export class EntryDetailPage {

@@ -4,6 +4,7 @@ import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { catchError, combineLatest, filter, of, switchMap } from 'rxjs';
 import { toProblem } from '../../core/api/api.models';
@@ -18,7 +19,7 @@ import { FinanceApi, Transfer } from './finance-api';
 
 @Component({
   selector: 'tc-transfer-tab',
-  imports: [CurrencyPipe, MatButtonModule, MatIconModule, MatTableModule, IsoDatePipe, EmptyState],
+  imports: [CurrencyPipe, MatButtonModule, MatIconModule, MatProgressBarModule, MatTableModule, IsoDatePipe, EmptyState],
   template: `
     <div class="head">
       <p class="tc-muted">Movimentações entre as contas do próprio condomínio (ex.: suprimento de caixa, aplicação).</p>
@@ -26,8 +27,10 @@ import { FinanceApi, Transfer } from './finance-api';
         <button mat-flat-button (click)="create()"><mat-icon>swap_horiz</mat-icon> Nova transferência</button>
       }
     </div>
-    <section class="tc-table-card">
-      @if ((list() ?? []).length === 0) {
+    <section class="tc-table-card" aria-live="polite">
+      @if (list() === undefined) {
+        <mat-progress-bar mode="indeterminate" />
+      } @else if ((list() ?? []).length === 0) {
         <tc-empty-state icon="swap_horiz" title="Nenhuma transferência" />
       } @else {
         <div class="table-scroll">
@@ -39,7 +42,7 @@ import { FinanceApi, Transfer } from './finance-api';
             <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Situação</th>
               <td mat-cell *matCellDef="let t">
                 @if (t.reversed) { <span class="tc-status is-inactive" [title]="t.reversalReason ?? ''">Estornada</span> }
-                @else { <span class="tc-status is-active">{{ t.reconciled ? 'Conciliada' : 'Efetivada' }}</span> }
+                @else { <span class="tc-status" [class.is-success]="t.reconciled" [class.is-active]="!t.reconciled">{{ t.reconciled ? 'Conciliada' : 'Efetivada' }}</span> }
               </td></ng-container>
             <ng-container matColumnDef="actions"><th mat-header-cell *matHeaderCellDef></th>
               <td mat-cell *matCellDef="let t">
@@ -52,7 +55,7 @@ import { FinanceApi, Transfer } from './finance-api';
       }
     </section>
   `,
-  styles: `.head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 16px 0; flex-wrap: wrap; } .head p { margin: 0; }`,
+  styles: `.head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0 0 16px; flex-wrap: wrap; } .head p { margin: 0; }`,
 })
 export class TransferTab {
   private readonly context = inject(CondominiumContext);

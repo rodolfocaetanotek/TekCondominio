@@ -17,8 +17,8 @@
   overflow: hidden;
   color: #fff;
   background:
-    radial-gradient(circle at 85% 15%, rgb(244 162 97 / 0.35), transparent 40%),
-    linear-gradient(150deg, #004f50 0%, #006a6a 55%, #0b7f7a 100%);
+    radial-gradient(circle at 85% 12%, rgb(238 122 12 / 0.22), transparent 42%),
+    linear-gradient(160deg, #1a222c 0%, #1e2733 55%, #253142 100%);
   display: grid;
   align-items: center;
   padding: 48px;
@@ -50,7 +50,12 @@
     letter-spacing: -0.02em;
   }
 
+  .logo span {
+    color: #fff;
+  }
+
   h2 {
+    color: #fff;
     font-size: clamp(26px, 3vw, 36px);
     line-height: 1.2;
     font-weight: 600;
@@ -69,11 +74,16 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    opacity: 0.92;
+    color: #c9d7d8;
+
+    mat-icon {
+      color: var(--tc-accent);
+    }
   }
 }
 
 .panel {
+  background: var(--tc-surface);
   display: grid;
   place-items: center;
   padding: 24px 16px;
@@ -86,8 +96,24 @@
   gap: 4px;
 
   h1 {
-    font: var(--mat-sys-headline-medium);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
     margin: 0;
+  }
+
+  .mobile-brand {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--mat-sys-primary);
+
+    @media (max-width: 900px) {
+      display: flex;
+    }
   }
 
   > p.tc-muted {
@@ -129,4 +155,5 @@
 .submit {
   height: 48px;
   margin-top: 8px;
+  font-size: 15px;
 }

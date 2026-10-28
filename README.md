@@ -14,6 +14,7 @@ Plataforma SaaS multiempresa para administradoras de condomínios.
 | [docs/MATRIZ-COMPARATIVA.md](docs/MATRIZ-COMPARATIVA.md) | Matriz de funcionalidades, lacunas priorizadas e backlog técnico |
 | [docs/INTEGRACOES.md](docs/INTEGRACOES.md) | OFX, CNAB 240, boleto/PIX e demais dependências externas |
 | [docs/RELATORIO-FINAL.md](docs/RELATORIO-FINAL.md) | O que foi implementado nesta etapa, testes, limitações e próximos passos |
+| [docs/UI-PADRAO.md](docs/UI-PADRAO.md) | Padrão visual (cores, tipografia, menu, componentes, celular, acessibilidade) |
 | Swagger UI | `http://localhost:8080/swagger-ui.html` (com a API rodando) |
 
 ## Estrutura
@@ -130,7 +131,7 @@ Agende o backup diário (cron), copie para fora do servidor e **teste a restaura
 
 ```bash
 cd backend  && mvn test                    # 141 testes (unitários + integração com PostgreSQL real)
-cd frontend && npx ng test --watch=false   # 20 testes (Vitest)
+cd frontend && npx ng test --watch=false   # 23 testes (Vitest)
 ```
 
 **Validação ponta a ponta** contra a API em execução (cria uma administradora nova e percorre condomínio → rateio →

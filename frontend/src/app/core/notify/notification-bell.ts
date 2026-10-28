@@ -33,11 +33,14 @@ import { Inbox, OpsApi } from '../../features/ops/ops-api';
     </mat-menu>
   `,
   styles: `
-    .head { display: flex; justify-content: space-between; align-items: center; padding: 4px 12px 8px; min-width: 320px; }
+    .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 12px 10px 16px; min-width: min(340px, 90vw);
+      border-bottom: 1px solid var(--tc-border); }
+    .head strong { font-size: 15px; }
     .item { height: auto !important; min-height: 56px; line-height: 1.3; padding-block: 8px; white-space: normal; }
     .item .t { display: block; font-weight: 600; } .item .b, .item .d { display: block; font-size: 12px; opacity: .8; }
-    .item.unread .t::before { content: '● '; color: var(--mat-sys-primary); }
-    .empty { padding: 12px; margin: 0; opacity: .7; }
+    .item.unread { background: color-mix(in srgb, var(--tc-accent) 6%, transparent); }
+    .item.unread .t::before { content: '● '; color: var(--tc-accent); }
+    .empty { padding: 20px 16px; margin: 0; color: var(--tc-text-muted); text-align: center; }
   `,
 })
 export class NotificationBell {

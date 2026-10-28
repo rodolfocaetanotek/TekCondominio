@@ -32,21 +32,30 @@ import { FinanceApi, UnitDebt } from '../finance/finance-api';
       } @else if (debt(); as d) {
         <tc-page-header eyebrow="Demonstrativo de débitos" [title]="'Unidade ' + d.unitLabel"
           [subtitle]="(d.responsibleName ?? 'sem responsável financeiro') + ' · posição em ' + (d.asOf | isoDate)" />
-        <section class="kpis">
-          <div class="tc-card kpi"><span class="tc-muted">Principal em aberto</span><strong>{{ d.openPrincipal | currency: 'BRL' }}</strong></div>
-          <div class="tc-card kpi"><span class="tc-muted">Multa + juros</span><strong>{{ d.openCharges | currency: 'BRL' }}</strong></div>
-          <div class="tc-card kpi"><span class="tc-muted">Total atualizado</span><strong class="negative">{{ d.openTotal | currency: 'BRL' }}</strong></div>
+        <section class="tc-kpis" aria-label="Resumo do débito">
+          <div class="tc-kpi tc-card">
+            <span class="icon"><mat-icon aria-hidden="true">account_balance_wallet</mat-icon></span>
+            <span class="label">Principal em aberto</span><span class="value">{{ d.openPrincipal | currency: 'BRL' }}</span>
+          </div>
+          <div class="tc-kpi tc-card tone-warning">
+            <span class="icon"><mat-icon aria-hidden="true">percent</mat-icon></span>
+            <span class="label">Multa + juros</span><span class="value">{{ d.openCharges | currency: 'BRL' }}</span>
+          </div>
+          <div class="tc-kpi tc-card tone-danger">
+            <span class="icon"><mat-icon aria-hidden="true">priority_high</mat-icon></span>
+            <span class="label">Total atualizado</span><span class="value">{{ d.openTotal | currency: 'BRL' }}</span>
+          </div>
         </section>
 
         <section class="tc-table-card">
-          <div class="head">
+          <div class="tc-card-head">
             <h3 class="tc-section-title">Cobranças</h3>
             @if (canEdit() && selected().length) {
               <button mat-flat-button (click)="agreement(d)"><mat-icon>handshake</mat-icon> Negociar {{ selected().length }} débito(s)</button>
             }
           </div>
           <div class="table-scroll">
-            <table class="lines">
+            <table class="lines tc-cards-mobile">
               <thead><tr><th></th><th>Vencimento</th><th>Descrição</th><th class="money">Valor</th><th class="money">Pago</th><th class="money">Atualizado</th><th>Situação</th></tr></thead>
               <tbody>
                 @for (l of d.lines; track l.entryId) {
@@ -59,7 +68,10 @@ import { FinanceApi, UnitDebt } from '../finance/finance-api';
                     <td class="money">{{ l.amount | currency: 'BRL' }}</td>
                     <td class="money">{{ l.paid | currency: 'BRL' }}</td>
                     <td class="money">{{ l.remaining > 0 ? (l.updatedTotal | currency: 'BRL') : '—' }}</td>
-                    <td>{{ l.status | label: 'entryStatus' }}</td>
+                    <td><span class="tc-status" [class.is-active]="l.status === 'PAID'"
+                      [class.is-pending]="(l.status === 'OPEN' || l.status === 'PARTIAL') && l.daysLate <= 0"
+                      [class.is-danger]="(l.status === 'OPEN' || l.status === 'PARTIAL') && l.daysLate > 0"
+                      [class.is-inactive]="l.status === 'CANCELLED' || l.status === 'RENEGOTIATED'">{{ l.status | label: 'entryStatus' }}</span></td>
                   </tr>
                 } @empty { <tr><td colspan="7" class="tc-muted">Nenhuma cobrança.</td></tr> }
               </tbody>
@@ -69,7 +81,7 @@ import { FinanceApi, UnitDebt } from '../finance/finance-api';
 
         <div class="cols">
           <section class="tc-card">
-            <div class="head"><h3 class="tc-section-title">Histórico de cobrança</h3>
+            <div class="tc-card-head"><h3 class="tc-section-title">Histórico de cobrança</h3>
               @if (canEdit()) { <button mat-button (click)="note()"><mat-icon>add_comment</mat-icon> Registrar contato</button> }</div>
             @for (n of d.notes; track n.id) {
               <div class="note"><strong>{{ n.contactDate | isoDate }} · {{ n.contactType | label: 'contactType' }}</strong>
@@ -92,19 +104,13 @@ import { FinanceApi, UnitDebt } from '../finance/finance-api';
   styles: `
     .narrow { max-width: 1080px; }
     .back { margin: -8px 0 8px -12px; }
-    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
-    .kpi { display: grid; }
-    .kpi strong { font: var(--mat-sys-headline-small); }
-    .head { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px 0; }
-    .head h3 { margin: 0; }
-    .tc-card .head { padding: 0 0 8px; }
-    .lines { width: 100%; border-collapse: collapse; margin-top: 8px; }
-    .lines th, .lines td { padding: 8px 12px; border-bottom: 1px solid var(--mat-sys-outline-variant); text-align: left; }
-    .lines .money { text-align: right; }
-    .late { color: var(--mat-sys-error); font-weight: 600; }
-    .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 16px; }
-    .note { border-bottom: 1px solid var(--mat-sys-outline-variant); padding: 8px 0; }
-    .note p { margin: 4px 0; white-space: pre-wrap; }
+    .tc-section-title { margin-top: 0; }
+    .lines { margin-top: 8px; }
+    .late { color: var(--tc-danger); font-weight: 600; }
+    .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; margin-top: 16px; align-items: start; }
+    .note { border-bottom: 1px solid var(--tc-border); padding: 10px 0; }
+    .note:last-child { border-bottom: 0; }
+    .note p { margin: 4px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
   `,
 })
 export class UnitDebtPage {

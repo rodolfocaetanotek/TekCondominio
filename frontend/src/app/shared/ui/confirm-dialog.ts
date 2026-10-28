@@ -5,6 +5,7 @@ import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angu
 import { Observable, filter } from 'rxjs';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { DialogClose } from './dialog-close';
 
 export interface ConfirmDialogData {
   title: string;
@@ -18,9 +19,11 @@ export interface ConfirmDialogData {
 /** Confirmação para operações críticas; opcionalmente coleta justificativa. Fecha com a justificativa ou true. */
 @Component({
   selector: 'tc-confirm-dialog',
-  imports: [MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, ReactiveFormsModule],
+  imports: [DialogClose, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, ReactiveFormsModule],
   template: `
-    <h2 mat-dialog-title>{{ data.title }}</h2>
+    <h2 mat-dialog-title [class.is-danger]="data.danger">
+      {{ data.title }} <tc-dialog-close />
+    </h2>
     <mat-dialog-content>
       <p>{{ data.message }}</p>
       @if (data.reasonLabel) {
@@ -41,7 +44,7 @@ export interface ConfirmDialogData {
   `,
   styles: `
     .full { width: 100%; margin-top: 8px; }
-    .danger { --mat-button-filled-container-color: var(--mat-sys-error); --mat-button-filled-label-text-color: var(--mat-sys-on-error); }
+    p { margin: 0; line-height: 1.5; }
   `,
 })
 export class ConfirmDialog {

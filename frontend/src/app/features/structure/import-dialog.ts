@@ -6,6 +6,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { toProblem } from '../../core/api/api.models';
 import { ImportResult } from './structure.models';
 import { StructureService } from './structure.service';
+import { DialogClose } from '../../shared/ui/dialog-close';
 
 const TEMPLATE = 'bloco;unidade;tipo;fracao;area;proprietario;documento;email;telefone\n'
   + 'A;101;apartamento;2,5;72,40;Maria da Silva;529.982.247-25;maria@email.com;(91) 98888-7777\n'
@@ -14,9 +15,9 @@ const TEMPLATE = 'bloco;unidade;tipo;fracao;area;proprietario;documento;email;te
 /** Importação de unidades e proprietários: valida primeiro (simulação) e só grava após confirmação. */
 @Component({
   selector: 'tc-import-dialog',
-  imports: [MatDialogModule, MatButtonModule, MatIconModule, MatProgressBarModule],
+  imports: [DialogClose, MatDialogModule, MatButtonModule, MatIconModule, MatProgressBarModule],
   template: `
-    <h2 mat-dialog-title>Importar unidades (CSV)</h2>
+    <h2 mat-dialog-title>Importar unidades (CSV) <tc-dialog-close /></h2>
     <mat-dialog-content>
       <p class="tc-muted">Colunas: <code>bloco; unidade; tipo; fracao; area; proprietario; documento; email; telefone</code>.
         Apenas <strong>unidade</strong> é obrigatória. Pessoas já cadastradas com o mesmo CPF/CNPJ são reaproveitadas.</p>
@@ -67,7 +68,8 @@ const TEMPLATE = 'bloco;unidade;tipo;fracao;area;proprietario;documento;email;te
     </mat-dialog-actions>
   `,
   styles: `
-    .file { display: flex; align-items: center; gap: 10px; padding: 14px; border: 1px dashed var(--mat-sys-outline); border-radius: 12px; cursor: pointer; margin-bottom: 12px; }
+    .file { display: flex; align-items: center; gap: 10px; padding: 14px; border: 1px dashed var(--tc-border-strong); border-radius: var(--tc-radius); background: var(--tc-surface-muted); cursor: pointer; margin-bottom: 12px; overflow-wrap: anywhere; }
+    .file:hover { border-color: var(--mat-sys-primary); }
     .file input { position: absolute; opacity: 0; width: 1px; height: 1px; }
     .file:focus-within { outline: 2px solid var(--mat-sys-primary); }
     .errors { max-height: 220px; overflow: auto; padding-left: 18px; font: var(--mat-sys-body-small); }
