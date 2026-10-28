@@ -7,10 +7,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.identity.entity.User;
-import br.com.tekcondo.organization.entity.Organization;
+import br.com.tekcondo.acesso.entity.Usuario;
+import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
-import br.com.tekcondo.support.RecordingMailGateway;
+import br.com.tekcondo.support.GravacaoEmailGateway;
 import br.com.tekcondo.support.TestData;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,9 +38,9 @@ class ReportsDashboardPortalIT extends IntegrationTest {
     @Autowired
     JdbcTemplate jdbc;
     @Autowired
-    RecordingMailGateway mail;
+    GravacaoEmailGateway mail;
 
-    Organization org;
+    Administradora org;
     Condominium condo;
     String token;
     String base;
@@ -51,9 +51,9 @@ class ReportsDashboardPortalIT extends IntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        org = data.organization();
+        org = data.administradora();
         condo = data.condominium(org, "Condomínio Relatórios");
-        token = TestData.bearer(data.login(data.orgAdmin(org)));
+        token = TestData.bearer(data.login(data.adminAdministradora(org)));
         base = "/api/v1/condominiums/" + condo.getId();
         call(token, "PUT", base + "/finance/settings", Map.of("finePercent", "2", "interestMonthlyPercent", "1",
                 "billingDueDay", 10, "requirePayableApproval", false), 200);
@@ -108,8 +108,8 @@ class ReportsDashboardPortalIT extends IntegrationTest {
         assertThat(jdbc.queryForObject("select count(*) from audit_log where action = 'REPORT_EXPORTED' and entity_id = ?",
                 Integer.class, condo.getId().toString())).isEqualTo(3);
 
-        User staff = data.user(org);
-        data.grant(staff, "CONDO_STAFF", condo.getId());
+        Usuario staff = data.usuario(org);
+        data.conceder(staff, "CONDO_STAFF", condo.getId());
         mvc.perform(get(base + "/reports/INCOME_EXPENSE").header("Authorization", TestData.bearer(data.login(staff))))
                 .andExpect(status().isForbidden());
     }
@@ -126,8 +126,8 @@ class ReportsDashboardPortalIT extends IntegrationTest {
         assertThat(d.get("series")).hasSize(12);
 
         Condominium other = data.condominium(org, "Outro");
-        User syndic = data.user(org);
-        data.grant(syndic, "SYNDIC", other.getId());
+        Usuario syndic = data.usuario(org);
+        data.conceder(syndic, "SYNDIC", other.getId());
         JsonNode scoped = call(TestData.bearer(data.login(syndic)), "GET", "/api/v1/dashboard", null, 200);
         assertThat(scoped.get("condominiums").asInt()).isEqualTo(1);
         assertThat(scoped.get("units").asInt()).isZero();
@@ -136,9 +136,9 @@ class ReportsDashboardPortalIT extends IntegrationTest {
 
     @Test
     void residentPortalShowsOnlyOwnData() throws Exception {
-        String ownerEmail = TestData.uniqueEmail();
+        String ownerEmail = TestData.emailUnico();
         String owner = call(token, "POST", "/api/v1/people", Map.of("name", "Olga Dona", "kind", "INDIVIDUAL", "email", ownerEmail), 201).get("id").asText();
-        String tenantEmail = TestData.uniqueEmail();
+        String tenantEmail = TestData.emailUnico();
         String tenant = call(token, "POST", "/api/v1/people", Map.of("name", "Ivo Morador", "kind", "INDIVIDUAL", "email", tenantEmail), 201).get("id").asText();
         call(token, "POST", base + "/occupancies", Map.of("unitId", unitOwner, "personId", owner, "role", "OWNER",
                 "financialResponsible", true, "startDate", "2024-01-01"), 201);
@@ -183,10 +183,10 @@ class ReportsDashboardPortalIT extends IntegrationTest {
     }
 
     private String activate(String email) throws Exception {
-        String invite = mail.lastTokenFor(email).orElseThrow();
-        call("", "POST", "/api/v1/auth/password/reset", Map.of("token", invite, "newPassword", "MoradorSenha2026"), 204);
+        String invite = mail.ultimoTokenPara(email).orElseThrow();
+        call("", "POST", "/api/v1/auth/senha/redefinir", Map.of("token", invite, "novaSenha", "MoradorSenha2026"), 204);
         String login = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-                .content(data.json(Map.of("email", email, "password", "MoradorSenha2026")))).andReturn().getResponse().getContentAsString();
+                .content(data.json(Map.of("email", email, "senha", "MoradorSenha2026")))).andReturn().getResponse().getContentAsString();
         return "Bearer " + objectMapper.readTree(login).get("accessToken").asText();
     }
 }

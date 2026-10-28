@@ -10,12 +10,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-import br.com.tekcondo.audit.service.AuditAction;
-import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.auditoria.service.AcaoAuditoria;
+import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.condominium.entity.Condominium;
 import br.com.tekcondo.condominium.service.CondominiumAccess;
-import br.com.tekcondo.identity.access.Permission;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
+import br.com.tekcondo.comum.exception.ApiException;
 import br.com.tekcondo.supplier.entity.Contract;
 import br.com.tekcondo.supplier.entity.ContractHistory;
 import br.com.tekcondo.supplier.entity.Supplier;
@@ -65,11 +65,11 @@ public class ContractService {
     private final ContractHistoryRepository history;
     private final SupplierRepository suppliers;
     private final CondominiumAccess access;
-    private final AuditService auditService;
+    private final AuditoriaService auditService;
     private final Clock clock;
 
     public ContractService(ContractRepository contracts, ContractHistoryRepository history, SupplierRepository suppliers,
-                           CondominiumAccess access, AuditService auditService, Clock clock) {
+                           CondominiumAccess access, AuditoriaService auditService, Clock clock) {
         this.contracts = contracts;
         this.history = history;
         this.suppliers = suppliers;
@@ -80,21 +80,21 @@ public class ContractService {
 
     @Transactional(readOnly = true)
     public List<Response> list(UUID condominiumId) {
-        access.require(condominiumId, Permission.SUPPLIER_VIEW);
+        access.require(condominiumId, Permissao.SUPPLIER_VIEW);
         return contracts.findByCondominium(condominiumId).stream().map(c -> toResponse(c, false)).toList();
     }
 
     @Transactional(readOnly = true)
     public Response get(UUID condominiumId, UUID id) {
-        access.require(condominiumId, Permission.SUPPLIER_VIEW);
+        access.require(condominiumId, Permissao.SUPPLIER_VIEW);
         return toResponse(load(condominiumId, id), true);
     }
 
     @Transactional
     public Response save(UUID condominiumId, UUID id, Request r) {
-        Condominium condominium = access.requireActive(condominiumId, Permission.SUPPLIER_EDIT);
+        Condominium condominium = access.requireActive(condominiumId, Permissao.SUPPLIER_EDIT);
         Supplier supplier = suppliers.findByIdAndOrganizationId(r.supplierId(), condominium.getOrganizationId())
-                .orElseThrow(() -> ApiException.notFound("Fornecedor"));
+                .orElseThrow(() -> ApiException.naoEncontrado("Fornecedor"));
         Contract contract;
         List<String> changes = new ArrayList<>();
         if (id == null) {
@@ -102,8 +102,8 @@ public class ContractService {
             changes.add("Contrato cadastrado");
         } else {
             contract = load(condominiumId, id);
-            if (r.version() == null || !r.version().equals(contract.getVersion())) {
-                throw ApiException.staleVersion();
+            if (r.version() == null || !r.version().equals(contract.getVersao())) {
+                throw ApiException.versaoObsoleta();
             }
             diff(changes, "Fornecedor", contract.getSupplier().getName(), supplier.getName());
             diff(changes, "Valor", contract.getAmount() == null ? null : contract.getAmount().toPlainString(), r.amount().toPlainString());
@@ -116,25 +116,25 @@ public class ContractService {
         contracts.save(contract);
         contracts.flush();
         if (!changes.isEmpty()) {
-            history.save(new ContractHistory(contract.getId(), String.join("; ", changes), access.user().name()));
+            history.save(new ContractHistory(contract.getId(), String.join("; ", changes), access.user().nome()));
         }
-        auditService.record(id == null ? AuditAction.CONTRACT_CREATED : AuditAction.CONTRACT_UPDATED, "Contract", contract.getId(),
+        auditService.registrar(id == null ? AcaoAuditoria.CONTRACT_CREATED : AcaoAuditoria.CONTRACT_UPDATED, "Contract", contract.getId(),
                 Map.of("title", contract.getTitle(), "changes", String.join("; ", changes)));
         return toResponse(contract, true);
     }
 
     @Transactional
     public Response terminate(UUID condominiumId, UUID id, TerminateRequest r) {
-        access.require(condominiumId, Permission.SUPPLIER_EDIT);
+        access.require(condominiumId, Permissao.SUPPLIER_EDIT);
         Contract contract = load(condominiumId, id);
         contract.terminate(r.terminatedOn(), r.reason().trim());
-        history.save(new ContractHistory(contract.getId(), "Encerrado em " + r.terminatedOn() + ": " + r.reason().trim(), access.user().name()));
-        auditService.record(AuditAction.CONTRACT_TERMINATED, "Contract", id, Map.of("reason", r.reason().trim()));
+        history.save(new ContractHistory(contract.getId(), "Encerrado em " + r.terminatedOn() + ": " + r.reason().trim(), access.user().nome()));
+        auditService.registrar(AcaoAuditoria.CONTRACT_TERMINATED, "Contract", id, Map.of("reason", r.reason().trim()));
         return toResponse(contract, true);
     }
 
     private Contract load(UUID condominiumId, UUID id) {
-        return contracts.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.notFound("Contrato"));
+        return contracts.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Contrato"));
     }
 
     private Response toResponse(Contract c, boolean withHistory) {
@@ -144,7 +144,7 @@ public class ContractService {
         return new Response(c.getId(), c.getSupplier().getId(), c.getSupplier().getName(), c.getTitle(), c.getDescription(),
                 c.getAmount(), c.getPeriodicity(), c.getStartDate(), c.getEndDate(), c.getReadjustmentIndex(),
                 c.getReadjustmentMonth(), c.getNoticeDays(), c.getStatus(), c.isExpiring(today), c.isExpired(today),
-                c.getTerminatedOn(), c.getTerminationReason(), c.getVersion(), h);
+                c.getTerminatedOn(), c.getTerminationReason(), c.getVersao(), h);
     }
 
     private static void diff(List<String> changes, String label, Object before, Object after) {

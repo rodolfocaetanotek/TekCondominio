@@ -8,10 +8,10 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { catchError, finalize, of, switchMap, tap } from 'rxjs';
-import { PageResponse, toProblem } from '../../core/api/api.models';
+import { PaginaResponse, toProblem } from '../../core/api/api.models';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { PageHeader } from '../../shared/ui/page-header';
-import { AUDIT_ACTION_LABELS, AUDIT_ENTITY_LABELS, AuditEntry } from './audit.models';
+import { AUDIT_ACTION_LABELS, AUDIT_ENTITY_LABELS, RegistroAuditoria } from './audit.models';
 import { AuditQuery, AuditService } from './audit.service';
 
 @Component({
@@ -50,11 +50,11 @@ import { AuditQuery, AuditService } from './audit.service';
         @if (error(); as message) {
           <tc-empty-state icon="cloud_off" title="Não foi possível carregar a auditoria" [description]="message" />
         } @else if (result(); as page) {
-          @if (page.totalElements === 0) {
+          @if (page.totalElementos === 0) {
             <tc-empty-state icon="policy" title="Nenhum registro encontrado" />
           } @else {
             <div class="table-scroll">
-              <table mat-table [dataSource]="page.content">
+              <table mat-table [dataSource]="page.conteudo">
                 <caption class="sr-only">Registros de auditoria</caption>
                 <ng-container matColumnDef="when">
                   <th mat-header-cell *matHeaderCellDef>Data/hora</th>
@@ -87,7 +87,7 @@ import { AuditQuery, AuditService } from './audit.service';
                 <tr mat-row *matRowDef="let row; columns: columns"></tr>
               </table>
             </div>
-            <mat-paginator [length]="page.totalElements" [pageIndex]="page.page" [pageSize]="page.size"
+            <mat-paginator [length]="page.totalElementos" [pageIndex]="page.pagina" [pageSize]="page.tamanho"
               [pageSizeOptions]="[25, 50, 100]" (page)="onPage($event)" aria-label="Paginação da auditoria" />
           }
         }
@@ -121,7 +121,7 @@ export class AuditList {
         this.service.list(q).pipe(
           catchError((err: unknown) => {
             this.error.set(toProblem(err).detail);
-            return of<PageResponse<AuditEntry> | null>(null);
+            return of<PaginaResponse<RegistroAuditoria> | null>(null);
           }),
           finalize(() => this.loading.set(false)),
         ),

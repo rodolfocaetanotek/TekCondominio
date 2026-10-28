@@ -14,7 +14,7 @@ import java.util.UUID;
 
 import br.com.tekcondo.condominium.service.CondominiumAccess;
 import br.com.tekcondo.finance.service.FinanceQueries;
-import br.com.tekcondo.identity.access.Permission;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -54,7 +54,7 @@ public class InsightService {
 
     @Transactional(readOnly = true)
     public CashProjection cashProjection(UUID condominiumId, int weeks) {
-        access.require(condominiumId, Permission.FINANCE_VIEW);
+        access.require(condominiumId, Permissao.FINANCE_VIEW);
         LocalDate today = LocalDate.now(clock.withZone(ZONE));
         int horizon = Math.max(1, Math.min(weeks, 26));
         BigDecimal balance = queries.balances(condominiumId, today).values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -88,7 +88,7 @@ public class InsightService {
     /** Despesas pagas nos últimos {@code months} meses encerrados comparadas aos 6 meses anteriores de cada conta. */
     @Transactional(readOnly = true)
     public List<ExpenseAnomaly> expenseAnomalies(UUID condominiumId, int months) {
-        access.require(condominiumId, Permission.FINANCE_VIEW);
+        access.require(condominiumId, Permissao.FINANCE_VIEW);
         YearMonth last = YearMonth.now(clock.withZone(ZONE)).minusMonths(1);
         int span = Math.max(1, Math.min(months, 6));
         YearMonth first = last.minusMonths(span - 1L + HISTORY_MONTHS);

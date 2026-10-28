@@ -1,49 +1,49 @@
-import { Permission } from '../../core/auth/auth.models';
+import { Permissao } from '../../core/auth/auth.models';
 
-export type RoleScope = 'ORGANIZATION' | 'CONDOMINIUM';
+export type EscopoPapel = 'ORGANIZATION' | 'CONDOMINIUM';
 
-export interface RoleOption {
-  code: string;
-  name: string;
-  description?: string;
-  scope: RoleScope;
-  permissions: Permission[];
+export interface PapelOpcao {
+  codigo: string;
+  nome: string;
+  descricao?: string;
+  escopo: EscopoPapel;
+  permissoes: Permissao[];
 }
 
-export interface Assignment {
+export interface Atribuicao {
   id: string;
-  roleCode: string;
-  roleName: string;
-  scope: RoleScope;
-  condominiumId?: string;
-  condominiumName?: string;
+  codigoPapel: string;
+  nomePapel: string;
+  escopo: EscopoPapel;
+  idCondominio?: string;
+  nomeCondominio?: string;
 }
 
-export interface UserSummary {
+export interface UsuarioResumo {
   id: string;
-  name: string;
+  nome: string;
   email: string;
-  active: boolean;
-  pendingInvite: boolean;
-  lastLoginAt?: string;
-  roles: string[];
+  ativo: boolean;
+  convitePendente: boolean;
+  ultimoLoginEm?: string;
+  papeis: string[];
 }
 
-export interface UserDetail {
+export interface UsuarioDetalhe {
   id: string;
-  name: string;
+  nome: string;
   email: string;
-  active: boolean;
-  pendingInvite: boolean;
-  lastLoginAt?: string;
-  createdAt: string;
-  version: number;
-  assignments: Assignment[];
+  ativo: boolean;
+  convitePendente: boolean;
+  ultimoLoginEm?: string;
+  criadoEm: string;
+  versao: number;
+  atribuicoes: Atribuicao[];
 }
 
-export interface AssignmentRequest {
-  roleCode: string;
-  condominiumId: string | null;
+export interface AtribuicaoRequest {
+  codigoPapel: string;
+  idCondominio: string | null;
 }
 
 export interface UserQuery {

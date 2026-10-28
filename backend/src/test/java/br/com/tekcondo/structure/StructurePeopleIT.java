@@ -5,10 +5,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.identity.entity.User;
-import br.com.tekcondo.organization.entity.Organization;
+import br.com.tekcondo.acesso.entity.Usuario;
+import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
-import br.com.tekcondo.support.RecordingMailGateway;
+import br.com.tekcondo.support.GravacaoEmailGateway;
 import br.com.tekcondo.support.TestData;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,18 +34,18 @@ class StructurePeopleIT extends IntegrationTest {
     @Autowired
     JdbcTemplate jdbc;
     @Autowired
-    RecordingMailGateway mail;
+    GravacaoEmailGateway mail;
 
-    Organization org;
+    Administradora org;
     Condominium condo;
     String token;
     String base;
 
     @BeforeEach
     void setUp() {
-        org = data.organization();
+        org = data.administradora();
         condo = data.condominium(org, "Residencial Jatobá");
-        token = TestData.bearer(data.login(data.orgAdmin(org)));
+        token = TestData.bearer(data.login(data.adminAdministradora(org)));
         base = "/api/v1/condominiums/" + condo.getId();
     }
 
@@ -121,9 +121,9 @@ class StructurePeopleIT extends IntegrationTest {
                 .andExpect(jsonPath("$.peopleReused").value(1));
 
         mvc.perform(get(base + "/units").header("Authorization", token).param("search", "101"))
-                .andExpect(jsonPath("$.content[0].label").value("A · 101"))
-                .andExpect(jsonPath("$.content[0].ownerName").value("Ana Souza"))
-                .andExpect(jsonPath("$.content[0].financialResponsibleName").value("Ana Souza"));
+                .andExpect(jsonPath("$.conteudo[0].label").value("A · 101"))
+                .andExpect(jsonPath("$.conteudo[0].ownerName").value("Ana Souza"))
+                .andExpect(jsonPath("$.conteudo[0].financialResponsibleName").value("Ana Souza"));
         mvc.perform(get(base + "/units/fraction-summary").header("Authorization", token))
                 .andExpect(jsonPath("$.balanced").value(true));
     }
@@ -159,13 +159,13 @@ class StructurePeopleIT extends IntegrationTest {
         mvc.perform(get("/api/v1/people").header("Authorization", token).param("search", "529.982"))
                 .andExpect(status().isOk());
         mvc.perform(get("/api/v1/people").header("Authorization", token).param("search", "111444"))
-                .andExpect(jsonPath("$.content[0].name").value("Bruno Lima"));
+                .andExpect(jsonPath("$.conteudo[0].name").value("Bruno Lima"));
     }
 
     @Test
     void portalAccessCreatesLinkedUserWithOwnerRole() throws Exception {
         String unitId = postJson(base + "/units", unit(null, "301", "10"), 201).get("id").asText();
-        String email = TestData.uniqueEmail();
+        String email = TestData.emailUnico();
         String person = postJson("/api/v1/people", Map.of("name", "Dora Dona", "kind", "INDIVIDUAL", "email", email), 201)
                 .get("id").asText();
         postJson("/api/v1/people/" + person + "/portal-access", null, 422); // sem vínculo
@@ -173,7 +173,7 @@ class StructurePeopleIT extends IntegrationTest {
                 "financialResponsible", true, "startDate", "2025-01-01"), 201);
 
         postJson("/api/v1/people/" + person + "/portal-access", null, 200);
-        assertThat(mail.lastTokenFor(email)).isPresent();
+        assertThat(mail.ultimoTokenPara(email)).isPresent();
         assertThat(jdbc.queryForObject("""
                 select r.code from user_role ur join role r on r.id = ur.role_id join app_user u on u.id = ur.user_id
                 where u.person_id = ?::uuid""", String.class, person)).isEqualTo("OWNER");
@@ -188,15 +188,15 @@ class StructurePeopleIT extends IntegrationTest {
         postJson("/api/v1/people", Map.of("name", "Sem Vínculo", "kind", "INDIVIDUAL"), 201);
 
         Condominium other = data.condominium(org, "Outro");
-        User syndic = data.user(org);
-        data.grant(syndic, "SYNDIC", other.getId());
+        Usuario syndic = data.usuario(org);
+        data.conceder(syndic, "SYNDIC", other.getId());
         String syndicToken = TestData.bearer(data.login(syndic));
         mvc.perform(get("/api/v1/people").header("Authorization", syndicToken))
-                .andExpect(jsonPath("$.totalElements").value(0));
+                .andExpect(jsonPath("$.totalElementos").value(0));
         mvc.perform(get(base + "/units").header("Authorization", syndicToken)).andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/people/" + person).header("Authorization", syndicToken)).andExpect(status().isNotFound());
 
-        String foreignToken = TestData.bearer(data.login(data.orgAdmin(data.organization())));
+        String foreignToken = TestData.bearer(data.login(data.adminAdministradora(data.administradora())));
         mvc.perform(get(base + "/units").header("Authorization", foreignToken)).andExpect(status().isNotFound());
         mvc.perform(get("/api/v1/people/" + person).header("Authorization", foreignToken)).andExpect(status().isNotFound());
     }

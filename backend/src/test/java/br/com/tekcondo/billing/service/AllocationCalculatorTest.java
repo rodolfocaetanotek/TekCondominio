@@ -7,7 +7,7 @@ import java.util.UUID;
 
 import br.com.tekcondo.billing.service.AllocationCalculator.Method;
 import br.com.tekcondo.billing.service.AllocationCalculator.Share;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,7 +38,7 @@ class AllocationCalculatorTest {
     void idealFractionRequiresHundredPercent() {
         var units = List.of(new Share(a, new BigDecimal("40")), new Share(b, new BigDecimal("50")));
         assertThatThrownBy(() -> AllocationCalculator.allocate(Method.IDEAL_FRACTION, BigDecimal.TEN, units, null))
-                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getCode()).isEqualTo("FRACTIONS_NOT_BALANCED"));
+                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getCodigo()).isEqualTo("FRACTIONS_NOT_BALANCED"));
     }
 
     @Test

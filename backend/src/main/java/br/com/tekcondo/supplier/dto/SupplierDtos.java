@@ -2,8 +2,8 @@ package br.com.tekcondo.supplier.dto;
 
 import java.util.UUID;
 
-import br.com.tekcondo.shared.validation.CpfCnpj;
-import br.com.tekcondo.shared.validation.Phone;
+import br.com.tekcondo.comum.validation.CpfCnpj;
+import br.com.tekcondo.comum.validation.Telefone;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -18,7 +18,7 @@ public final class SupplierDtos {
             @CpfCnpj String document,
             @Size(max = 80) String category,
             @Email(message = "E-mail inválido.") @Size(max = 254) String email,
-            @Phone String phone,
+            @Telefone String phone,
             @Size(max = 120) String contactName,
             @Size(max = 500) String notes) {
     }

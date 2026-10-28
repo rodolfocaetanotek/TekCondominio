@@ -70,11 +70,11 @@ import { OccurrenceDetail, OccurrenceSummary, OpsApi } from './ops-api';
           <mat-progress-bar [mode]="page() === undefined ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="page() !== undefined" />
           @if (page() === undefined) {
             <span class="sr-only">Carregando ocorrências…</span>
-          } @else if ((page()?.content ?? []).length === 0) {
+          } @else if ((page()?.conteudo ?? []).length === 0) {
             <tc-empty-state icon="build" title="Nenhuma ocorrência" />
           } @else {
             <div class="table-scroll">
-              <table mat-table [dataSource]="page()?.content ?? []">
+              <table mat-table [dataSource]="page()?.conteudo ?? []">
                 <ng-container matColumnDef="number"><th mat-header-cell *matHeaderCellDef>Nº</th><td mat-cell *matCellDef="let o" class="mono">{{ o.number }}</td></ng-container>
                 <ng-container matColumnDef="title"><th mat-header-cell *matHeaderCellDef>Ocorrência</th>
                   <td mat-cell *matCellDef="let o"><span class="title-cell"><strong>{{ o.title }}</strong>
@@ -123,7 +123,7 @@ export class OccurrenceList {
   private readonly source = combineLatest([toObservable(this.context.id), toObservable(this.params)]).pipe(filter(([c]) => !!c));
 
   protected readonly page = toSignal(this.source.pipe(switchMap(([c, p]) => this.api.occurrences(c!, {
-    search: p.search, size: '100', ...(p.status === 'pending' ? { status: ['OPEN', 'IN_PROGRESS', 'WAITING'] } : p.status ? { status: p.status } : {}),
+    search: p.search, tamanho: '100', ...(p.status === 'pending' ? { status: ['OPEN', 'IN_PROGRESS', 'WAITING'] } : p.status ? { status: p.status } : {}),
   }).pipe(catchError(() => of(null))))));
   protected readonly stats = toSignal(this.source.pipe(switchMap(([c]) => this.api.occurrenceStats(c!).pipe(catchError(() => of(null))))));
 
@@ -138,7 +138,7 @@ export class OccurrenceList {
 
   create(): void {
     const c = this.context.id()!;
-    this.structure.units(c, { page: 0, size: 100, active: 'true' }).pipe(map((p) => p.content)).subscribe((units) =>
+    this.structure.units(c, { page: 0, size: 100, active: 'true' }).pipe(map((p) => p.conteudo)).subscribe((units) =>
       openForm<OccurrenceDetail>(this.dialog, {
         title: 'Registrar ocorrência',
         fields: [

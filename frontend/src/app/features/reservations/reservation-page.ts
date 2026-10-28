@@ -185,7 +185,7 @@ export class ReservationPage {
 
   book(): void {
     const c = this.context.id()!;
-    this.structure.units(c, { page: 0, size: 500, active: 'true' }).pipe(map((p) => p.content)).subscribe((units) =>
+    this.structure.units(c, { page: 0, size: 500, active: 'true' }).pipe(map((p) => p.conteudo)).subscribe((units) =>
       openForm(this.dialog, {
         title: 'Nova reserva',
         intro: 'Reservas lançadas pela administração são confirmadas na hora (a antecedência mínima não se aplica).',

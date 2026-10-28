@@ -12,7 +12,7 @@ import { FieldError } from '../../shared/forms/field-error';
 import { applyServerErrors } from '../../shared/forms/server-errors';
 import { AuthCard } from './auth-card';
 import { passwordsMatch } from './password-match';
-import { PasswordService, PasswordTokenInfo } from './password.service';
+import { PasswordService, TokenSenhaInfo } from './password.service';
 
 /**
  * Definição de senha a partir do link enviado por e-mail (convite ou redefinição).
@@ -22,7 +22,7 @@ import { PasswordService, PasswordTokenInfo } from './password.service';
   selector: 'tc-set-password',
   imports: [ReactiveFormsModule, RouterLink, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, MatProgressBarModule, FieldError, AuthCard],
   template: `
-    <tc-auth-card [title]="info()?.purpose === 'INVITE' ? 'Ative seu acesso' : 'Criar nova senha'">
+    <tc-auth-card [title]="info()?.finalidade === 'INVITE' ? 'Ative seu acesso' : 'Criar nova senha'">
       @if (checking()) {
         <mat-progress-bar mode="indeterminate" aria-label="Verificando link" />
       } @else if (invalid(); as message) {
@@ -34,7 +34,7 @@ import { PasswordService, PasswordTokenInfo } from './password.service';
         <a mat-button routerLink="/login" class="wide">Ir para o login</a>
       } @else if (info(); as i) {
         <p class="tc-muted">
-          {{ i.purpose === 'INVITE' ? 'Bem-vindo(a), ' + i.name + '! Crie uma senha para' : 'Defina a nova senha de' }}
+          {{ i.finalidade === 'INVITE' ? 'Bem-vindo(a), ' + i.nome + '! Crie uma senha para' : 'Defina a nova senha de' }}
           <strong>{{ i.email }}</strong>.
         </p>
         @if (error(); as message) {
@@ -44,9 +44,9 @@ import { PasswordService, PasswordTokenInfo } from './password.service';
           <input type="email" [value]="i.email" autocomplete="username" hidden aria-hidden="true" />
           <mat-form-field class="wide">
             <mat-label>Nova senha</mat-label>
-            <input matInput type="password" formControlName="newPassword" autocomplete="new-password" required />
+            <input matInput type="password" formControlName="novaSenha" autocomplete="new-password" required />
             <mat-hint>Mínimo de 10 caracteres, com letras e números.</mat-hint>
-            <mat-error><tc-field-error [control]="form.controls.newPassword" /></mat-error>
+            <mat-error><tc-field-error [control]="form.controls.novaSenha" /></mat-error>
           </mat-form-field>
           <mat-form-field class="wide">
             <mat-label>Confirme a nova senha</mat-label>
@@ -76,16 +76,16 @@ export class SetPassword implements OnInit {
   private token = '';
   protected readonly checking = signal(true);
   protected readonly saving = signal(false);
-  protected readonly info = signal<PasswordTokenInfo | null>(null);
+  protected readonly info = signal<TokenSenhaInfo | null>(null);
   protected readonly invalid = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
 
   protected readonly form = inject(FormBuilder).nonNullable.group(
     {
-      newPassword: ['', [Validators.required]],
+      novaSenha: ['', [Validators.required]],
       confirm: ['', [Validators.required]],
     },
-    { validators: passwordsMatch('newPassword', 'confirm') },
+    { validators: passwordsMatch('novaSenha', 'confirm') },
   );
 
   ngOnInit(): void {
@@ -115,7 +115,7 @@ export class SetPassword implements OnInit {
     if (this.form.invalid || this.saving()) return;
     this.saving.set(true);
     this.error.set(null);
-    this.service.reset(this.token, this.form.controls.newPassword.value).subscribe({
+    this.service.reset(this.token, this.form.controls.novaSenha.value).subscribe({
       next: () => {
         this.notify.success('Senha definida. Entre com seu e-mail e a nova senha.');
         void this.router.navigate(['/login']);
@@ -123,9 +123,9 @@ export class SetPassword implements OnInit {
       error: (err: unknown) => {
         this.saving.set(false);
         const problem = toProblem(err);
-        if (problem.code === 'INVALID_LINK') {
+        if (problem.codigo === 'INVALID_LINK') {
           this.invalid.set(problem.detail);
-        } else if (problem.code === 'VALIDATION_ERROR') {
+        } else if (problem.codigo === 'VALIDATION_ERROR') {
           const rest = applyServerErrors(this.form, problem);
           if (rest.length) this.error.set(rest.join(' '));
         } else {

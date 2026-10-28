@@ -33,11 +33,11 @@ import { FinanceApi, Supplier } from './finance-api';
       <section class="tc-table-card" aria-live="polite">
         @if (page() === undefined) {
           <mat-progress-bar mode="indeterminate" />
-        } @else if ((page()?.content ?? []).length === 0) {
+        } @else if ((page()?.conteudo ?? []).length === 0) {
           <tc-empty-state icon="storefront" title="Nenhum fornecedor" />
         } @else {
           <div class="table-scroll">
-            <table mat-table [dataSource]="page()?.content ?? []">
+            <table mat-table [dataSource]="page()?.conteudo ?? []">
               <ng-container matColumnDef="name"><th mat-header-cell *matHeaderCellDef>Fornecedor</th>
                 <td mat-cell *matCellDef="let s"><strong>{{ s.name }}</strong><br /><span class="tc-muted">{{ s.document ? (s.document | doc: 'cpfCnpj') : '' }}</span></td></ng-container>
               <ng-container matColumnDef="category"><th mat-header-cell *matHeaderCellDef>Categoria</th><td mat-cell *matCellDef="let s">{{ s.category ?? '—' }}</td></ng-container>

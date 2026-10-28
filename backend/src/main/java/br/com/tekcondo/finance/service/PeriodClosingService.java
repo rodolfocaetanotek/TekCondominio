@@ -11,16 +11,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import br.com.tekcondo.audit.service.AuditAction;
-import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.auditoria.service.AcaoAuditoria;
+import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.condominium.entity.Condominium;
 import br.com.tekcondo.condominium.service.CondominiumAccess;
 import br.com.tekcondo.finance.entity.BankAccount;
 import br.com.tekcondo.finance.entity.PeriodClosing;
 import br.com.tekcondo.finance.repository.BankAccountRepository;
 import br.com.tekcondo.finance.repository.PeriodClosingRepository;
-import br.com.tekcondo.identity.access.Permission;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
+import br.com.tekcondo.comum.exception.ApiException;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -67,12 +67,12 @@ public class PeriodClosingService {
     private final FinanceQueries queries;
     private final NamedParameterJdbcTemplate jdbc;
     private final CondominiumAccess access;
-    private final AuditService auditService;
+    private final AuditoriaService auditService;
     private final Clock clock;
 
     public PeriodClosingService(PeriodLock lock, PeriodClosingRepository closings, BankAccountRepository bankAccounts,
                                 FinanceQueries queries, NamedParameterJdbcTemplate jdbc, CondominiumAccess access,
-                                AuditService auditService, Clock clock) {
+                                AuditoriaService auditService, Clock clock) {
         this.lock = lock;
         this.closings = closings;
         this.bankAccounts = bankAccounts;
@@ -85,7 +85,7 @@ public class PeriodClosingService {
 
     @Transactional(readOnly = true)
     public Status status(UUID condominiumId) {
-        access.require(condominiumId, Permission.FINANCE_VIEW);
+        access.require(condominiumId, Permissao.FINANCE_VIEW);
         LocalDate closed = lock.closedUntil(condominiumId);
         LocalDate lastEnded = LocalDate.now(clock).withDayOfMonth(1).minusDays(1);
         LocalDate suggested = closed == null ? lastEnded : endOfMonth(closed.plusDays(1));
@@ -95,23 +95,23 @@ public class PeriodClosingService {
 
     @Transactional(readOnly = true)
     public ClosingCheck check(UUID condominiumId, LocalDate until) {
-        access.require(condominiumId, Permission.FINANCE_VIEW);
+        access.require(condominiumId, Permissao.FINANCE_VIEW);
         return buildCheck(condominiumId, lock.closedUntil(condominiumId), until);
     }
 
     @Transactional
     public Status close(UUID condominiumId, CloseRequest request) {
-        Condominium condominium = access.requireActive(condominiumId, Permission.FINANCE_CLOSE);
+        Condominium condominium = access.requireActive(condominiumId, Permissao.FINANCE_CLOSE);
         LocalDate until = request.until();
         if (!until.equals(endOfMonth(until))) {
-            throw ApiException.badRequest("CLOSING_NOT_MONTH_END", "O fechamento é mensal: informe o último dia do mês.");
+            throw ApiException.requisicaoInvalida("CLOSING_NOT_MONTH_END", "O fechamento é mensal: informe o último dia do mês.");
         }
         if (!until.isBefore(LocalDate.now(clock).withDayOfMonth(1))) {
-            throw ApiException.businessRule("CLOSING_MONTH_NOT_ENDED", "Só é possível fechar meses já encerrados.");
+            throw ApiException.regraNegocio("CLOSING_MONTH_NOT_ENDED", "Só é possível fechar meses já encerrados.");
         }
         LocalDate previous = lock.lockForClosing(condominiumId);
         if (previous != null && !until.isAfter(previous)) {
-            throw ApiException.conflict("PERIOD_ALREADY_CLOSED", "O período até " + previous + " já está fechado.");
+            throw ApiException.conflito("PERIOD_ALREADY_CLOSED", "O período até " + previous + " já está fechado.");
         }
         ClosingCheck check = buildCheck(condominiumId, previous, until);
         Map<String, Object> snapshot = new LinkedHashMap<>();
@@ -125,30 +125,30 @@ public class PeriodClosingService {
                 "balance", b.balance().toPlainString(), "reconciled", b.reconciledBalance().toPlainString())).toList());
         var user = access.user();
         PeriodClosing closing = closings.save(new PeriodClosing(condominium.getOrganizationId(), condominiumId,
-                PeriodClosing.Action.CLOSE, until, previous, blank(request.notes()), snapshot, user.userId(), user.name()));
+                PeriodClosing.Action.CLOSE, until, previous, blank(request.notes()), snapshot, user.idUsuario(), user.nome()));
         lock.setClosedUntil(condominiumId, until);
-        auditService.record(AuditAction.PERIOD_CLOSED, "Condominium", condominiumId, Map.of("until", until.toString(),
+        auditService.registrar(AcaoAuditoria.PERIOD_CLOSED, "Condominium", condominiumId, Map.of("until", until.toString(),
                 "previous", String.valueOf(previous), "closingId", closing.getId().toString()));
         return status(condominiumId);
     }
 
     @Transactional
     public Status reopen(UUID condominiumId, ReopenRequest request) {
-        Condominium condominium = access.require(condominiumId, Permission.FINANCE_CLOSE);
+        Condominium condominium = access.require(condominiumId, Permissao.FINANCE_CLOSE);
         LocalDate current = lock.lockForClosing(condominiumId);
         if (current == null) {
-            throw ApiException.businessRule("NOTHING_CLOSED", "Não há período fechado para reabrir.");
+            throw ApiException.regraNegocio("NOTHING_CLOSED", "Não há período fechado para reabrir.");
         }
         LocalDate until = request.until();
         if (until != null && (!until.equals(endOfMonth(until)) || !until.isBefore(current))) {
-            throw ApiException.badRequest("INVALID_REOPEN_DATE",
+            throw ApiException.requisicaoInvalida("INVALID_REOPEN_DATE",
                     "Informe o último dia de um mês anterior ao fechamento atual (ou deixe em branco para reabrir tudo).");
         }
         var user = access.user();
         closings.save(new PeriodClosing(condominium.getOrganizationId(), condominiumId, PeriodClosing.Action.REOPEN, until, current,
-                request.reason().trim(), null, user.userId(), user.name()));
+                request.reason().trim(), null, user.idUsuario(), user.nome()));
         lock.setClosedUntil(condominiumId, until);
-        auditService.record(AuditAction.PERIOD_REOPENED, "Condominium", condominiumId, Map.of("from", current.toString(),
+        auditService.registrar(AcaoAuditoria.PERIOD_REOPENED, "Condominium", condominiumId, Map.of("from", current.toString(),
                 "to", String.valueOf(until), "reason", request.reason().trim()));
         return status(condominiumId);
     }

@@ -13,13 +13,13 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { catchError, debounceTime, distinctUntilChanged, filter, finalize, map, of, switchMap, tap } from 'rxjs';
-import { PageResponse, toProblem } from '../../core/api/api.models';
+import { PaginaResponse, toProblem } from '../../core/api/api.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotificationService } from '../../core/notify/notification.service';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { PageHeader } from '../../shared/ui/page-header';
 import { UserCreateDialog } from './user-create-dialog';
-import { UserDetail, UserQuery, UserSummary } from './user.models';
+import { UsuarioDetalhe, UserQuery, UsuarioResumo } from './user.models';
 import { UserService } from './user.service';
 
 @Component({
@@ -67,11 +67,11 @@ import { UserService } from './user.service';
         @if (error(); as message) {
           <tc-empty-state icon="cloud_off" title="Não foi possível carregar os usuários" [description]="message" />
         } @else if (result(); as page) {
-          @if (page.totalElements === 0) {
+          @if (page.totalElementos === 0) {
             <tc-empty-state icon="group" title="Nenhum usuário encontrado" />
           } @else {
             <div class="table-scroll">
-              <table mat-table [dataSource]="page.content">
+              <table mat-table [dataSource]="page.conteudo">
                 <caption class="sr-only">Usuários</caption>
                 <ng-container matColumnDef="name">
                   <th mat-header-cell *matHeaderCellDef>Usuário</th>
@@ -105,7 +105,7 @@ import { UserService } from './user.service';
                   [attr.aria-label]="'Abrir ' + row.name" (click)="open(row)" (keydown.enter)="open(row)"></tr>
               </table>
             </div>
-            <mat-paginator [length]="page.totalElements" [pageIndex]="page.page" [pageSize]="page.size"
+            <mat-paginator [length]="page.totalElementos" [pageIndex]="page.pagina" [pageSize]="page.tamanho"
               [pageSizeOptions]="[20, 50, 100]" (page)="onPage($event)" aria-label="Paginação de usuários" />
           }
         }
@@ -140,7 +140,7 @@ export class UserList {
         this.service.list(q).pipe(
           catchError((err: unknown) => {
             this.error.set(toProblem(err).detail);
-            return of<PageResponse<UserSummary> | null>(null);
+            return of<PaginaResponse<UsuarioResumo> | null>(null);
           }),
           finalize(() => this.loading.set(false)),
         ),
@@ -158,23 +158,23 @@ export class UserList {
       .subscribe((active) => this.query.update((q) => ({ ...q, active, page: 0 })));
   }
 
-  rolesOf(u: UserSummary): string {
-    return u.roles.length ? u.roles.join(', ') : '—';
+  rolesOf(u: UsuarioResumo): string {
+    return u.papeis.length ? u.papeis.join(', ') : '—';
   }
 
   onPage(event: PageEvent): void {
     this.query.update((q) => ({ ...q, page: event.pageIndex, size: event.pageSize }));
   }
 
-  open(u: UserSummary): void {
+  open(u: UsuarioResumo): void {
     void this.router.navigate(['/usuarios', u.id]);
   }
 
   create(): void {
     this.dialog
-      .open<UserCreateDialog, void, UserDetail>(UserCreateDialog, { width: '680px', maxWidth: '95vw' })
+      .open<UserCreateDialog, void, UsuarioDetalhe>(UserCreateDialog, { width: '680px', maxWidth: '95vw' })
       .afterClosed()
-      .pipe(filter((u): u is UserDetail => !!u))
+      .pipe(filter((u): u is UsuarioDetalhe => !!u))
       .subscribe((u) => {
         this.notify.success(`Convite enviado para ${u.email}.`);
         void this.router.navigate(['/usuarios', u.id]);

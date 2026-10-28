@@ -125,7 +125,7 @@ export class UnitDialog {
         error: (err: unknown) => {
           this.saving.set(false);
           const p = toProblem(err);
-          const rest = p.code === 'VALIDATION_ERROR' ? applyServerErrors(this.form, p) : [p.detail];
+          const rest = p.codigo === 'VALIDATION_ERROR' ? applyServerErrors(this.form, p) : [p.detail];
           if (rest.length) this.error.set(rest.join(' '));
         },
       });

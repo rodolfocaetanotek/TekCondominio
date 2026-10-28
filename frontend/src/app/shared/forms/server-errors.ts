@@ -7,13 +7,13 @@ import { ApiProblem } from '../../core/api/api.models';
  */
 export function applyServerErrors(form: FormGroup, problem: ApiProblem): string[] {
   const unmatched: string[] = [];
-  for (const error of problem.errors ?? []) {
-    const control: AbstractControl | null = form.get(error.field);
+  for (const error of problem.erros ?? []) {
+    const control: AbstractControl | null = form.get(error.campo);
     if (control) {
-      control.setErrors({ ...(control.errors ?? {}), server: error.message });
+      control.setErrors({ ...(control.errors ?? {}), server: error.mensagem });
       control.markAsTouched();
     } else {
-      unmatched.push(error.message);
+      unmatched.push(error.mensagem);
     }
   }
   return unmatched;

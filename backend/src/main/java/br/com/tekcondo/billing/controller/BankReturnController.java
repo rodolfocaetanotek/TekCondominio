@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import br.com.tekcondo.billing.service.BankReturnService;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -38,7 +38,7 @@ public class BankReturnController {
         try {
             return ResponseEntity.status(201).body(service.process(c, bankAccountId, file.getOriginalFilename(), file.getBytes()));
         } catch (IOException e) {
-            throw ApiException.badRequest("UPLOAD_FAILED", "Não foi possível ler o arquivo enviado.");
+            throw ApiException.requisicaoInvalida("UPLOAD_FAILED", "Não foi possível ler o arquivo enviado.");
         }
     }
 

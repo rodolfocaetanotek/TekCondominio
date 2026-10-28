@@ -157,11 +157,11 @@ export class CondominiumForm implements OnInit {
       error: (err: unknown) => {
         this.saving.set(false);
         const problem = toProblem(err);
-        if (problem.code === 'STALE_VERSION') {
+        if (problem.codigo === 'STALE_VERSION') {
           this.stale.set(true);
-        } else if (problem.code === 'CONDOMINIUM_CNPJ_TAKEN') {
+        } else if (problem.codigo === 'CONDOMINIUM_CNPJ_TAKEN') {
           this.form.controls.cnpj.setErrors({ server: problem.detail });
-        } else if (problem.code === 'VALIDATION_ERROR') {
+        } else if (problem.codigo === 'VALIDATION_ERROR') {
           const rest = applyServerErrors(this.form, problem);
           this.formError.set(rest.length ? rest.join(' ') : problem.detail);
         } else if (problem.status !== 403 && problem.status !== 0 && problem.status < 500) {

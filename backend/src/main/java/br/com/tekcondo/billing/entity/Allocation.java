@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 import br.com.tekcondo.billing.service.AllocationCalculator;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -104,7 +104,7 @@ public class Allocation {
 
     public void cancel(String reason, UUID by, Instant now) {
         if (status == Status.CANCELLED) {
-            throw ApiException.businessRule("ALLOCATION_ALREADY_CANCELLED", "O rateio já está cancelado.");
+            throw ApiException.regraNegocio("ALLOCATION_ALREADY_CANCELLED", "O rateio já está cancelado.");
         }
         status = Status.CANCELLED;
         cancelReason = reason;

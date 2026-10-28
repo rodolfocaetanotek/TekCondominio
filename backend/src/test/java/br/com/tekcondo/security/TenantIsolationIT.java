@@ -6,8 +6,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.identity.entity.User;
-import br.com.tekcondo.organization.entity.Organization;
+import br.com.tekcondo.acesso.entity.Usuario;
+import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
 import br.com.tekcondo.support.TestData;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,26 +32,26 @@ class TenantIsolationIT extends IntegrationTest {
     @Autowired
     JdbcTemplate jdbc;
 
-    Organization orgA;
-    Organization orgB;
+    Administradora orgA;
+    Administradora orgB;
     Condominium condoB;
     String tokenA;
 
     @BeforeEach
     void setUp() {
-        orgA = data.organization();
-        orgB = data.organization();
+        orgA = data.administradora();
+        orgB = data.administradora();
         data.condominium(orgA, "Condomínio da A");
         condoB = data.condominium(orgB, "Condomínio da B");
-        tokenA = TestData.bearer(data.login(data.orgAdmin(orgA)));
+        tokenA = TestData.bearer(data.login(data.adminAdministradora(orgA)));
     }
 
     @Test
     void listNeverIncludesOtherOrganizationsData() throws Exception {
-        mvc.perform(get("/api/v1/condominiums").header("Authorization", tokenA).param("size", "100"))
+        mvc.perform(get("/api/v1/condominiums").header("Authorization", tokenA).param("tamanho", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[*].name", hasItem("Condomínio da A")))
-                .andExpect(jsonPath("$.content[*].id", not(hasItem(condoB.getId().toString()))));
+                .andExpect(jsonPath("$.conteudo[*].name", hasItem("Condomínio da A")))
+                .andExpect(jsonPath("$.conteudo[*].id", not(hasItem(condoB.getId().toString()))));
     }
 
     @Test
@@ -73,17 +73,17 @@ class TenantIsolationIT extends IntegrationTest {
 
     @Test
     void auditTrailIsScopedToOwnOrganization() throws Exception {
-        String tokenB = TestData.bearer(data.login(data.orgAdmin(orgB)));
-        mvc.perform(get("/api/v1/audit").header("Authorization", tokenA).param("size", "100"))
+        String tokenB = TestData.bearer(data.login(data.adminAdministradora(orgB)));
+        mvc.perform(get("/api/v1/auditoria").header("Authorization", tokenA).param("tamanho", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[*].entityId", not(hasItem(condoB.getId().toString()))));
-        mvc.perform(get("/api/v1/audit").header("Authorization", tokenB))
+                .andExpect(jsonPath("$.conteudo[*].idEntidade", not(hasItem(condoB.getId().toString()))));
+        mvc.perform(get("/api/v1/auditoria").header("Authorization", tokenB))
                 .andExpect(status().isOk());
     }
 
     @Test
     void databaseRejectsRoleAssignmentToCondominiumOfAnotherOrganization() {
-        User userA = data.user(orgA);
+        Usuario userA = data.usuario(orgA);
         // FK composta (condominium_id, organization_id): o condomínio da B não pertence à organização A.
         assertThatThrownBy(() -> jdbc.update("""
                         insert into user_role (id, user_id, role_id, organization_id, condominium_id, created_at)
@@ -94,7 +94,7 @@ class TenantIsolationIT extends IntegrationTest {
 
     @Test
     void databaseRejectsAssigningUserToAnotherOrganization() {
-        User userA = data.user(orgA);
+        Usuario userA = data.usuario(orgA);
         assertThatThrownBy(() -> jdbc.update("""
                         insert into user_role (id, user_id, role_id, organization_id, condominium_id, created_at)
                         values (?, ?, '10000000-0000-0000-0000-000000000001', ?, null, ?)""",

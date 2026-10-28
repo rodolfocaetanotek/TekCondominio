@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -75,7 +75,7 @@ public class Announcement {
                         UUID buildingId, UUID unitId, boolean pinned, boolean sendEmail, LocalDate expiresOn,
                         Instant publishedAt, UUID createdBy, String createdByName) {
         if (audience == Audience.BUILDING && buildingId == null || audience == Audience.UNIT && unitId == null) {
-            throw ApiException.badRequest("AUDIENCE_TARGET_REQUIRED", "Informe o bloco ou a unidade de destino.");
+            throw ApiException.requisicaoInvalida("AUDIENCE_TARGET_REQUIRED", "Informe o bloco ou a unidade de destino.");
         }
         this.organizationId = organizationId;
         this.condominiumId = condominiumId;
@@ -94,7 +94,7 @@ public class Announcement {
 
     public void archive(Instant now) {
         if (archivedAt != null) {
-            throw ApiException.businessRule("ANNOUNCEMENT_ARCHIVED", "O comunicado já está arquivado.");
+            throw ApiException.regraNegocio("ANNOUNCEMENT_ARCHIVED", "O comunicado já está arquivado.");
         }
         archivedAt = now;
         pinned = false;

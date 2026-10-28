@@ -6,8 +6,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.exception.ApiException;
-import br.com.tekcondo.shared.persistence.AuditableEntity;
+import br.com.tekcondo.comum.exception.ApiException;
+import br.com.tekcondo.comum.persistence.AuditableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -114,7 +114,7 @@ public class Reservation extends AuditableEntity {
 
     public void decide(boolean approved, String note, UUID by, Instant now) {
         if (status != Status.PENDING) {
-            throw ApiException.businessRule("RESERVATION_NOT_PENDING", "A reserva não está aguardando aprovação.");
+            throw ApiException.regraNegocio("RESERVATION_NOT_PENDING", "A reserva não está aguardando aprovação.");
         }
         status = approved ? Status.CONFIRMED : Status.REJECTED;
         decisionNote = note;
@@ -124,7 +124,7 @@ public class Reservation extends AuditableEntity {
 
     public void cancel(String reason, Instant now) {
         if (!status.isActive()) {
-            throw ApiException.businessRule("RESERVATION_NOT_ACTIVE", "A reserva já está cancelada ou foi recusada.");
+            throw ApiException.regraNegocio("RESERVATION_NOT_ACTIVE", "A reserva já está cancelada ou foi recusada.");
         }
         status = Status.CANCELLED;
         cancelReason = reason;

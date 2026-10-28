@@ -7,7 +7,7 @@ import br.com.tekcondo.condominium.dto.CondominiumResponse;
 import br.com.tekcondo.condominium.dto.CondominiumSummary;
 import br.com.tekcondo.condominium.entity.Address;
 import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.shared.validation.BrazilianDocuments;
+import br.com.tekcondo.comum.validation.DocumentosBrasileiros;
 import org.springframework.stereotype.Component;
 
 /** Conversão entidade ↔ DTO e normalização de entradas (máscaras removidas, textos aparados). */
@@ -20,7 +20,7 @@ public class CondominiumMapper {
                 : new AddressDto(a.zipCode(), a.street(), a.number(), a.complement(), a.district(), a.city(), a.state());
         return new CondominiumResponse(c.getId(), c.getName(), c.getLegalName(), c.getCnpj(), c.getType(), address,
                 c.getEmail(), c.getPhone(), c.getStatus(), c.getInactivatedAt(), c.getInactivationReason(),
-                c.getCreatedAt(), c.getUpdatedAt(), c.getVersion());
+                c.getCriadoEm(), c.getAtualizadoEm(), c.getVersao());
     }
 
     public CondominiumSummary toSummary(Condominium c) {
@@ -33,7 +33,7 @@ public class CondominiumMapper {
         if (dto == null) {
             return null;
         }
-        Address address = new Address(BrazilianDocuments.digitsOnly(dto.zipCode()), trim(dto.street()),
+        Address address = new Address(DocumentosBrasileiros.somenteDigitos(dto.zipCode()), trim(dto.street()),
                 trim(dto.number()), trim(dto.complement()), trim(dto.district()), trim(dto.city()),
                 dto.state() == null || dto.state().isBlank() ? null : dto.state().trim().toUpperCase(Locale.ROOT));
         boolean empty = address.zipCode() == null && address.street() == null && address.number() == null

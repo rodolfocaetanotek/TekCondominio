@@ -10,12 +10,12 @@ describe('applyServerErrors', () => {
 
     const rest = applyServerErrors(form, {
       status: 400,
-      code: 'VALIDATION_ERROR',
+      codigo: 'VALIDATION_ERROR',
       detail: 'Há campos inválidos.',
-      errors: [
-        { field: 'cnpj', message: 'CNPJ inválido.' },
-        { field: 'address.zipCode', message: 'CEP inválido.' },
-        { field: 'inexistente', message: 'Erro geral.' },
+      erros: [
+        { campo: 'cnpj', mensagem: 'CNPJ inválido.' },
+        { campo: 'address.zipCode', mensagem: 'CEP inválido.' },
+        { campo: 'inexistente', mensagem: 'Erro geral.' },
       ],
     });
 

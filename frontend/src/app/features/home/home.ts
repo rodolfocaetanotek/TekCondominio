@@ -35,7 +35,7 @@ export class Home {
   protected readonly scope = new FormControl('', { nonNullable: true });
   protected readonly from = new FormControl(todayIso().slice(0, 8) + '01', { nonNullable: true });
   protected readonly to = new FormControl(todayIso(), { nonNullable: true });
-  protected readonly firstName = computed(() => this.auth.user()?.name.split(' ')[0] ?? '');
+  protected readonly firstName = computed(() => this.auth.user()?.nome.split(' ')[0] ?? '');
 
   protected readonly data = toSignal(
     combineLatest([

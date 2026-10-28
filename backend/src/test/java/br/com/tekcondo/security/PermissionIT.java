@@ -3,8 +3,8 @@ package br.com.tekcondo.security;
 import java.util.Map;
 
 import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.identity.entity.User;
-import br.com.tekcondo.organization.entity.Organization;
+import br.com.tekcondo.acesso.entity.Usuario;
+import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
 import br.com.tekcondo.support.TestData;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,20 +21,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** Permissões por papel e por condomínio, sempre verificadas no backend. */
 class PermissionIT extends IntegrationTest {
 
-    Organization org;
+    Administradora org;
     Condominium mine;
     Condominium other;
 
     @BeforeEach
     void setUp() {
-        org = data.organization();
+        org = data.administradora();
         mine = data.condominium(org, "Condomínio do Síndico");
         other = data.condominium(org, "Outro Condomínio");
     }
 
     private String syndicToken() {
-        User syndic = data.user(org);
-        data.grant(syndic, "SYNDIC", mine.getId());
+        Usuario syndic = data.usuario(org);
+        data.conceder(syndic, "SYNDIC", mine.getId());
         return TestData.bearer(data.login(syndic));
     }
 
@@ -44,12 +44,12 @@ class PermissionIT extends IntegrationTest {
 
         mvc.perform(get("/api/v1/condominiums").header("Authorization", token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content", hasSize(1)))
-                .andExpect(jsonPath("$.content[0].id").value(mine.getId().toString()));
+                .andExpect(jsonPath("$.conteudo", hasSize(1)))
+                .andExpect(jsonPath("$.conteudo[0].id").value(mine.getId().toString()));
 
         mvc.perform(get("/api/v1/condominiums/" + other.getId()).header("Authorization", token))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+                .andExpect(jsonPath("$.codigo").value("FORBIDDEN"));
 
         Map<String, Object> body = Map.of("name", "Nome Atualizado", "type", "MIXED", "version", 0);
         mvc.perform(put("/api/v1/condominiums/" + mine.getId()).header("Authorization", token)
@@ -75,16 +75,16 @@ class PermissionIT extends IntegrationTest {
 
     @Test
     void userWithoutAnyRoleIsForbidden() throws Exception {
-        String token = TestData.bearer(data.login(data.user(org)));
+        String token = TestData.bearer(data.login(data.usuario(org)));
 
         mvc.perform(get("/api/v1/condominiums").header("Authorization", token)).andExpect(status().isForbidden());
-        mvc.perform(get("/api/v1/audit").header("Authorization", token)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/auditoria").header("Authorization", token)).andExpect(status().isForbidden());
     }
 
     @Test
     void residentRoleHasNoAdministrativeAccess() throws Exception {
-        User resident = data.user(org);
-        data.grant(resident, "RESIDENT", mine.getId());
+        Usuario resident = data.usuario(org);
+        data.conceder(resident, "RESIDENT", mine.getId());
         String token = TestData.bearer(data.login(resident));
 
         mvc.perform(get("/api/v1/condominiums/" + mine.getId()).header("Authorization", token))
@@ -93,14 +93,14 @@ class PermissionIT extends IntegrationTest {
 
     @Test
     void organizationAdminCannotManageOrganizations() throws Exception {
-        String token = TestData.bearer(data.login(data.orgAdmin(org)));
+        String token = TestData.bearer(data.login(data.adminAdministradora(org)));
 
-        mvc.perform(get("/api/v1/organizations").header("Authorization", token)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/administradoras").header("Authorization", token)).andExpect(status().isForbidden());
     }
 
     @Test
     void platformAdminHasNoAccessToTenantData() throws Exception {
-        String token = TestData.bearer(data.login(data.platformAdmin()));
+        String token = TestData.bearer(data.login(data.administradorPlataforma()));
 
         mvc.perform(get("/api/v1/condominiums").header("Authorization", token)).andExpect(status().isForbidden());
     }

@@ -26,10 +26,10 @@ import br.com.tekcondo.condominium.repository.CondominiumRepository;
 import br.com.tekcondo.document.entity.Document;
 import br.com.tekcondo.document.repository.DocumentRepository;
 import br.com.tekcondo.document.service.DocumentService;
-import br.com.tekcondo.identity.access.AccessService;
-import br.com.tekcondo.identity.access.Permission;
-import br.com.tekcondo.identity.entity.User;
-import br.com.tekcondo.identity.repository.UserRepository;
+import br.com.tekcondo.acesso.autorizacao.AcessoService;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
+import br.com.tekcondo.acesso.entity.Usuario;
+import br.com.tekcondo.acesso.repository.UsuarioRepository;
 import br.com.tekcondo.occurrence.Occurrence;
 import br.com.tekcondo.occurrence.OccurrenceInteraction;
 import br.com.tekcondo.occurrence.OccurrenceInteractionRepository;
@@ -39,9 +39,9 @@ import br.com.tekcondo.people.entity.Occupancy;
 import br.com.tekcondo.people.repository.OccupancyRepository;
 import br.com.tekcondo.reservation.ReservationService;
 import br.com.tekcondo.visitor.VisitorService;
-import br.com.tekcondo.shared.exception.ApiException;
-import br.com.tekcondo.shared.security.CurrentUser;
-import br.com.tekcondo.shared.security.CurrentUserProvider;
+import br.com.tekcondo.comum.exception.ApiException;
+import br.com.tekcondo.comum.security.UsuarioAtual;
+import br.com.tekcondo.comum.security.UsuarioAtualProvider;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -73,16 +73,16 @@ public class PortalService {
                                Assembly.Status status, String minutes) {
     }
 
-    private record Ctx(CurrentUser user, User account, Condominium condominium, List<Occupancy> occupancies) {
+    private record Ctx(UsuarioAtual user, Usuario account, Condominium condominium, List<Occupancy> occupancies) {
 
         Set<UUID> unitIds() {
             return occupancies.stream().map(o -> o.getUnit().getId()).collect(Collectors.toSet());
         }
     }
 
-    private final CurrentUserProvider currentUserProvider;
-    private final UserRepository users;
-    private final AccessService accessService;
+    private final UsuarioAtualProvider currentUserProvider;
+    private final UsuarioRepository users;
+    private final AcessoService accessService;
     private final CondominiumRepository condominiums;
     private final OccupancyRepository occupancies;
     private final CollectionService collection;
@@ -98,7 +98,7 @@ public class PortalService {
     private final VisitorService visitors;
     private final Clock clock;
 
-    public PortalService(CurrentUserProvider currentUserProvider, UserRepository users, AccessService accessService,
+    public PortalService(UsuarioAtualProvider currentUserProvider, UsuarioRepository users, AcessoService accessService,
                          CondominiumRepository condominiums, OccupancyRepository occupancies, CollectionService collection,
                          AnnouncementRepository announcements, AnnouncementService announcementService,
                          DocumentRepository documents, DocumentService documentService, OccurrenceRepository occurrences,
@@ -125,16 +125,16 @@ public class PortalService {
 
     @Transactional(readOnly = true)
     public Me me() {
-        CurrentUser user = currentUserProvider.requireOrganizationMember();
-        User account = linkedAccount(user);
+        UsuarioAtual user = currentUserProvider.exigirMembroAdministradora();
+        Usuario account = linkedAccount(user);
         List<PortalCondominium> list = new ArrayList<>();
-        for (UUID condoId : accessService.currentGrants().byCondominium().entrySet().stream()
-                .filter(e -> e.getValue().contains(Permission.PORTAL_ACCESS)).map(Map.Entry::getKey).toList()) {
-            condominiums.findByIdAndOrganizationId(condoId, user.organizationId()).ifPresent(c -> list.add(new PortalCondominium(
-                    c.getId(), c.getName(), occupancies.findCurrentByPersonInCondominium(account.getPersonId(), c.getId()).stream()
+        for (UUID condoId : accessService.concessoesAtuais().porCondominio().entrySet().stream()
+                .filter(e -> e.getValue().contains(Permissao.PORTAL_ACCESS)).map(Map.Entry::getKey).toList()) {
+            condominiums.findByIdAndOrganizationId(condoId, user.idAdministradora()).ifPresent(c -> list.add(new PortalCondominium(
+                    c.getId(), c.getName(), occupancies.findCurrentByPersonInCondominium(account.getIdPessoa(), c.getId()).stream()
                     .map(this::toUnit).sorted(Comparator.comparing(PortalUnit::label)).toList())));
         }
-        return new Me(account.getName(), account.getEmail(), list);
+        return new Me(account.getNome(), account.getEmail(), list);
     }
 
     @Transactional(readOnly = true)
@@ -163,7 +163,7 @@ public class PortalService {
                 .filter(a -> a.getAudience() == Announcement.Audience.ALL
                         || a.getAudience() == Announcement.Audience.BUILDING && buildings.contains(a.getBuildingId())
                         || a.getAudience() == Announcement.Audience.UNIT && ctx.unitIds().contains(a.getUnitId()))
-                .map(a -> announcementService.toResponse(a, null, announcements.isRead(a.getId(), ctx.user().userId())))
+                .map(a -> announcementService.toResponse(a, null, announcements.isRead(a.getId(), ctx.user().idUsuario())))
                 .toList();
     }
 
@@ -171,9 +171,9 @@ public class PortalService {
     public void markAnnouncementRead(UUID condominiumId, UUID id) {
         Ctx ctx = ctx(condominiumId);
         if (announcements(condominiumId).stream().noneMatch(a -> a.id().equals(id))) {
-            throw ApiException.notFound("Comunicado");
+            throw ApiException.naoEncontrado("Comunicado");
         }
-        announcements.markRead(id, ctx.user().userId(), Instant.now(clock));
+        announcements.markRead(id, ctx.user().idUsuario(), Instant.now(clock));
     }
 
     @Transactional(readOnly = true)
@@ -186,7 +186,7 @@ public class PortalService {
     public DocumentService.FileContent download(UUID condominiumId, UUID id) {
         Ctx ctx = ctx(condominiumId);
         Document d = visibleDocuments(ctx).stream().filter(x -> x.getId().equals(id)).findFirst()
-                .orElseThrow(() -> ApiException.notFound("Documento"));
+                .orElseThrow(() -> ApiException.naoEncontrado("Documento"));
         return documentService.read(d);
     }
 
@@ -211,8 +211,8 @@ public class PortalService {
         // Prioridade é definida pela administração na triagem.
         var safe = new OccurrenceService.CreateRequest(request.title(), request.description(), request.category(),
                 Occurrence.Priority.MEDIUM, request.unitId());
-        return occurrenceService.detail(occurrenceService.createInternal(ctx.condominium(), safe, ctx.user().userId(),
-                ctx.account().getName()), false);
+        return occurrenceService.detail(occurrenceService.createInternal(ctx.condominium(), safe, ctx.user().idUsuario(),
+                ctx.account().getNome()), false);
     }
 
     @Transactional
@@ -220,9 +220,9 @@ public class PortalService {
         Ctx ctx = ctx(condominiumId);
         Occurrence o = mineOne(ctx, id);
         if (o.getStatus() == Occurrence.Status.RESOLVED || o.getStatus() == Occurrence.Status.CANCELLED) {
-            throw ApiException.businessRule("OCCURRENCE_CLOSED", "A ocorrência está encerrada. Abra uma nova, se necessário.");
+            throw ApiException.regraNegocio("OCCURRENCE_CLOSED", "A ocorrência está encerrada. Abra uma nova, se necessário.");
         }
-        interactions.save(new OccurrenceInteraction(o.getId(), ctx.user().userId(), ctx.account().getName(), message.trim(), null, false));
+        interactions.save(new OccurrenceInteraction(o.getId(), ctx.user().idUsuario(), ctx.account().getNome(), message.trim(), null, false));
         return occurrenceService.detail(o, false);
     }
 
@@ -264,9 +264,9 @@ public class PortalService {
             throw new AccessDeniedException("Unidade não vinculada ao morador");
         }
         if (ctx.condominium().getStatus() != br.com.tekcondo.condominium.entity.CondominiumStatus.ACTIVE) {
-            throw ApiException.businessRule("CONDOMINIUM_INACTIVE", "O condomínio está inativo.");
+            throw ApiException.regraNegocio("CONDOMINIUM_INACTIVE", "O condomínio está inativo.");
         }
-        return reservations.bookAsResident(ctx.condominium(), request, ctx.user().userId(), ctx.account().getName());
+        return reservations.bookAsResident(ctx.condominium(), request, ctx.user().idUsuario(), ctx.account().getNome());
     }
 
     @Transactional
@@ -289,7 +289,7 @@ public class PortalService {
         if (!ctx.unitIds().contains(request.unitId())) {
             throw new AccessDeniedException("Unidade não vinculada ao morador");
         }
-        return visitors.authorizeAsResident(ctx.condominium(), request, ctx.user().userId(), ctx.account().getName());
+        return visitors.authorizeAsResident(ctx.condominium(), request, ctx.user().idUsuario(), ctx.account().getNome());
     }
 
     @Transactional
@@ -323,21 +323,21 @@ public class PortalService {
     // ------------------------------------------------------------------
 
     private Ctx ctx(UUID condominiumId) {
-        CurrentUser user = currentUserProvider.requireOrganizationMember();
-        User account = linkedAccount(user);
-        Condominium condominium = condominiums.findByIdAndOrganizationId(condominiumId, user.organizationId())
-                .orElseThrow(() -> ApiException.notFound("Condomínio"));
-        accessService.require(Permission.PORTAL_ACCESS, condominiumId);
-        List<Occupancy> current = occupancies.findCurrentByPersonInCondominium(account.getPersonId(), condominiumId);
+        UsuarioAtual user = currentUserProvider.exigirMembroAdministradora();
+        Usuario account = linkedAccount(user);
+        Condominium condominium = condominiums.findByIdAndOrganizationId(condominiumId, user.idAdministradora())
+                .orElseThrow(() -> ApiException.naoEncontrado("Condomínio"));
+        accessService.exigir(Permissao.PORTAL_ACCESS, condominiumId);
+        List<Occupancy> current = occupancies.findCurrentByPersonInCondominium(account.getIdPessoa(), condominiumId);
         if (current.isEmpty()) {
             throw new AccessDeniedException("Sem vínculo vigente com unidades deste condomínio");
         }
         return new Ctx(user, account, condominium, current);
     }
 
-    private User linkedAccount(CurrentUser user) {
-        User account = users.findById(user.userId()).orElseThrow(() -> ApiException.notFound("Usuário"));
-        if (account.getPersonId() == null) {
+    private Usuario linkedAccount(UsuarioAtual user) {
+        Usuario account = users.findById(user.idUsuario()).orElseThrow(() -> ApiException.naoEncontrado("Usuário"));
+        if (account.getIdPessoa() == null) {
             throw new AccessDeniedException("Usuário não vinculado a cadastro de morador");
         }
         return account;
@@ -360,11 +360,11 @@ public class PortalService {
     private List<Occurrence> mine(Ctx ctx) {
         return occurrences.findAll((root, q, cb) -> cb.and(
                 cb.equal(root.get("condominiumId"), ctx.condominium().getId()),
-                cb.or(cb.equal(root.get("reporterUserId"), ctx.user().userId()), root.get("unitId").in(ctx.unitIds()))),
-                Sort.by(Sort.Direction.DESC, "createdAt"));
+                cb.or(cb.equal(root.get("reporterUserId"), ctx.user().idUsuario()), root.get("unitId").in(ctx.unitIds()))),
+                Sort.by(Sort.Direction.DESC, "criadoEm"));
     }
 
     private Occurrence mineOne(Ctx ctx, UUID id) {
-        return mine(ctx).stream().filter(o -> o.getId().equals(id)).findFirst().orElseThrow(() -> ApiException.notFound("Ocorrência"));
+        return mine(ctx).stream().filter(o -> o.getId().equals(id)).findFirst().orElseThrow(() -> ApiException.naoEncontrado("Ocorrência"));
     }
 }

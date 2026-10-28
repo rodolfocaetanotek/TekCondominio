@@ -20,12 +20,12 @@ import br.com.tekcondo.assembly.AssemblyEntities.AgendaItem;
 import br.com.tekcondo.assembly.AssemblyEntities.Assembly;
 import br.com.tekcondo.assembly.AssemblyEntities.Attendance;
 import br.com.tekcondo.assembly.AssemblyEntities.Vote;
-import br.com.tekcondo.audit.service.AuditAction;
-import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.auditoria.service.AcaoAuditoria;
+import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.condominium.entity.Condominium;
 import br.com.tekcondo.condominium.service.CondominiumAccess;
-import br.com.tekcondo.identity.access.Permission;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
+import br.com.tekcondo.comum.exception.ApiException;
 import br.com.tekcondo.structure.entity.Unit;
 import br.com.tekcondo.structure.repository.UnitRepository;
 import jakarta.validation.Valid;
@@ -105,12 +105,12 @@ public class AssemblyService {
     private final AnnouncementRepository announcements;
     private final AnnouncementService announcementService;
     private final CondominiumAccess access;
-    private final AuditService auditService;
+    private final AuditoriaService auditService;
     private final Clock clock;
 
     public AssemblyService(AssemblyRepository assemblies, AgendaItemRepository items, AttendanceRepository attendances,
                            VoteRepository votes, UnitRepository units, AnnouncementRepository announcements,
-                           AnnouncementService announcementService, CondominiumAccess access, AuditService auditService,
+                           AnnouncementService announcementService, CondominiumAccess access, AuditoriaService auditService,
                            Clock clock) {
         this.assemblies = assemblies;
         this.items = items;
@@ -126,7 +126,7 @@ public class AssemblyService {
 
     @Transactional(readOnly = true)
     public List<Summary> list(UUID condominiumId) {
-        access.require(condominiumId, Permission.ASSEMBLY_VIEW);
+        access.require(condominiumId, Permissao.ASSEMBLY_VIEW);
         return assemblies.findByCondominiumIdOrderByScheduledAtDesc(condominiumId).stream()
                 .map(a -> new Summary(a.getId(), a.getTitle(), a.getKind(), a.getScheduledAt(), a.getLocation(), a.getStatus()))
                 .toList();
@@ -134,41 +134,41 @@ public class AssemblyService {
 
     @Transactional(readOnly = true)
     public Detail get(UUID condominiumId, UUID id) {
-        access.require(condominiumId, Permission.ASSEMBLY_VIEW);
+        access.require(condominiumId, Permissao.ASSEMBLY_VIEW);
         return detail(load(condominiumId, id));
     }
 
     @Transactional
     public Detail create(UUID condominiumId, Request r) {
-        Condominium c = access.requireActive(condominiumId, Permission.ASSEMBLY_EDIT);
-        Assembly a = new Assembly(c.getOrganizationId(), condominiumId, access.user().userId());
+        Condominium c = access.requireActive(condominiumId, Permissao.ASSEMBLY_EDIT);
+        Assembly a = new Assembly(c.getOrganizationId(), condominiumId, access.user().idUsuario());
         a.details(r.title().trim(), r.kind(), r.scheduledAt(), r.secondCallAt(), r.location().trim(), r.voteWeight());
         assemblies.save(a);
         saveAgenda(a, r.agenda());
-        auditService.record(AuditAction.ASSEMBLY_CREATED, "Assembly", a.getId(), Map.of("title", a.getTitle()));
+        auditService.registrar(AcaoAuditoria.ASSEMBLY_CREATED, "Assembly", a.getId(), Map.of("title", a.getTitle()));
         return detail(a);
     }
 
     @Transactional
     public Detail update(UUID condominiumId, UUID id, Request r) {
-        access.requireActive(condominiumId, Permission.ASSEMBLY_EDIT);
+        access.requireActive(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         a.details(r.title().trim(), r.kind(), r.scheduledAt(), r.secondCallAt(), r.location().trim(), r.voteWeight());
         items.deleteByAssemblyId(a.getId());
         items.flush();
         saveAgenda(a, r.agenda());
         assemblies.flush();
-        auditService.record(AuditAction.ASSEMBLY_UPDATED, "Assembly", id, Map.of("title", a.getTitle()));
+        auditService.registrar(AcaoAuditoria.ASSEMBLY_UPDATED, "Assembly", id, Map.of("title", a.getTitle()));
         return detail(a);
     }
 
     /** Convoca: publica comunicado com data, local e pauta para todos os condôminos (notificação + e-mail). */
     @Transactional
     public Detail call(UUID condominiumId, UUID id) {
-        Condominium c = access.requireActive(condominiumId, Permission.ASSEMBLY_EDIT);
+        Condominium c = access.requireActive(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         if (!a.getScheduledAt().isAfter(Instant.now(clock))) {
-            throw ApiException.businessRule("ASSEMBLY_IN_PAST", "A data da assembleia já passou. Ajuste antes de convocar.");
+            throw ApiException.regraNegocio("ASSEMBLY_IN_PAST", "A data da assembleia já passou. Ajuste antes de convocar.");
         }
         a.call(Instant.now(clock));
         StringBuilder body = new StringBuilder();
@@ -185,62 +185,62 @@ public class AssemblyService {
         var user = access.user();
         Announcement announcement = announcements.save(new Announcement(c.getOrganizationId(), condominiumId,
                 "Convocação: " + a.getTitle(), body.toString(), Announcement.Audience.ALL, null, null, true, true,
-                a.getScheduledAt().atZone(ZONE).toLocalDate(), Instant.now(clock), user.userId(), user.name()));
+                a.getScheduledAt().atZone(ZONE).toLocalDate(), Instant.now(clock), user.idUsuario(), user.nome()));
         announcementService.distribute(c, announcement);
-        auditService.record(AuditAction.ASSEMBLY_STATUS_CHANGED, "Assembly", id, Map.of("status", "CALLED"));
+        auditService.registrar(AcaoAuditoria.ASSEMBLY_STATUS_CHANGED, "Assembly", id, Map.of("status", "CALLED"));
         return detail(a);
     }
 
     @Transactional
     public Detail start(UUID condominiumId, UUID id) {
-        access.requireActive(condominiumId, Permission.ASSEMBLY_EDIT);
+        access.requireActive(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         a.start();
-        auditService.record(AuditAction.ASSEMBLY_STATUS_CHANGED, "Assembly", id, Map.of("status", "IN_PROGRESS"));
+        auditService.registrar(AcaoAuditoria.ASSEMBLY_STATUS_CHANGED, "Assembly", id, Map.of("status", "IN_PROGRESS"));
         return detail(a);
     }
 
     @Transactional
     public Detail close(UUID condominiumId, UUID id) {
-        access.require(condominiumId, Permission.ASSEMBLY_EDIT);
+        access.require(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         a.close(Instant.now(clock));
-        auditService.record(AuditAction.ASSEMBLY_STATUS_CHANGED, "Assembly", id, Map.of("status", "CLOSED"));
+        auditService.registrar(AcaoAuditoria.ASSEMBLY_STATUS_CHANGED, "Assembly", id, Map.of("status", "CLOSED"));
         return detail(a);
     }
 
     @Transactional
     public Detail cancel(UUID condominiumId, UUID id, String reason) {
-        access.require(condominiumId, Permission.ASSEMBLY_EDIT);
+        access.require(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         a.cancel(reason.trim());
-        auditService.record(AuditAction.ASSEMBLY_STATUS_CHANGED, "Assembly", id, Map.of("status", "CANCELLED", "reason", reason.trim()));
+        auditService.registrar(AcaoAuditoria.ASSEMBLY_STATUS_CHANGED, "Assembly", id, Map.of("status", "CANCELLED", "reason", reason.trim()));
         return detail(a);
     }
 
     @Transactional
     public Detail registerAttendance(UUID condominiumId, UUID id, AttendanceRequest r) {
-        access.require(condominiumId, Permission.ASSEMBLY_EDIT);
+        access.require(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         a.requireInProgress();
-        Unit unit = units.findByIdAndCondominiumId(r.unitId(), condominiumId).orElseThrow(() -> ApiException.notFound("Unidade"));
+        Unit unit = units.findByIdAndCondominiumId(r.unitId(), condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
         if (attendances.findByAssemblyIdAndUnitId(id, unit.getId()).isPresent()) {
-            throw ApiException.conflict("ALREADY_PRESENT", "A unidade " + unit.label() + " já está na lista de presença.");
+            throw ApiException.conflito("ALREADY_PRESENT", "A unidade " + unit.label() + " já está na lista de presença.");
         }
         attendances.save(new Attendance(id, unit.getId(), r.attendeeName().trim(), r.byProxy(),
-                r.proxyName() == null ? null : r.proxyName().trim(), access.user().userId()));
+                r.proxyName() == null ? null : r.proxyName().trim(), access.user().idUsuario()));
         return detail(a);
     }
 
     @Transactional
     public Detail removeAttendance(UUID condominiumId, UUID id, UUID attendanceId) {
-        access.require(condominiumId, Permission.ASSEMBLY_EDIT);
+        access.require(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         a.requireInProgress();
         Attendance att = attendances.findById(attendanceId).filter(x -> x.getAssemblyId().equals(id))
-                .orElseThrow(() -> ApiException.notFound("Presença"));
+                .orElseThrow(() -> ApiException.naoEncontrado("Presença"));
         if (votes.existsByAssemblyIdAndUnitId(id, att.getUnitId())) {
-            throw ApiException.businessRule("ATTENDANCE_HAS_VOTES", "A unidade já votou e não pode ser removida da presença.");
+            throw ApiException.regraNegocio("ATTENDANCE_HAS_VOTES", "A unidade já votou e não pode ser removida da presença.");
         }
         attendances.delete(att);
         return detail(a);
@@ -248,54 +248,54 @@ public class AssemblyService {
 
     @Transactional
     public Detail vote(UUID condominiumId, UUID id, VoteRequest r) {
-        access.require(condominiumId, Permission.ASSEMBLY_EDIT);
+        access.require(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         a.requireInProgress();
         AgendaItem item = items.findById(r.agendaItemId()).filter(i -> i.getAssemblyId().equals(id))
-                .orElseThrow(() -> ApiException.notFound("Item da pauta"));
+                .orElseThrow(() -> ApiException.naoEncontrado("Item da pauta"));
         if (!item.isVoting()) {
-            throw ApiException.businessRule("ITEM_NOT_VOTING", "Este item da pauta não é deliberativo.");
+            throw ApiException.regraNegocio("ITEM_NOT_VOTING", "Este item da pauta não é deliberativo.");
         }
-        Unit unit = units.findByIdAndCondominiumId(r.unitId(), condominiumId).orElseThrow(() -> ApiException.notFound("Unidade"));
+        Unit unit = units.findByIdAndCondominiumId(r.unitId(), condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
         if (attendances.findByAssemblyIdAndUnitId(id, unit.getId()).isEmpty()) {
-            throw ApiException.businessRule("UNIT_NOT_PRESENT", "Registre a presença da unidade antes do voto.");
+            throw ApiException.regraNegocio("UNIT_NOT_PRESENT", "Registre a presença da unidade antes do voto.");
         }
         if (votes.existsByAgendaItemIdAndUnitId(item.getId(), unit.getId())) {
-            throw ApiException.conflict("ALREADY_VOTED", "A unidade " + unit.label() + " já votou neste item.");
+            throw ApiException.conflito("ALREADY_VOTED", "A unidade " + unit.label() + " já votou neste item.");
         }
         BigDecimal weight = a.getVoteWeight() == Assembly.VoteWeight.IDEAL_FRACTION ? unit.getIdealFraction() : BigDecimal.ONE;
-        votes.save(new Vote(id, item.getId(), unit.getId(), r.choice(), weight, access.user().userId()));
-        auditService.record(AuditAction.VOTE_CAST, "Assembly", id, Map.of("item", item.getPosition(), "unit", unit.label(),
+        votes.save(new Vote(id, item.getId(), unit.getId(), r.choice(), weight, access.user().idUsuario()));
+        auditService.registrar(AcaoAuditoria.VOTE_CAST, "Assembly", id, Map.of("item", item.getPosition(), "unit", unit.label(),
                 "choice", r.choice().name()));
         return detail(a);
     }
 
     @Transactional
     public Detail deliberate(UUID condominiumId, UUID id, UUID itemId, DeliberationRequest r) {
-        access.require(condominiumId, Permission.ASSEMBLY_EDIT);
+        access.require(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         if (a.getStatus() != Assembly.Status.IN_PROGRESS && a.getStatus() != Assembly.Status.CLOSED) {
-            throw ApiException.businessRule("ASSEMBLY_NOT_HELD", "Deliberações são registradas durante ou após a assembleia.");
+            throw ApiException.regraNegocio("ASSEMBLY_NOT_HELD", "Deliberações são registradas durante ou após a assembleia.");
         }
         AgendaItem item = items.findById(itemId).filter(i -> i.getAssemblyId().equals(id))
-                .orElseThrow(() -> ApiException.notFound("Item da pauta"));
+                .orElseThrow(() -> ApiException.naoEncontrado("Item da pauta"));
         item.deliberate(blank(r.deliberation()), blank(r.responsible()), r.deadline());
         return detail(a);
     }
 
     @Transactional
     public Detail writeMinutes(UUID condominiumId, UUID id, String minutes) {
-        access.require(condominiumId, Permission.ASSEMBLY_EDIT);
+        access.require(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         a.writeMinutes(minutes.trim());
-        auditService.record(AuditAction.ASSEMBLY_UPDATED, "Assembly", id, Map.of("minutes", "atualizada"));
+        auditService.registrar(AcaoAuditoria.ASSEMBLY_UPDATED, "Assembly", id, Map.of("minutes", "atualizada"));
         return detail(a);
     }
 
     /** Rascunho da ata gerado a partir da pauta, presença, resultados e deliberações registrados. */
     @Transactional(readOnly = true)
     public String minutesDraft(UUID condominiumId, UUID id) {
-        Condominium c = access.require(condominiumId, Permission.ASSEMBLY_VIEW);
+        Condominium c = access.require(condominiumId, Permissao.ASSEMBLY_VIEW);
         Detail d = detail(load(condominiumId, id));
         StringBuilder sb = new StringBuilder();
         sb.append("ATA DA ASSEMBLEIA GERAL ").append(d.kind() == Assembly.Kind.ORDINARY ? "ORDINÁRIA" : "EXTRAORDINÁRIA")
@@ -335,7 +335,7 @@ public class AssemblyService {
     }
 
     private Assembly load(UUID condominiumId, UUID id) {
-        return assemblies.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.notFound("Assembleia"));
+        return assemblies.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Assembleia"));
     }
 
     private Detail detail(Assembly a) {
@@ -359,7 +359,7 @@ public class AssemblyService {
                 .map(Unit::getIdealFraction).reduce(BigDecimal.ZERO, BigDecimal::add);
         return new Detail(a.getId(), a.getTitle(), a.getKind(), a.getScheduledAt(), a.getSecondCallAt(), a.getLocation(),
                 a.getVoteWeight(), a.getStatus(), a.getCalledAt(), a.getClosedAt(), a.getCancelReason(), a.getMinutes(),
-                a.getVersion(), agenda, attendance, new Quorum(present.size(), condoUnits.size(), fraction));
+                a.getVersao(), agenda, attendance, new Quorum(present.size(), condoUnits.size(), fraction));
     }
 
     private static String fmt(BigDecimal v) {

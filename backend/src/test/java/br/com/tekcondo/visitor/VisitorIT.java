@@ -4,10 +4,10 @@ import java.time.LocalDate;
 import java.util.Map;
 
 import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.identity.entity.User;
-import br.com.tekcondo.organization.entity.Organization;
+import br.com.tekcondo.acesso.entity.Usuario;
+import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
-import br.com.tekcondo.support.RecordingMailGateway;
+import br.com.tekcondo.support.GravacaoEmailGateway;
 import br.com.tekcondo.support.TestData;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,13 +27,13 @@ class VisitorIT extends IntegrationTest {
     @Autowired
     ObjectMapper objectMapper;
     @Autowired
-    RecordingMailGateway mail;
+    GravacaoEmailGateway mail;
     @Autowired
     JdbcTemplate jdbc;
     @Autowired
     VisitorService visitorService;
 
-    Organization org;
+    Administradora org;
     Condominium condo;
     String admin;
     String porter;
@@ -45,17 +45,17 @@ class VisitorIT extends IntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        org = data.organization();
+        org = data.administradora();
         condo = data.condominium(org, "Condomínio Portaria");
-        admin = TestData.bearer(data.login(data.orgAdmin(org)));
-        User staff = data.user(org);
-        data.grant(staff, "CONDO_STAFF", condo.getId());
+        admin = TestData.bearer(data.login(data.adminAdministradora(org)));
+        Usuario staff = data.usuario(org);
+        data.conceder(staff, "CONDO_STAFF", condo.getId());
         porter = TestData.bearer(data.login(staff));
         base = "/api/v1/condominiums/" + condo.getId();
         portal = "/api/v1/portal/" + condo.getId();
         unit101 = call(admin, "POST", base + "/units", Map.of("identifier", "101", "type", "APARTMENT", "idealFraction", "50"), 201).get("id").asText();
         unit102 = call(admin, "POST", base + "/units", Map.of("identifier", "102", "type", "APARTMENT", "idealFraction", "50"), 201).get("id").asText();
-        String email = TestData.uniqueEmail();
+        String email = TestData.emailUnico();
         String person = call(admin, "POST", "/api/v1/people", Map.of("name", "Caio Morador", "kind", "INDIVIDUAL", "email", email), 201)
                 .get("id").asText();
         call(admin, "POST", base + "/occupancies", Map.of("unitId", unit101, "personId", person, "role", "TENANT",
@@ -73,10 +73,10 @@ class VisitorIT extends IntegrationTest {
     }
 
     private String activate(String email) throws Exception {
-        String invite = mail.lastTokenFor(email).orElseThrow();
-        call("", "POST", "/api/v1/auth/password/reset", Map.of("token", invite, "newPassword", "MoradorSenha2026"), 204);
+        String invite = mail.ultimoTokenPara(email).orElseThrow();
+        call("", "POST", "/api/v1/auth/senha/redefinir", Map.of("token", invite, "novaSenha", "MoradorSenha2026"), 204);
         String login = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-                .content(data.json(Map.of("email", email, "password", "MoradorSenha2026")))).andReturn().getResponse().getContentAsString();
+                .content(data.json(Map.of("email", email, "senha", "MoradorSenha2026")))).andReturn().getResponse().getContentAsString();
         return "Bearer " + objectMapper.readTree(login).get("accessToken").asText();
     }
 
@@ -99,8 +99,8 @@ class VisitorIT extends IntegrationTest {
         assertThat(inside.get("status").asText()).isEqualTo("INSIDE");
         call(porter, "POST", base + "/visitors/check-in-code", Map.of("code", code), 404); // código de uso único
 
-        JsonNode inbox = call(resident, "GET", "/api/v1/notifications", null, 200);
-        assertThat(inbox.get("items").get(0).get("title").asText()).isEqualTo("Prestador de serviço na portaria");
+        JsonNode inbox = call(resident, "GET", "/api/v1/notificacoes", null, 200);
+        assertThat(inbox.get("itens").get(0).get("titulo").asText()).isEqualTo("Prestador de serviço na portaria");
 
         JsonNode left = call(porter, "POST", base + "/visitors/" + pass.get("id").asText() + "/check-out", null, 200);
         assertThat(left.get("status").asText()).isEqualTo("LEFT");
@@ -113,12 +113,12 @@ class VisitorIT extends IntegrationTest {
 
     @Test
     void permissionsIsolationAndRetention() throws Exception {
-        User council = data.user(org);
-        data.grant(council, "COUNCIL", condo.getId());
+        Usuario council = data.usuario(org);
+        data.conceder(council, "COUNCIL", condo.getId());
         String councilToken = TestData.bearer(data.login(council));
         call(councilToken, "GET", base + "/visitors/today", null, 200);
         call(councilToken, "POST", base + "/visitors/arrivals", Map.of("unitId", unit101, "kind", "VISITOR", "name", "X"), 403);
-        call(TestData.bearer(data.login(data.orgAdmin(data.organization()))), "GET", base + "/visitors/today", null, 404);
+        call(TestData.bearer(data.login(data.adminAdministradora(data.administradora()))), "GET", base + "/visitors/today", null, 404);
 
         String id = call(resident, "POST", portal + "/visitors", Map.of("unitId", unit101, "kind", "VISITOR", "name", "Maria Visita",
                 "document", "MG1234567"), 201).get("id").asText();

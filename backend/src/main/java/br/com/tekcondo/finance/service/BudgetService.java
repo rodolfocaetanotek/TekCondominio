@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import br.com.tekcondo.audit.service.AuditAction;
-import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.auditoria.service.AcaoAuditoria;
+import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.condominium.entity.Condominium;
 import br.com.tekcondo.condominium.service.CondominiumAccess;
 import br.com.tekcondo.finance.dto.FinanceDtos.Budget;
@@ -18,7 +18,7 @@ import br.com.tekcondo.finance.entity.BudgetLine;
 import br.com.tekcondo.finance.entity.ChartAccount;
 import br.com.tekcondo.finance.repository.BudgetLineRepository;
 import br.com.tekcondo.finance.repository.ChartAccountRepository;
-import br.com.tekcondo.identity.access.Permission;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,10 +31,10 @@ public class BudgetService {
     private final FinanceSetupService setup;
     private final FinanceQueries queries;
     private final CondominiumAccess access;
-    private final AuditService auditService;
+    private final AuditoriaService auditService;
 
     public BudgetService(BudgetLineRepository lines, ChartAccountRepository chartAccounts, FinanceSetupService setup,
-                         FinanceQueries queries, CondominiumAccess access, AuditService auditService) {
+                         FinanceQueries queries, CondominiumAccess access, AuditoriaService auditService) {
         this.lines = lines;
         this.chartAccounts = chartAccounts;
         this.setup = setup;
@@ -45,17 +45,17 @@ public class BudgetService {
 
     @Transactional(readOnly = true)
     public Budget budget(UUID condominiumId, int year) {
-        access.require(condominiumId, Permission.FINANCE_VIEW);
+        access.require(condominiumId, Permissao.FINANCE_VIEW);
         return build(condominiumId, year);
     }
 
     @Transactional
     public Budget save(UUID condominiumId, int year, List<BudgetCell> cells) {
-        Condominium condominium = access.requireActive(condominiumId, Permission.FINANCE_EDIT);
+        Condominium condominium = access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
         Map<String, BudgetLine> existing = new HashMap<>();
         lines.findByCondominiumIdAndYear(condominiumId, year)
                 .forEach(l -> existing.put(l.getChartAccountId() + ":" + l.getMonth(), l));
-        UUID by = access.user().userId();
+        UUID by = access.user().idUsuario();
         for (BudgetCell cell : cells) {
             setup.analyticAccount(cell.chartAccountId(), null);
             BudgetLine line = existing.computeIfAbsent(cell.chartAccountId() + ":" + cell.month(),
@@ -63,7 +63,7 @@ public class BudgetService {
             line.setAmount(cell.amount(), by);
             lines.save(line);
         }
-        auditService.record(AuditAction.BUDGET_UPDATED, "Condominium", condominiumId, Map.of("year", year, "cells", cells.size()));
+        auditService.registrar(AcaoAuditoria.BUDGET_UPDATED, "Condominium", condominiumId, Map.of("year", year, "cells", cells.size()));
         return build(condominiumId, year);
     }
 

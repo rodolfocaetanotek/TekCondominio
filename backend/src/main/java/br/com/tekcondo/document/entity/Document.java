@@ -3,7 +3,7 @@ package br.com.tekcondo.document.entity;
 import java.time.Instant;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -122,7 +122,7 @@ public class Document {
 
     public void archive(UUID by, Instant now) {
         if (archivedAt != null) {
-            throw ApiException.businessRule("DOCUMENT_ARCHIVED", "O documento já está arquivado.");
+            throw ApiException.regraNegocio("DOCUMENT_ARCHIVED", "O documento já está arquivado.");
         }
         archivedAt = now;
         archivedBy = by;

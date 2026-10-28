@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { PageResponse } from '../../core/api/api.models';
+import { PaginaResponse } from '../../core/api/api.models';
 import { Condominium, CondominiumQuery, CondominiumRequest, CondominiumSummary } from './condominium.models';
 
 const BASE = '/api/v1/condominiums';
@@ -10,12 +10,12 @@ const BASE = '/api/v1/condominiums';
 export class CondominiumService {
   private readonly http = inject(HttpClient);
 
-  list(query: CondominiumQuery): Observable<PageResponse<CondominiumSummary>> {
-    let params = new HttpParams().set('page', query.page).set('size', query.size);
+  list(query: CondominiumQuery): Observable<PaginaResponse<CondominiumSummary>> {
+    let params = new HttpParams().set('pagina', query.page).set('tamanho', query.size);
     if (query.search?.trim()) params = params.set('search', query.search.trim());
     if (query.status) params = params.set('status', query.status);
-    if (query.sort) params = params.set('sort', query.sort);
-    return this.http.get<PageResponse<CondominiumSummary>>(BASE, { params });
+    if (query.sort) params = params.set('ordem', query.sort);
+    return this.http.get<PaginaResponse<CondominiumSummary>>(BASE, { params });
   }
 
   get(id: string): Observable<Condominium> {

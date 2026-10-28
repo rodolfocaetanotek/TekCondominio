@@ -4,8 +4,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.exception.ApiException;
-import br.com.tekcondo.shared.persistence.AuditableEntity;
+import br.com.tekcondo.comum.exception.ApiException;
+import br.com.tekcondo.comum.persistence.AuditableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -119,10 +119,10 @@ public class VisitorPass extends AuditableEntity {
 
     public void enter(LocalDate today, Instant now, String byName) {
         if (status != Status.EXPECTED) {
-            throw ApiException.businessRule("VISITOR_NOT_EXPECTED", "Esta autorização já foi utilizada ou cancelada.");
+            throw ApiException.regraNegocio("VISITOR_NOT_EXPECTED", "Esta autorização já foi utilizada ou cancelada.");
         }
         if (today.isBefore(validFrom) || today.isAfter(validUntil)) {
-            throw ApiException.businessRule("VISITOR_OUT_OF_PERIOD", "A autorização não é válida hoje (válida de "
+            throw ApiException.regraNegocio("VISITOR_OUT_OF_PERIOD", "A autorização não é válida hoje (válida de "
                     + validFrom + " a " + validUntil + ").");
         }
         status = Status.INSIDE;
@@ -133,7 +133,7 @@ public class VisitorPass extends AuditableEntity {
 
     public void leave(Instant now, String byName) {
         if (status != Status.INSIDE) {
-            throw ApiException.businessRule("VISITOR_NOT_INSIDE", "A entrada deste visitante não foi registrada.");
+            throw ApiException.regraNegocio("VISITOR_NOT_INSIDE", "A entrada deste visitante não foi registrada.");
         }
         status = Status.LEFT;
         leftAt = now;
@@ -142,7 +142,7 @@ public class VisitorPass extends AuditableEntity {
 
     public void cancel() {
         if (status != Status.EXPECTED) {
-            throw ApiException.businessRule("VISITOR_NOT_EXPECTED", "Somente autorizações ainda não utilizadas podem ser canceladas.");
+            throw ApiException.regraNegocio("VISITOR_NOT_EXPECTED", "Somente autorizações ainda não utilizadas podem ser canceladas.");
         }
         status = Status.CANCELLED;
         accessCode = null;

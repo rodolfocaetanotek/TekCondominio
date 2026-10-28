@@ -8,7 +8,7 @@ import { toProblem } from '../../core/api/api.models';
 import { MaskDirective } from '../../shared/format/mask.directive';
 import { FieldError } from '../../shared/forms/field-error';
 import { applyServerErrors } from '../../shared/forms/server-errors';
-import { Organization, OrganizationService } from './organization.service';
+import { Administradora, OrganizationService } from './organization.service';
 import { DialogClose } from '../../shared/ui/dialog-close';
 
 /** Cadastro de administradora + primeiro administrador. A política de senha é validada pelo backend. */
@@ -25,8 +25,8 @@ import { DialogClose } from '../../shared/ui/dialog-close';
         <div class="tc-grid">
           <mat-form-field class="span-8">
             <mat-label>Nome</mat-label>
-            <input matInput formControlName="name" required cdkFocusInitial />
-            <mat-error><tc-field-error [control]="form.controls.name" /></mat-error>
+            <input matInput formControlName="nome" required cdkFocusInitial />
+            <mat-error><tc-field-error [control]="form.controls.nome" /></mat-error>
           </mat-form-field>
           <mat-form-field class="span-4">
             <mat-label>CNPJ</mat-label>
@@ -40,28 +40,28 @@ import { DialogClose } from '../../shared/ui/dialog-close';
           </mat-form-field>
           <mat-form-field class="span-4">
             <mat-label>Telefone</mat-label>
-            <input matInput type="tel" formControlName="phone" tcMask="phone" />
-            <mat-error><tc-field-error [control]="form.controls.phone" /></mat-error>
+            <input matInput type="tel" formControlName="telefone" tcMask="phone" />
+            <mat-error><tc-field-error [control]="form.controls.telefone" /></mat-error>
           </mat-form-field>
         </div>
 
         <h3 class="tc-section-title">Primeiro administrador</h3>
-        <div class="tc-grid" formGroupName="admin">
+        <div class="tc-grid" formGroupName="administrador">
           <mat-form-field class="span-6">
             <mat-label>Nome</mat-label>
-            <input matInput formControlName="name" required />
-            <mat-error><tc-field-error [control]="form.controls.admin.controls.name" /></mat-error>
+            <input matInput formControlName="nome" required />
+            <mat-error><tc-field-error [control]="form.controls.administrador.controls.nome" /></mat-error>
           </mat-form-field>
           <mat-form-field class="span-6">
             <mat-label>E-mail de acesso</mat-label>
             <input matInput type="email" formControlName="email" required autocomplete="off" />
-            <mat-error><tc-field-error [control]="form.controls.admin.controls.email" /></mat-error>
+            <mat-error><tc-field-error [control]="form.controls.administrador.controls.email" /></mat-error>
           </mat-form-field>
           <mat-form-field class="span-6">
             <mat-label>Senha inicial</mat-label>
-            <input matInput type="password" formControlName="password" required autocomplete="new-password" />
+            <input matInput type="password" formControlName="senha" required autocomplete="new-password" />
             <mat-hint>Mínimo de 10 caracteres, com letras e números.</mat-hint>
-            <mat-error><tc-field-error [control]="form.controls.admin.controls.password" /></mat-error>
+            <mat-error><tc-field-error [control]="form.controls.administrador.controls.senha" /></mat-error>
           </mat-form-field>
         </div>
       </mat-dialog-content>
@@ -77,21 +77,21 @@ import { DialogClose } from '../../shared/ui/dialog-close';
 })
 export class OrganizationDialog {
   private readonly service = inject(OrganizationService);
-  private readonly ref = inject(MatDialogRef<OrganizationDialog, Organization>);
+  private readonly ref = inject(MatDialogRef<OrganizationDialog, Administradora>);
 
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
 
   private readonly fb = inject(FormBuilder).nonNullable;
   protected readonly form = this.fb.group({
-    name: ['', [Validators.required, Validators.maxLength(150)]],
+    nome: ['', [Validators.required, Validators.maxLength(150)]],
     cnpj: ['', [Validators.required]],
     email: ['', [Validators.email, Validators.maxLength(254)]],
-    phone: [''],
-    admin: this.fb.group({
-      name: ['', [Validators.required, Validators.maxLength(150)]],
+    telefone: [''],
+    administrador: this.fb.group({
+      nome: ['', [Validators.required, Validators.maxLength(150)]],
       email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
-      password: ['', [Validators.required]],
+      senha: ['', [Validators.required]],
     }),
   });
 
@@ -102,14 +102,14 @@ export class OrganizationDialog {
     this.error.set(null);
     const v = this.form.getRawValue();
     this.service
-      .create({ ...v, email: v.email.trim() || null, phone: v.phone.trim() || null })
+      .create({ ...v, email: v.email.trim() || null, telefone: v.telefone.trim() || null })
       .subscribe({
         next: (org) => this.ref.close(org),
         error: (err: unknown) => {
           this.saving.set(false);
           const problem = toProblem(err);
-          const rest = problem.code === 'VALIDATION_ERROR' ? applyServerErrors(this.form, problem) : [];
-          if (problem.code !== 'VALIDATION_ERROR' || rest.length) {
+          const rest = problem.codigo === 'VALIDATION_ERROR' ? applyServerErrors(this.form, problem) : [];
+          if (problem.codigo !== 'VALIDATION_ERROR' || rest.length) {
             this.error.set(rest.length ? rest.join(' ') : problem.detail);
           }
         },

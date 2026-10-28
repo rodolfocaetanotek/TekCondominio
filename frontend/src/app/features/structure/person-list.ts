@@ -12,7 +12,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { catchError, debounceTime, distinctUntilChanged, filter, finalize, map, of, switchMap, tap } from 'rxjs';
-import { PageResponse, toProblem } from '../../core/api/api.models';
+import { PaginaResponse, toProblem } from '../../core/api/api.models';
 import { CondominiumContext } from '../../core/context/condominium-context';
 import { NotificationService } from '../../core/notify/notification.service';
 import { DocPipe } from '../../shared/format/doc.pipe';
@@ -48,11 +48,11 @@ import { StructureService } from './structure.service';
         @if (error(); as message) {
           <tc-empty-state icon="cloud_off" title="Não foi possível carregar" [description]="message" />
         } @else if (result(); as page) {
-          @if (page.totalElements === 0) {
+          @if (page.totalElementos === 0) {
             <tc-empty-state icon="contacts" title="Nenhuma pessoa encontrada" />
           } @else {
             <div class="table-scroll">
-              <table mat-table [dataSource]="page.content">
+              <table mat-table [dataSource]="page.conteudo">
                 <caption class="sr-only">Pessoas</caption>
                 <ng-container matColumnDef="name">
                   <th mat-header-cell *matHeaderCellDef>Nome</th>
@@ -72,7 +72,7 @@ import { StructureService } from './structure.service';
                   [attr.aria-label]="'Abrir ' + row.name" (click)="open(row)" (keydown.enter)="open(row)"></tr>
               </table>
             </div>
-            <mat-paginator [length]="page.totalElements" [pageIndex]="page.page" [pageSize]="page.size"
+            <mat-paginator [length]="page.totalElementos" [pageIndex]="page.pagina" [pageSize]="page.tamanho"
               [pageSizeOptions]="[20, 50, 100]" (page)="onPage($event)" aria-label="Paginação de pessoas" />
           }
         }
@@ -109,7 +109,7 @@ export class PersonList {
         this.service.people({ search: q.search, page: q.page, size: q.size, condominiumId: q.condo ?? undefined }).pipe(
           catchError((err: unknown) => {
             this.error.set(toProblem(err).detail);
-            return of<PageResponse<PersonSummary> | null>(null);
+            return of<PaginaResponse<PersonSummary> | null>(null);
           }),
           finalize(() => this.loading.set(false)),
         ),

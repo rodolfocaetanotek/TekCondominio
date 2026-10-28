@@ -3,8 +3,8 @@ package br.com.tekcondo.condominium.entity;
 import java.time.Instant;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.exception.ApiException;
-import br.com.tekcondo.shared.persistence.AuditableEntity;
+import br.com.tekcondo.comum.exception.ApiException;
+import br.com.tekcondo.comum.persistence.AuditableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -81,8 +81,8 @@ public class Condominium extends AuditableEntity {
     /** Atualiza os dados cadastrais. Condomínio inativo deve ser reativado antes de ser editado. */
     public void updateDetails(String name, String legalName, String cnpj, CondominiumType type, Address address,
                               String email, String phone, UUID updatedBy) {
-        if (status == CondominiumStatus.INACTIVE && getVersion() != null) {
-            throw ApiException.businessRule("CONDOMINIUM_INACTIVE",
+        if (status == CondominiumStatus.INACTIVE && getVersao() != null) {
+            throw ApiException.regraNegocio("CONDOMINIUM_INACTIVE",
                     "Condomínio inativo não pode ser editado. Reative-o antes de alterar os dados.");
         }
         this.name = name;
@@ -97,7 +97,7 @@ public class Condominium extends AuditableEntity {
 
     public void inactivate(String reason, Instant now, UUID by) {
         if (status == CondominiumStatus.INACTIVE) {
-            throw ApiException.businessRule("CONDOMINIUM_ALREADY_INACTIVE", "O condomínio já está inativo.");
+            throw ApiException.regraNegocio("CONDOMINIUM_ALREADY_INACTIVE", "O condomínio já está inativo.");
         }
         status = CondominiumStatus.INACTIVE;
         inactivatedAt = now;
@@ -107,7 +107,7 @@ public class Condominium extends AuditableEntity {
 
     public void activate(UUID by) {
         if (status == CondominiumStatus.ACTIVE) {
-            throw ApiException.businessRule("CONDOMINIUM_ALREADY_ACTIVE", "O condomínio já está ativo.");
+            throw ApiException.regraNegocio("CONDOMINIUM_ALREADY_ACTIVE", "O condomínio já está ativo.");
         }
         status = CondominiumStatus.ACTIVE;
         inactivatedAt = null;
@@ -119,7 +119,7 @@ public class Condominium extends AuditableEntity {
     public void updateFinancialSettings(java.math.BigDecimal finePercent, java.math.BigDecimal interestMonthlyPercent,
                                         int billingDueDay, boolean requirePayableApproval, UUID by) {
         if (finePercent.signum() < 0 || finePercent.compareTo(new java.math.BigDecimal("2")) > 0) {
-            throw ApiException.businessRule("FINE_LIMIT",
+            throw ApiException.regraNegocio("FINE_LIMIT",
                     "A multa por atraso da cota condominial é limitada a 2% (Código Civil, art. 1.336, §1º).");
         }
         this.finePercent = finePercent;

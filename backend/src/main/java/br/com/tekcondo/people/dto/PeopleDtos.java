@@ -6,8 +6,8 @@ import java.util.UUID;
 
 import br.com.tekcondo.people.entity.Occupancy;
 import br.com.tekcondo.people.entity.Person;
-import br.com.tekcondo.shared.validation.CpfCnpj;
-import br.com.tekcondo.shared.validation.Phone;
+import br.com.tekcondo.comum.validation.CpfCnpj;
+import br.com.tekcondo.comum.validation.Telefone;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -23,8 +23,8 @@ public final class PeopleDtos {
             @NotNull(message = "Informe se é pessoa física ou jurídica.") Person.Kind kind,
             @CpfCnpj String document,
             @Email(message = "E-mail inválido.") @Size(max = 254) String email,
-            @Phone String phone,
-            @Phone String secondaryPhone,
+            @Telefone String phone,
+            @Telefone String secondaryPhone,
             @Size(max = 500) String notes,
             Long version) {
     }

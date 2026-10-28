@@ -12,8 +12,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import br.com.tekcondo.audit.service.AuditAction;
-import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.auditoria.service.AcaoAuditoria;
+import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.condominium.entity.Condominium;
 import br.com.tekcondo.condominium.service.CondominiumAccess;
 import br.com.tekcondo.finance.dto.FinanceDtos.EntryDetail;
@@ -30,9 +30,9 @@ import br.com.tekcondo.finance.repository.EntryPaymentRepository;
 import br.com.tekcondo.finance.repository.StatementImportRepository;
 import br.com.tekcondo.finance.repository.StatementLineRepository;
 import br.com.tekcondo.finance.service.StatementMatcher.Candidate;
-import br.com.tekcondo.identity.access.Permission;
-import br.com.tekcondo.integration.bank.OfxParser;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
+import br.com.tekcondo.integracao.banco.OfxParser;
+import br.com.tekcondo.comum.exception.ApiException;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -85,13 +85,13 @@ public class StatementImportService {
     private final EntryService entryService;
     private final PeriodLock periodLock;
     private final CondominiumAccess access;
-    private final AuditService auditService;
+    private final AuditoriaService auditService;
     private final Clock clock;
 
     public StatementImportService(StatementImportRepository imports, StatementLineRepository lines, EntryPaymentRepository payments,
                                   BankTransferRepository transfers, FinanceSetupService setup, FinanceQueries queries,
                                   EntryService entryService, PeriodLock periodLock, CondominiumAccess access,
-                                  AuditService auditService, Clock clock) {
+                                  AuditoriaService auditService, Clock clock) {
         this.imports = imports;
         this.lines = lines;
         this.payments = payments;
@@ -107,34 +107,34 @@ public class StatementImportService {
 
     @Transactional
     public ImportResult importOfx(UUID condominiumId, UUID accountId, String fileName, byte[] content, boolean ignoreAccountCheck) {
-        Condominium condominium = access.requireActive(condominiumId, Permission.FINANCE_EDIT);
+        Condominium condominium = access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
         BankAccount account = setup.loadBankAccount(condominiumId, accountId);
         if (!account.isActive()) {
-            throw ApiException.businessRule("BANK_ACCOUNT_INACTIVE", "A conta bancária está inativa.");
+            throw ApiException.regraNegocio("BANK_ACCOUNT_INACTIVE", "A conta bancária está inativa.");
         }
         String hash = OfxParser.sha256(content);
         if (imports.existsByBankAccountIdAndFileHash(accountId, hash)) {
-            throw ApiException.conflict("STATEMENT_ALREADY_IMPORTED", "Este arquivo de extrato já foi importado nesta conta.");
+            throw ApiException.conflito("STATEMENT_ALREADY_IMPORTED", "Este arquivo de extrato já foi importado nesta conta.");
         }
-        OfxParser.Statement statement = OfxParser.parse(content);
-        if (statement.transactions().isEmpty()) {
-            throw ApiException.businessRule("STATEMENT_EMPTY", "O extrato não contém transações.");
+        OfxParser.Extrato statement = OfxParser.parse(content);
+        if (statement.transacoes().isEmpty()) {
+            throw ApiException.regraNegocio("STATEMENT_EMPTY", "O extrato não contém transações.");
         }
-        if (!ignoreAccountCheck && !sameAccount(account.getAccountNumber(), statement.accountId())) {
-            throw ApiException.businessRule("STATEMENT_ACCOUNT_MISMATCH", "O extrato é da conta " + statement.accountId()
+        if (!ignoreAccountCheck && !sameAccount(account.getAccountNumber(), statement.idConta())) {
+            throw ApiException.regraNegocio("STATEMENT_ACCOUNT_MISMATCH", "O extrato é da conta " + statement.idConta()
                     + ", diferente da conta cadastrada (" + account.getAccountNumber() + "). Confira o arquivo.");
         }
         var user = access.user();
         StatementImport imp = imports.save(new StatementImport(condominium.getOrganizationId(), condominiumId, accountId,
-                safeName(fileName), hash, statement.start(), statement.end(), statement.transactions().size(), user.userId(), user.name()));
-        Set<String> existing = lines.existingFitIds(accountId, statement.transactions().stream().map(OfxParser.Transaction::fitId).toList());
+                safeName(fileName), hash, statement.inicio(), statement.fim(), statement.transacoes().size(), user.idUsuario(), user.nome()));
+        Set<String> existing = lines.existingFitIds(accountId, statement.transacoes().stream().map(OfxParser.Transacao::fitId).toList());
         int created = 0;
-        for (OfxParser.Transaction t : statement.transactions()) {
+        for (OfxParser.Transacao t : statement.transacoes()) {
             if (existing.contains(t.fitId())) {
                 continue;
             }
             lines.save(new StatementLine(condominium.getOrganizationId(), condominiumId, accountId, imp.getId(), t.fitId(),
-                    t.postedOn(), t.amount(), t.type(), t.memo()));
+                    t.dataLancamento(), t.valor(), t.tipo(), t.historico()));
             created++;
         }
         lines.flush();
@@ -146,14 +146,14 @@ public class StatementImportService {
         details.put("file", imp.getFileName());
         details.put("newLines", created);
         details.put("autoMatched", matched);
-        auditService.record(AuditAction.STATEMENT_IMPORTED, "BankAccount", accountId, details);
-        return new ImportResult(imp.getId(), imp.getFileName(), statement.start(), statement.end(), statement.transactions().size(),
-                created, statement.transactions().size() - created, matched, pending);
+        auditService.registrar(AcaoAuditoria.STATEMENT_IMPORTED, "BankAccount", accountId, details);
+        return new ImportResult(imp.getId(), imp.getFileName(), statement.inicio(), statement.fim(), statement.transacoes().size(),
+                created, statement.transacoes().size() - created, matched, pending);
     }
 
     @Transactional(readOnly = true)
     public List<ImportSummary> imports(UUID condominiumId, UUID accountId) {
-        access.require(condominiumId, Permission.FINANCE_VIEW);
+        access.require(condominiumId, Permissao.FINANCE_VIEW);
         setup.loadBankAccount(condominiumId, accountId);
         return imports.findTop20ByBankAccountIdOrderByCreatedAtDesc(accountId).stream()
                 .map(i -> new ImportSummary(i.getId(), i.getFileName(), i.getPeriodStart(), i.getPeriodEnd(), i.getLinesTotal(),
@@ -162,7 +162,7 @@ public class StatementImportService {
 
     @Transactional(readOnly = true)
     public List<LineView> lines(UUID condominiumId, UUID accountId, StatementLine.Status status) {
-        access.require(condominiumId, Permission.FINANCE_VIEW);
+        access.require(condominiumId, Permissao.FINANCE_VIEW);
         setup.loadBankAccount(condominiumId, accountId);
         List<StatementLine> list = lines.findByAccount(accountId, status);
         List<Candidate> candidates = list.stream().anyMatch(l -> l.getStatus() == StatementLine.Status.UNMATCHED)
@@ -177,26 +177,26 @@ public class StatementImportService {
 
     @Transactional
     public LineView match(UUID condominiumId, UUID lineId, MatchRequest request) {
-        access.requireActive(condominiumId, Permission.FINANCE_EDIT);
+        access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
         StatementLine line = load(condominiumId, lineId);
         Candidate candidate = openCandidates(line.getBankAccountId(), line.getPostedOn(), line.getPostedOn(), MANUAL_TOLERANCE_DAYS)
                 .stream().filter(c -> c.type().equals(request.type()) && c.id().equals(request.movementId())).findFirst()
-                .orElseThrow(() -> ApiException.businessRule("MOVEMENT_NOT_ELIGIBLE",
+                .orElseThrow(() -> ApiException.regraNegocio("MOVEMENT_NOT_ELIGIBLE",
                         "A movimentação não pertence a esta conta, já está conciliada ou está fora da janela de datas."));
         if (!StatementMatcher.compatible(toLine(line), candidate, MANUAL_TOLERANCE_DAYS)) {
-            throw ApiException.businessRule("AMOUNT_MISMATCH", "O valor da movimentação é diferente do valor do extrato.");
+            throw ApiException.regraNegocio("AMOUNT_MISMATCH", "O valor da movimentação é diferente do valor do extrato.");
         }
         apply(condominiumId, line, candidate);
-        auditService.record(AuditAction.RECONCILIATION_CHANGED, "StatementLine", lineId, Map.of("matched", candidate.key()));
+        auditService.registrar(AcaoAuditoria.RECONCILIATION_CHANGED, "StatementLine", lineId, Map.of("matched", candidate.key()));
         return toView(line, List.of());
     }
 
     @Transactional
     public LineView unmatch(UUID condominiumId, UUID lineId) {
-        access.requireActive(condominiumId, Permission.FINANCE_EDIT);
+        access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
         StatementLine line = load(condominiumId, lineId);
         periodLock.ensureOpen(condominiumId, line.getPostedOn());
-        UUID by = access.user().userId();
+        UUID by = access.user().idUsuario();
         Instant now = Instant.now(clock);
         if (line.getPaymentId() != null) {
             payments.findAllInCondominium(List.of(line.getPaymentId()), condominiumId).forEach(p -> {
@@ -211,17 +211,17 @@ public class StatementImportService {
             });
         }
         line.reset();
-        auditService.record(AuditAction.RECONCILIATION_CHANGED, "StatementLine", lineId, Map.of("matched", false));
+        auditService.registrar(AcaoAuditoria.RECONCILIATION_CHANGED, "StatementLine", lineId, Map.of("matched", false));
         return toView(line, List.of());
     }
 
     @Transactional
     public LineView ignore(UUID condominiumId, UUID lineId, IgnoreRequest request) {
-        access.requireActive(condominiumId, Permission.FINANCE_EDIT);
+        access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
         StatementLine line = load(condominiumId, lineId);
         periodLock.ensureOpen(condominiumId, line.getPostedOn());
-        line.ignore(request.note().trim(), access.user().userId(), Instant.now(clock));
-        auditService.record(AuditAction.RECONCILIATION_CHANGED, "StatementLine", lineId, Map.of("ignored", request.note().trim()));
+        line.ignore(request.note().trim(), access.user().idUsuario(), Instant.now(clock));
+        auditService.registrar(AcaoAuditoria.RECONCILIATION_CHANGED, "StatementLine", lineId, Map.of("ignored", request.note().trim()));
         return toView(line, List.of());
     }
 
@@ -233,7 +233,7 @@ public class StatementImportService {
     public LineView register(UUID condominiumId, UUID lineId, RegisterRequest request) {
         StatementLine line = load(condominiumId, lineId);
         if (line.getStatus() != StatementLine.Status.UNMATCHED) {
-            throw ApiException.businessRule("STATEMENT_LINE_RESOLVED", "Esta linha do extrato já foi conciliada ou ignorada.");
+            throw ApiException.regraNegocio("STATEMENT_LINE_RESOLVED", "Esta linha do extrato já foi conciliada ou ignorada.");
         }
         FinancialEntry.Kind kind = line.getAmount().signum() > 0 ? FinancialEntry.Kind.INCOME : FinancialEntry.Kind.EXPENSE;
         BigDecimal value = line.getAmount().abs();
@@ -272,7 +272,7 @@ public class StatementImportService {
 
     private void apply(UUID condominiumId, StatementLine line, Candidate c) {
         periodLock.ensureOpen(condominiumId, line.getPostedOn(), c.date());
-        UUID by = access.user().userId();
+        UUID by = access.user().idUsuario();
         Instant now = Instant.now(clock);
         if ("PAYMENT".equals(c.type())) {
             payments.findAllInCondominium(List.of(c.id()), condominiumId).forEach(p -> p.reconcile(true, by, now));
@@ -293,7 +293,7 @@ public class StatementImportService {
     }
 
     private StatementLine load(UUID condominiumId, UUID lineId) {
-        return lines.findInCondominium(lineId, condominiumId).orElseThrow(() -> ApiException.notFound("Linha do extrato"));
+        return lines.findInCondominium(lineId, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Linha do extrato"));
     }
 
     private static StatementMatcher.Line toLine(StatementLine l) {

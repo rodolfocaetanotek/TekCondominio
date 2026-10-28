@@ -12,15 +12,15 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
-import br.com.tekcondo.audit.service.AuditAction;
-import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.auditoria.service.AcaoAuditoria;
+import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.condominium.entity.Condominium;
 import br.com.tekcondo.condominium.service.CondominiumAccess;
-import br.com.tekcondo.identity.access.Permission;
-import br.com.tekcondo.identity.repository.UserRepository;
-import br.com.tekcondo.notification.NotificationService;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
+import br.com.tekcondo.acesso.repository.UsuarioRepository;
+import br.com.tekcondo.notificacao.NotificacaoService;
 import br.com.tekcondo.people.repository.OccupancyRepository;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import br.com.tekcondo.structure.entity.Unit;
 import br.com.tekcondo.structure.repository.UnitRepository;
 import jakarta.validation.constraints.NotBlank;
@@ -64,14 +64,14 @@ public class VisitorService {
     private final VisitorPassRepository passes;
     private final UnitRepository units;
     private final OccupancyRepository occupancies;
-    private final UserRepository users;
+    private final UsuarioRepository users;
     private final CondominiumAccess access;
-    private final NotificationService notifications;
-    private final AuditService auditService;
+    private final NotificacaoService notifications;
+    private final AuditoriaService auditService;
     private final Clock clock;
 
     public VisitorService(VisitorPassRepository passes, UnitRepository units, OccupancyRepository occupancies,
-                          UserRepository users, CondominiumAccess access, NotificationService notifications, AuditService auditService, Clock clock) {
+                          UsuarioRepository users, CondominiumAccess access, NotificacaoService notifications, AuditoriaService auditService, Clock clock) {
         this.passes = passes;
         this.units = units;
         this.occupancies = occupancies;
@@ -86,7 +86,7 @@ public class VisitorService {
 
     @Transactional(readOnly = true)
     public List<PassResponse> today(UUID condominiumId) {
-        access.require(condominiumId, Permission.ACCESS_VIEW);
+        access.require(condominiumId, Permissao.ACCESS_VIEW);
         LocalDate day = today();
         Instant start = day.atStartOfDay(ZONE).toInstant();
         return passes.findForDay(condominiumId, day, start, day.plusDays(1).atStartOfDay(ZONE).toInstant()).stream()
@@ -95,11 +95,11 @@ public class VisitorService {
 
     @Transactional(readOnly = true)
     public List<PassResponse> history(UUID condominiumId, LocalDate from, LocalDate to) {
-        access.require(condominiumId, Permission.ACCESS_VIEW);
+        access.require(condominiumId, Permissao.ACCESS_VIEW);
         LocalDate end = to == null ? today() : to;
         LocalDate start = from == null ? end.minusDays(30) : from;
         if (start.isAfter(end) || start.plusDays(366).isBefore(end)) {
-            throw ApiException.badRequest("INVALID_PERIOD", "Informe um período de até 1 ano.");
+            throw ApiException.requisicaoInvalida("INVALID_PERIOD", "Informe um período de até 1 ano.");
         }
         return passes.findCreatedBetween(condominiumId, start.atStartOfDay(ZONE).toInstant(), end.plusDays(1).atStartOfDay(ZONE).toInstant())
                 .stream().map(v -> toResponse(v, false)).toList();
@@ -108,11 +108,11 @@ public class VisitorService {
     /** Chegada sem pré-autorização: a portaria registra e a entrada já fica marcada. */
     @Transactional
     public PassResponse registerArrival(UUID condominiumId, PassRequest request) {
-        Condominium condominium = access.requireActive(condominiumId, Permission.ACCESS_EDIT);
+        Condominium condominium = access.requireActive(condominiumId, Permissao.ACCESS_EDIT);
         var user = access.user();
         LocalDate day = today();
-        VisitorPass v = create(condominium, request, day, day, false, user.userId(), user.name());
-        v.enter(day, Instant.now(clock), user.name());
+        VisitorPass v = create(condominium, request, day, day, false, user.idUsuario(), user.nome());
+        v.enter(day, Instant.now(clock), user.nome());
         passes.flush();
         afterEntry(v);
         return toResponse(v, false);
@@ -120,25 +120,25 @@ public class VisitorService {
 
     @Transactional
     public PassResponse checkInByCode(UUID condominiumId, String code) {
-        access.requireActive(condominiumId, Permission.ACCESS_EDIT);
+        access.requireActive(condominiumId, Permissao.ACCESS_EDIT);
         VisitorPass v = passes.findExpectedByCode(condominiumId, code)
-                .orElseThrow(() -> ApiException.notFound("Autorização com este código"));
+                .orElseThrow(() -> ApiException.naoEncontrado("Autorização com este código"));
         return checkIn(v);
     }
 
     @Transactional
     public PassResponse checkIn(UUID condominiumId, UUID id) {
-        access.requireActive(condominiumId, Permission.ACCESS_EDIT);
+        access.requireActive(condominiumId, Permissao.ACCESS_EDIT);
         return checkIn(load(condominiumId, id));
     }
 
     @Transactional
     public PassResponse checkOut(UUID condominiumId, UUID id) {
-        access.require(condominiumId, Permission.ACCESS_EDIT);
+        access.require(condominiumId, Permissao.ACCESS_EDIT);
         VisitorPass v = load(condominiumId, id);
-        v.leave(Instant.now(clock), access.user().name());
+        v.leave(Instant.now(clock), access.user().nome());
         passes.flush();
-        auditService.record(AuditAction.VISITOR_LEFT, "VisitorPass", v.getId(), Map.of("unit", unitLabel(v)));
+        auditService.registrar(AcaoAuditoria.VISITOR_LEFT, "VisitorPass", v.getId(), Map.of("unit", unitLabel(v)));
         return toResponse(v, false);
     }
 
@@ -148,10 +148,10 @@ public class VisitorService {
         LocalDate from = request.validFrom() == null ? today() : request.validFrom();
         LocalDate until = request.validUntil() == null ? from : request.validUntil();
         if (from.isBefore(today())) {
-            throw ApiException.businessRule("PASS_IN_PAST", "A autorização não pode começar no passado.");
+            throw ApiException.regraNegocio("PASS_IN_PAST", "A autorização não pode começar no passado.");
         }
         if (until.isBefore(from) || from.plusDays(90).isBefore(until)) {
-            throw ApiException.badRequest("INVALID_PERIOD", "Período de validade de até 90 dias.");
+            throw ApiException.requisicaoInvalida("INVALID_PERIOD", "Período de validade de até 90 dias.");
         }
         VisitorPass v = create(condominium, request, from, until, true, userId, userName);
         v.code(uniqueCode(condominium.getId()));
@@ -165,9 +165,9 @@ public class VisitorService {
 
     public PassResponse cancelAsResident(UUID condominiumId, UUID id, Collection<UUID> unitIds) {
         VisitorPass v = passes.findByIdAndCondominiumId(id, condominiumId).filter(x -> unitIds.contains(x.getUnitId()))
-                .orElseThrow(() -> ApiException.notFound("Autorização"));
+                .orElseThrow(() -> ApiException.naoEncontrado("Autorização"));
         v.cancel();
-        auditService.record(AuditAction.VISITOR_PASS_CANCELLED, "VisitorPass", id, Map.of("unit", unitLabel(v)));
+        auditService.registrar(AcaoAuditoria.VISITOR_PASS_CANCELLED, "VisitorPass", id, Map.of("unit", unitLabel(v)));
         return toResponse(v, true);
     }
 
@@ -186,7 +186,7 @@ public class VisitorService {
 
     private VisitorPass create(Condominium condominium, PassRequest r, LocalDate from, LocalDate until, boolean byResident,
                                UUID userId, String userName) {
-        Unit unit = units.findByIdAndCondominiumId(r.unitId(), condominium.getId()).orElseThrow(() -> ApiException.notFound("Unidade"));
+        Unit unit = units.findByIdAndCondominiumId(r.unitId(), condominium.getId()).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
         VisitorPass v = passes.save(new VisitorPass(condominium.getOrganizationId(), condominium.getId(), unit.getId(), r.kind(),
                 r.name().trim(), blank(r.document()), blank(r.company()),
                 blank(r.vehiclePlate()) == null ? null : r.vehiclePlate().replace("-", "").toUpperCase(Locale.ROOT),
@@ -196,12 +196,12 @@ public class VisitorService {
         details.put("kind", r.kind().name());
         details.put("validFrom", from.toString());
         details.put("validUntil", until.toString());
-        auditService.record(AuditAction.VISITOR_PASS_CREATED, "VisitorPass", v.getId(), details);
+        auditService.registrar(AcaoAuditoria.VISITOR_PASS_CREATED, "VisitorPass", v.getId(), details);
         return v;
     }
 
     private PassResponse checkIn(VisitorPass v) {
-        v.enter(today(), Instant.now(clock), access.user().name());
+        v.enter(today(), Instant.now(clock), access.user().nome());
         passes.flush();
         afterEntry(v);
         return toResponse(v, false);
@@ -209,12 +209,12 @@ public class VisitorService {
 
     /** Auditoria e aviso aos moradores da unidade com acesso ao portal. */
     private void afterEntry(VisitorPass v) {
-        auditService.record(AuditAction.VISITOR_ENTERED, "VisitorPass", v.getId(), Map.of("unit", unitLabel(v), "kind", v.getKind().name()));
-        List<UUID> withPortal = notifications.usersWithPermission(v.getOrganizationId(), v.getCondominiumId(), Permission.PORTAL_ACCESS);
+        auditService.registrar(AcaoAuditoria.VISITOR_ENTERED, "VisitorPass", v.getId(), Map.of("unit", unitLabel(v), "kind", v.getKind().name()));
+        List<UUID> withPortal = notifications.usuariosComPermissao(v.getOrganizationId(), v.getCondominiumId(), Permissao.PORTAL_ACCESS);
         List<UUID> residents = occupancies.findCurrentByUnits(List.of(v.getUnitId())).stream()
-                .map(o -> users.findByPersonId(o.getPerson().getId())).flatMap(java.util.Optional::stream)
+                .map(o -> users.findByIdPessoa(o.getPerson().getId())).flatMap(java.util.Optional::stream)
                 .map(u -> u.getId()).filter(withPortal::contains).distinct().toList();
-        notifications.notify(v.getOrganizationId(), residents, switch (v.getKind()) {
+        notifications.notificar(v.getOrganizationId(), residents, switch (v.getKind()) {
             case VISITOR -> "Visitante na portaria";
             case SERVICE_PROVIDER -> "Prestador de serviço na portaria";
             case DELIVERY -> "Entrega na portaria";
@@ -232,7 +232,7 @@ public class VisitorService {
     }
 
     private VisitorPass load(UUID condominiumId, UUID id) {
-        return passes.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.notFound("Autorização"));
+        return passes.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Autorização"));
     }
 
     private String unitLabel(VisitorPass v) {

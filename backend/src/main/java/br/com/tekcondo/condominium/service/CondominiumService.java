@@ -7,8 +7,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-import br.com.tekcondo.audit.service.AuditAction;
-import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.auditoria.service.AcaoAuditoria;
+import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.condominium.dto.CondominiumRequest;
 import br.com.tekcondo.condominium.dto.CondominiumResponse;
 import br.com.tekcondo.condominium.dto.CondominiumSummary;
@@ -17,14 +17,14 @@ import br.com.tekcondo.condominium.entity.CondominiumStatus;
 import br.com.tekcondo.condominium.mapper.CondominiumMapper;
 import br.com.tekcondo.condominium.repository.CondominiumRepository;
 import br.com.tekcondo.condominium.repository.CondominiumSpecifications;
-import br.com.tekcondo.identity.access.AccessScope;
-import br.com.tekcondo.identity.access.AccessService;
-import br.com.tekcondo.identity.access.Permission;
-import br.com.tekcondo.shared.exception.ApiException;
-import br.com.tekcondo.shared.security.CurrentUser;
-import br.com.tekcondo.shared.security.CurrentUserProvider;
-import br.com.tekcondo.shared.validation.BrazilianDocuments;
-import br.com.tekcondo.shared.web.PageResponse;
+import br.com.tekcondo.acesso.autorizacao.EscopoAcesso;
+import br.com.tekcondo.acesso.autorizacao.AcessoService;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
+import br.com.tekcondo.comum.exception.ApiException;
+import br.com.tekcondo.comum.security.UsuarioAtual;
+import br.com.tekcondo.comum.security.UsuarioAtualProvider;
+import br.com.tekcondo.comum.validation.DocumentosBrasileiros;
+import br.com.tekcondo.comum.web.PaginaResponse;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -37,13 +37,13 @@ public class CondominiumService {
 
     private final CondominiumRepository repository;
     private final CondominiumMapper mapper;
-    private final AccessService accessService;
-    private final CurrentUserProvider currentUserProvider;
-    private final AuditService auditService;
+    private final AcessoService accessService;
+    private final UsuarioAtualProvider currentUserProvider;
+    private final AuditoriaService auditService;
     private final Clock clock;
 
-    public CondominiumService(CondominiumRepository repository, CondominiumMapper mapper, AccessService accessService,
-                              CurrentUserProvider currentUserProvider, AuditService auditService, Clock clock) {
+    public CondominiumService(CondominiumRepository repository, CondominiumMapper mapper, AcessoService accessService,
+                              UsuarioAtualProvider currentUserProvider, AuditoriaService auditService, Clock clock) {
         this.repository = repository;
         this.mapper = mapper;
         this.accessService = accessService;
@@ -53,33 +53,33 @@ public class CondominiumService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<CondominiumSummary> list(String search, CondominiumStatus status, Pageable pageable) {
-        CurrentUser user = currentUserProvider.requireOrganizationMember();
-        AccessScope scope = accessService.requireScope(Permission.CONDOMINIUM_VIEW);
+    public PaginaResponse<CondominiumSummary> list(String search, CondominiumStatus status, Pageable pageable) {
+        UsuarioAtual user = currentUserProvider.exigirMembroAdministradora();
+        EscopoAcesso scope = accessService.exigirEscopo(Permissao.CONDOMINIUM_VIEW);
         Specification<Condominium> spec = Specification.allOf(
-                CondominiumSpecifications.inOrganization(user.organizationId()),
+                CondominiumSpecifications.naAdministradora(user.idAdministradora()),
                 CondominiumSpecifications.withinScope(scope),
                 CondominiumSpecifications.matching(search),
                 CondominiumSpecifications.withStatus(status));
-        return PageResponse.of(repository.findAll(spec, pageable), mapper::toSummary);
+        return PaginaResponse.of(repository.findAll(spec, pageable), mapper::toSummary);
     }
 
     /** Condomínios em que o usuário tem alguma permissão, com as permissões efetivas em cada um. */
     @Transactional(readOnly = true)
     public java.util.List<br.com.tekcondo.condominium.dto.CondominiumOption> accessible() {
-        CurrentUser user = currentUserProvider.requireOrganizationMember();
-        br.com.tekcondo.identity.access.UserGrants grants = accessService.currentGrants();
-        java.util.Set<Permission> orgWide = grants.organizationWide();
+        UsuarioAtual user = currentUserProvider.exigirMembroAdministradora();
+        br.com.tekcondo.acesso.autorizacao.ConcessoesUsuario grants = accessService.concessoesAtuais();
+        java.util.Set<Permissao> orgWide = grants.administradoraInteira();
         java.util.List<Condominium> condominiums = !orgWide.isEmpty()
-                ? repository.findAll(CondominiumSpecifications.inOrganization(user.organizationId()),
+                ? repository.findAll(CondominiumSpecifications.naAdministradora(user.idAdministradora()),
                         org.springframework.data.domain.Sort.by("name"))
-                : repository.findAllById(grants.byCondominium().keySet()).stream()
-                        .filter(c -> c.getOrganizationId().equals(user.organizationId()))
+                : repository.findAllById(grants.porCondominio().keySet()).stream()
+                        .filter(c -> c.getOrganizationId().equals(user.idAdministradora()))
                         .sorted(java.util.Comparator.comparing(Condominium::getName)).toList();
         return condominiums.stream().map(c -> {
-            java.util.Set<Permission> perms = java.util.EnumSet.noneOf(Permission.class);
+            java.util.Set<Permissao> perms = java.util.EnumSet.noneOf(Permissao.class);
             perms.addAll(orgWide);
-            perms.addAll(grants.byCondominium().getOrDefault(c.getId(), java.util.Set.of()));
+            perms.addAll(grants.porCondominio().getOrDefault(c.getId(), java.util.Set.of()));
             return new br.com.tekcondo.condominium.dto.CondominiumOption(c.getId(), c.getName(), c.getStatus(), perms);
         }).toList();
     }
@@ -87,87 +87,87 @@ public class CondominiumService {
     @Transactional(readOnly = true)
     public CondominiumResponse get(UUID id) {
         Condominium condominium = load(id);
-        accessService.require(Permission.CONDOMINIUM_VIEW, id);
+        accessService.exigir(Permissao.CONDOMINIUM_VIEW, id);
         return mapper.toResponse(condominium);
     }
 
     @Transactional
     public CondominiumResponse create(CondominiumRequest request) {
-        CurrentUser user = currentUserProvider.requireOrganizationMember();
-        accessService.requireOrganizationWide(Permission.CONDOMINIUM_CREATE);
-        String cnpj = BrazilianDocuments.normalizeCnpj(request.cnpj());
-        if (cnpj != null && repository.existsByOrganizationIdAndCnpj(user.organizationId(), cnpj)) {
+        UsuarioAtual user = currentUserProvider.exigirMembroAdministradora();
+        accessService.exigirNaAdministradora(Permissao.CONDOMINIUM_CREATE);
+        String cnpj = DocumentosBrasileiros.normalizarCnpj(request.cnpj());
+        if (cnpj != null && repository.existsByOrganizationIdAndCnpj(user.idAdministradora(), cnpj)) {
             throw duplicateCnpj();
         }
-        Condominium condominium = new Condominium(user.organizationId(), user.userId());
-        apply(condominium, request, cnpj, user.userId());
+        Condominium condominium = new Condominium(user.idAdministradora(), user.idUsuario());
+        apply(condominium, request, cnpj, user.idUsuario());
         repository.save(condominium);
-        auditService.record(AuditAction.CONDOMINIUM_CREATED, ENTITY, condominium.getId(), snapshot(condominium));
+        auditService.registrar(AcaoAuditoria.CONDOMINIUM_CREATED, ENTITY, condominium.getId(), snapshot(condominium));
         return mapper.toResponse(condominium);
     }
 
     @Transactional
     public CondominiumResponse update(UUID id, CondominiumRequest request) {
-        CurrentUser user = currentUserProvider.requireOrganizationMember();
+        UsuarioAtual user = currentUserProvider.exigirMembroAdministradora();
         Condominium condominium = load(id);
-        accessService.require(Permission.CONDOMINIUM_EDIT, id);
+        accessService.exigir(Permissao.CONDOMINIUM_EDIT, id);
         if (request.version() == null) {
-            throw ApiException.badRequest("VERSION_REQUIRED", "Informe a versão do registro para atualizá-lo.");
+            throw ApiException.requisicaoInvalida("VERSION_REQUIRED", "Informe a versão do registro para atualizá-lo.");
         }
-        if (!request.version().equals(condominium.getVersion())) {
-            throw ApiException.staleVersion();
+        if (!request.version().equals(condominium.getVersao())) {
+            throw ApiException.versaoObsoleta();
         }
-        String cnpj = BrazilianDocuments.normalizeCnpj(request.cnpj());
-        if (cnpj != null && repository.existsByOrganizationIdAndCnpjAndIdNot(user.organizationId(), cnpj, id)) {
+        String cnpj = DocumentosBrasileiros.normalizarCnpj(request.cnpj());
+        if (cnpj != null && repository.existsByOrganizationIdAndCnpjAndIdNot(user.idAdministradora(), cnpj, id)) {
             throw duplicateCnpj();
         }
         Map<String, Object> before = snapshot(condominium);
-        apply(condominium, request, cnpj, user.userId());
+        apply(condominium, request, cnpj, user.idUsuario());
         repository.flush();
         Map<String, Object> changes = diff(before, snapshot(condominium));
         if (!changes.isEmpty()) {
-            auditService.record(AuditAction.CONDOMINIUM_UPDATED, ENTITY, id, changes);
+            auditService.registrar(AcaoAuditoria.CONDOMINIUM_UPDATED, ENTITY, id, changes);
         }
         return mapper.toResponse(condominium);
     }
 
     @Transactional
     public CondominiumResponse inactivate(UUID id, String reason) {
-        CurrentUser user = currentUserProvider.requireOrganizationMember();
+        UsuarioAtual user = currentUserProvider.exigirMembroAdministradora();
         Condominium condominium = load(id);
-        accessService.require(Permission.CONDOMINIUM_INACTIVATE, id);
-        condominium.inactivate(reason.trim(), Instant.now(clock), user.userId());
+        accessService.exigir(Permissao.CONDOMINIUM_INACTIVATE, id);
+        condominium.inactivate(reason.trim(), Instant.now(clock), user.idUsuario());
         repository.flush();
-        auditService.record(AuditAction.CONDOMINIUM_INACTIVATED, ENTITY, id, Map.of("reason", reason.trim()));
+        auditService.registrar(AcaoAuditoria.CONDOMINIUM_INACTIVATED, ENTITY, id, Map.of("reason", reason.trim()));
         return mapper.toResponse(condominium);
     }
 
     @Transactional
     public CondominiumResponse activate(UUID id) {
-        CurrentUser user = currentUserProvider.requireOrganizationMember();
+        UsuarioAtual user = currentUserProvider.exigirMembroAdministradora();
         Condominium condominium = load(id);
-        accessService.require(Permission.CONDOMINIUM_INACTIVATE, id);
-        condominium.activate(user.userId());
+        accessService.exigir(Permissao.CONDOMINIUM_INACTIVATE, id);
+        condominium.activate(user.idUsuario());
         repository.flush();
-        auditService.record(AuditAction.CONDOMINIUM_ACTIVATED, ENTITY, id, null);
+        auditService.registrar(AcaoAuditoria.CONDOMINIUM_ACTIVATED, ENTITY, id, null);
         return mapper.toResponse(condominium);
     }
 
     /** Carrega o condomínio sempre restrito à organização do usuário (outra organização = 404). */
     private Condominium load(UUID id) {
-        UUID organizationId = currentUserProvider.requireOrganizationMember().organizationId();
+        UUID organizationId = currentUserProvider.exigirMembroAdministradora().idAdministradora();
         return repository.findByIdAndOrganizationId(id, organizationId)
-                .orElseThrow(() -> ApiException.notFound("Condomínio"));
+                .orElseThrow(() -> ApiException.naoEncontrado("Condomínio"));
     }
 
     private void apply(Condominium condominium, CondominiumRequest request, String cnpj, UUID userId) {
         condominium.updateDetails(request.name().trim(), CondominiumMapper.trim(request.legalName()), cnpj,
                 request.type(), mapper.toAddress(request.address()), CondominiumMapper.trim(request.email()),
-                BrazilianDocuments.digitsOnly(request.phone()), userId);
+                DocumentosBrasileiros.somenteDigitos(request.phone()), userId);
     }
 
     private static ApiException duplicateCnpj() {
-        return ApiException.conflict("CONDOMINIUM_CNPJ_TAKEN", "Já existe um condomínio com este CNPJ na sua administradora.");
+        return ApiException.conflito("CONDOMINIUM_CNPJ_TAKEN", "Já existe um condomínio com este CNPJ na sua administradora.");
     }
 
     private static Map<String, Object> snapshot(Condominium c) {

@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -99,7 +99,7 @@ public class Agreement {
         this.discount = discount;
         this.totalAmount = originalAmount.add(chargesAmount).subtract(discount);
         if (totalAmount.signum() <= 0) {
-            throw ApiException.businessRule("INVALID_AGREEMENT_TOTAL", "O desconto não pode zerar o valor do acordo.");
+            throw ApiException.regraNegocio("INVALID_AGREEMENT_TOTAL", "O desconto não pode zerar o valor do acordo.");
         }
         this.installments = installments;
         this.firstDueDate = firstDueDate;
@@ -114,7 +114,7 @@ public class Agreement {
 
     public void cancel(String reason, UUID by, Instant now) {
         if (status != Status.ACTIVE) {
-            throw ApiException.businessRule("AGREEMENT_NOT_ACTIVE", "Somente acordos ativos podem ser cancelados.");
+            throw ApiException.regraNegocio("AGREEMENT_NOT_ACTIVE", "Somente acordos ativos podem ser cancelados.");
         }
         status = Status.CANCELLED;
         cancelReason = reason;

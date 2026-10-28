@@ -5,14 +5,14 @@ import java.util.UUID;
 import br.com.tekcondo.condominium.entity.Condominium;
 import br.com.tekcondo.condominium.entity.CondominiumType;
 import br.com.tekcondo.condominium.repository.CondominiumRepository;
-import br.com.tekcondo.identity.entity.Role;
-import br.com.tekcondo.identity.entity.User;
-import br.com.tekcondo.identity.entity.UserRole;
-import br.com.tekcondo.identity.repository.RoleRepository;
-import br.com.tekcondo.identity.repository.UserRepository;
-import br.com.tekcondo.identity.repository.UserRoleRepository;
-import br.com.tekcondo.organization.entity.Organization;
-import br.com.tekcondo.organization.repository.OrganizationRepository;
+import br.com.tekcondo.acesso.entity.Papel;
+import br.com.tekcondo.acesso.entity.Usuario;
+import br.com.tekcondo.acesso.entity.PapelUsuario;
+import br.com.tekcondo.acesso.repository.PapelRepository;
+import br.com.tekcondo.acesso.repository.UsuarioRepository;
+import br.com.tekcondo.acesso.repository.PapelUsuarioRepository;
+import br.com.tekcondo.administradora.entity.Administradora;
+import br.com.tekcondo.administradora.repository.AdministradoraRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
@@ -27,74 +27,74 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 public class TestData {
 
-    public static final String PASSWORD = "SenhaForte123";
+    public static final String SENHA = "SenhaForte123";
 
-    private final OrganizationRepository organizationRepository;
-    private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
-    private final UserRoleRepository userRoleRepository;
-    private final CondominiumRepository condominiumRepository;
+    private final AdministradoraRepository administradoraRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final PapelRepository papelRepository;
+    private final PapelUsuarioRepository papelUsuarioRepository;
+    private final CondominiumRepository condominioRepository;
     private final PasswordEncoder passwordEncoder;
     private final ObjectMapper objectMapper;
     private final MockMvc mvc;
 
-    public TestData(OrganizationRepository organizationRepository, UserRepository userRepository,
-                    RoleRepository roleRepository, UserRoleRepository userRoleRepository,
-                    CondominiumRepository condominiumRepository, PasswordEncoder passwordEncoder,
+    public TestData(AdministradoraRepository administradoraRepository, UsuarioRepository usuarioRepository,
+                    PapelRepository papelRepository, PapelUsuarioRepository papelUsuarioRepository,
+                    CondominiumRepository condominioRepository, PasswordEncoder passwordEncoder,
                     ObjectMapper objectMapper, MockMvc mvc) {
-        this.organizationRepository = organizationRepository;
-        this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-        this.userRoleRepository = userRoleRepository;
-        this.condominiumRepository = condominiumRepository;
+        this.administradoraRepository = administradoraRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.papelRepository = papelRepository;
+        this.papelUsuarioRepository = papelUsuarioRepository;
+        this.condominioRepository = condominioRepository;
         this.passwordEncoder = passwordEncoder;
         this.objectMapper = objectMapper;
         this.mvc = mvc;
     }
 
-    public Organization organization() {
-        return organizationRepository.save(new Organization("Administradora " + shortId(), Cnpjs.random(), null, null));
+    public Administradora administradora() {
+        return administradoraRepository.save(new Administradora("Administradora " + idCurto(), Cnpjs.random(), null, null));
     }
 
-    public User user(Organization org) {
-        return userRepository.save(User.organizationMember(org.getId(), "Usuário " + shortId(), uniqueEmail(),
-                passwordEncoder.encode(PASSWORD)));
+    public Usuario usuario(Administradora administradora) {
+        return usuarioRepository.save(Usuario.membroAdministradora(administradora.getId(), "Usuário " + idCurto(), emailUnico(),
+                passwordEncoder.encode(SENHA)));
     }
 
-    public User platformAdmin() {
-        return userRepository.save(User.platformAdmin("Admin " + shortId(), uniqueEmail(), passwordEncoder.encode(PASSWORD)));
+    public Usuario administradorPlataforma() {
+        return usuarioRepository.save(Usuario.administradorPlataforma("Admin " + idCurto(), emailUnico(), passwordEncoder.encode(SENHA)));
     }
 
-    /** Atribui papel do sistema; condominiumId nulo = toda a organização. */
-    public void grant(User user, String roleCode, UUID condominiumId) {
-        Role role = roleRepository.findSystemRole(roleCode).orElseThrow();
-        userRoleRepository.save(new UserRole(user.getId(), role, user.getOrganizationId(), condominiumId, null));
+    /** Atribui papel do sistema; idCondominio nulo = toda a administradora. */
+    public void conceder(Usuario usuario, String codigoPapel, UUID idCondominio) {
+        Papel papel = papelRepository.buscarPapelSistema(codigoPapel).orElseThrow();
+        papelUsuarioRepository.save(new PapelUsuario(usuario.getId(), papel, usuario.getIdAdministradora(), idCondominio, null));
     }
 
-    public User orgAdmin(Organization org) {
-        User user = user(org);
-        grant(user, Role.ORG_ADMIN, null);
-        return user;
+    public Usuario adminAdministradora(Administradora administradora) {
+        Usuario usuario = usuario(administradora);
+        conceder(usuario, Papel.ORG_ADMIN, null);
+        return usuario;
     }
 
-    public Condominium condominium(Organization org, String name) {
+    public Condominium condominium(Administradora org, String nome) {
         Condominium c = new Condominium(org.getId(), null);
-        c.updateDetails(name, null, null, CondominiumType.RESIDENTIAL, null, null, null, null);
-        return condominiumRepository.save(c);
+        c.updateDetails(nome, null, null, CondominiumType.RESIDENTIAL, null, null, null, null);
+        return condominioRepository.save(c);
     }
 
     /** Autentica pela API e devolve o access token. */
-    public String login(User user) {
+    public String login(Usuario usuario) {
         try {
-            MvcResult result = mvc.perform(post("/api/v1/auth/login")
+            MvcResult resultado = mvc.perform(post("/api/v1/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(new LoginBody(user.getEmail(), PASSWORD))))
+                            .content(objectMapper.writeValueAsString(new LoginBody(usuario.getEmail(), SENHA))))
                     .andReturn();
-            if (result.getResponse().getStatus() != 200) {
-                throw new IllegalStateException("Login falhou: " + result.getResponse().getContentAsString());
+            if (resultado.getResponse().getStatus() != 200) {
+                throw new IllegalStateException("Login falhou: " + resultado.getResponse().getContentAsString());
             }
-            JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
-            return body.get("accessToken").asText();
+            JsonNode corpo = objectMapper.readTree(resultado.getResponse().getContentAsString());
+            return corpo.get("accessToken").asText();
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
@@ -104,22 +104,22 @@ public class TestData {
         return "Bearer " + token;
     }
 
-    public String json(Object value) {
+    public String json(Object valor) {
         try {
-            return objectMapper.writeValueAsString(value);
+            return objectMapper.writeValueAsString(valor);
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
     }
 
-    public static String uniqueEmail() {
-        return "u" + shortId() + "@teste.tekcondo";
+    public static String emailUnico() {
+        return "u" + idCurto() + "@teste.tekcondo";
     }
 
-    private static String shortId() {
+    private static String idCurto() {
         return UUID.randomUUID().toString().substring(0, 8);
     }
 
-    private record LoginBody(String email, String password) {
+    private record LoginBody(String email, String senha) {
     }
 }

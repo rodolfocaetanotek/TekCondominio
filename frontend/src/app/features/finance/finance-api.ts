@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { PageResponse } from '../../core/api/api.models';
+import { PaginaResponse } from '../../core/api/api.models';
 
 export interface ChartAccount { id: string; code: string; name: string; nature: 'INCOME' | 'EXPENSE'; analytic: boolean; system: boolean; active: boolean; }
 export interface CostCenter { id: string; name: string; active: boolean; }
@@ -82,13 +82,13 @@ export class FinanceApi {
     return this.http.post(`${this.b(c)}/finance/reconciliation`, { items, reconciled });
   }
 
-  entries(c: string, q: Record<string, string | number | string[] | undefined>): Observable<PageResponse<EntrySummary>> {
+  entries(c: string, q: Record<string, string | number | string[] | undefined>): Observable<PaginaResponse<EntrySummary>> {
     let params = new HttpParams();
     for (const [k, v] of Object.entries(q)) {
       if (v === undefined || v === '' || v === null) continue;
       params = Array.isArray(v) ? v.reduce((p, x) => p.append(k, x), params) : params.set(k, String(v));
     }
-    return this.http.get<PageResponse<EntrySummary>>(`${this.b(c)}/finance/entries`, { params });
+    return this.http.get<PaginaResponse<EntrySummary>>(`${this.b(c)}/finance/entries`, { params });
   }
   entry(c: string, id: string): Observable<EntryDetail> { return this.http.get<EntryDetail>(`${this.b(c)}/finance/entries/${id}`); }
   createEntry(c: string, body: EntryRequest): Observable<EntryDetail[]> { return this.http.post<EntryDetail[]>(`${this.b(c)}/finance/entries`, body); }
@@ -142,8 +142,8 @@ export class FinanceApi {
     return this.http.put<{ year: number; rows: BudgetRow[] }>(`${this.b(c)}/finance/budget/${year}`, { cells });
   }
 
-  suppliers(search: string, page = 0, size = 20): Observable<PageResponse<Supplier>> {
-    return this.http.get<PageResponse<Supplier>>('/api/v1/suppliers', { params: { search, page, size } });
+  suppliers(search: string, page = 0, size = 20): Observable<PaginaResponse<Supplier>> {
+    return this.http.get<PaginaResponse<Supplier>>('/api/v1/suppliers', { params: { search, pagina: page, tamanho: size } });
   }
   saveSupplier(body: Record<string, unknown>, id?: string, active?: boolean): Observable<Supplier> {
     return id

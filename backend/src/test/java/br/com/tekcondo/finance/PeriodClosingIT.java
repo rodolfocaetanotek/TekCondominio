@@ -5,8 +5,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.identity.entity.User;
-import br.com.tekcondo.organization.entity.Organization;
+import br.com.tekcondo.acesso.entity.Usuario;
+import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
 import br.com.tekcondo.support.TestData;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -29,7 +29,7 @@ class PeriodClosingIT extends IntegrationTest {
     @Autowired
     ObjectMapper objectMapper;
 
-    Organization org;
+    Administradora org;
     Condominium condo;
     String token;
     String base;
@@ -41,9 +41,9 @@ class PeriodClosingIT extends IntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        org = data.organization();
+        org = data.administradora();
         condo = data.condominium(org, "Condomínio Fechamento");
-        token = TestData.bearer(data.login(data.orgAdmin(org)));
+        token = TestData.bearer(data.login(data.adminAdministradora(org)));
         base = "/api/v1/condominiums/" + condo.getId() + "/finance";
         bank = call("POST", base + "/bank-accounts", Map.of("name", "Conta Corrente", "kind", "CHECKING",
                 "openingBalance", "1000.00", "openingDate", today.minusMonths(6).toString()), 201).get("id").asText();
@@ -104,8 +104,8 @@ class PeriodClosingIT extends IntegrationTest {
         call("POST", base + "/closing", Map.of("until", thisMonthEnd.toString()), 422);
 
         // Funcionário da administradora não fecha período.
-        User staff = data.user(org);
-        data.grant(staff, "ORG_STAFF", null);
+        Usuario staff = data.usuario(org);
+        data.conceder(staff, "ORG_STAFF", null);
         call(TestData.bearer(data.login(staff)), "POST", base + "/closing", Map.of("until", lastMonthEnd.toString()), 403);
 
         JsonNode closed = call("POST", base + "/closing", Map.of("until", lastMonthEnd.toString(), "notes", "Conferido"), 200);
@@ -139,7 +139,7 @@ class PeriodClosingIT extends IntegrationTest {
 
     @Test
     void closingIsIsolatedPerOrganization() throws Exception {
-        String foreign = TestData.bearer(data.login(data.orgAdmin(data.organization())));
+        String foreign = TestData.bearer(data.login(data.adminAdministradora(data.administradora())));
         call(foreign, "GET", base + "/closing", null, 404);
         call(foreign, "POST", base + "/closing", Map.of("until", lastMonthEnd.toString()), 404);
     }

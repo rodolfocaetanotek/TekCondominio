@@ -7,9 +7,9 @@ import java.util.Map;
 import java.util.UUID;
 
 import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.organization.entity.Organization;
+import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
-import br.com.tekcondo.support.RecordingMailGateway;
+import br.com.tekcondo.support.GravacaoEmailGateway;
 import br.com.tekcondo.support.TestData;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,11 +32,11 @@ class ReservationIT extends IntegrationTest {
     @Autowired
     ObjectMapper objectMapper;
     @Autowired
-    RecordingMailGateway mail;
+    GravacaoEmailGateway mail;
     @Autowired
     JdbcTemplate jdbc;
 
-    Organization org;
+    Administradora org;
     Condominium condo;
     String token;
     String base;
@@ -48,14 +48,14 @@ class ReservationIT extends IntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        org = data.organization();
+        org = data.administradora();
         condo = data.condominium(org, "Condomínio Reservas");
-        token = TestData.bearer(data.login(data.orgAdmin(org)));
+        token = TestData.bearer(data.login(data.adminAdministradora(org)));
         base = "/api/v1/condominiums/" + condo.getId();
         portal = "/api/v1/portal/" + condo.getId();
         unit101 = call(token, "POST", base + "/units", Map.of("identifier", "101", "type", "APARTMENT", "idealFraction", "50"), 201).get("id").asText();
         unit102 = call(token, "POST", base + "/units", Map.of("identifier", "102", "type", "APARTMENT", "idealFraction", "50"), 201).get("id").asText();
-        String email = TestData.uniqueEmail();
+        String email = TestData.emailUnico();
         String person = call(token, "POST", "/api/v1/people", Map.of("name", "Rita Proprietária", "kind", "INDIVIDUAL", "email", email), 201)
                 .get("id").asText();
         call(token, "POST", base + "/occupancies", Map.of("unitId", unit101, "personId", person, "role", "OWNER",
@@ -77,10 +77,10 @@ class ReservationIT extends IntegrationTest {
     }
 
     private String activate(String email) throws Exception {
-        String invite = mail.lastTokenFor(email).orElseThrow();
-        call("", "POST", "/api/v1/auth/password/reset", Map.of("token", invite, "newPassword", "MoradorSenha2026"), 204);
+        String invite = mail.ultimoTokenPara(email).orElseThrow();
+        call("", "POST", "/api/v1/auth/senha/redefinir", Map.of("token", invite, "novaSenha", "MoradorSenha2026"), 204);
         String login = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-                .content(data.json(Map.of("email", email, "password", "MoradorSenha2026")))).andReturn().getResponse().getContentAsString();
+                .content(data.json(Map.of("email", email, "senha", "MoradorSenha2026")))).andReturn().getResponse().getContentAsString();
         return "Bearer " + objectMapper.readTree(login).get("accessToken").asText();
     }
 
@@ -164,7 +164,7 @@ class ReservationIT extends IntegrationTest {
                 values (?, ?, ?, ?::uuid, ?::uuid, ?, 900, 1080, 'CONFIRMED', 'x', false, now(), now())
                 """, UUID.randomUUID(), org.getId(), condo.getId(), grill, unit102, day)).isInstanceOf(DataIntegrityViolationException.class);
 
-        String foreign = TestData.bearer(data.login(data.orgAdmin(data.organization())));
+        String foreign = TestData.bearer(data.login(data.adminAdministradora(data.administradora())));
         call(foreign, "GET", base + "/common-areas", null, 404);
         call(resident, "POST", base + "/common-areas", Map.of("name", "x", "openTime", "08:00", "closeTime", "09:00"), 403);
     }

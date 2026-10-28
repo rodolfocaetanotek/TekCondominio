@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.organization.entity.Organization;
+import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
 import br.com.tekcondo.support.TestData;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -33,7 +33,7 @@ class StatementImportIT extends IntegrationTest {
     @Autowired
     ObjectMapper objectMapper;
 
-    Organization org;
+    Administradora org;
     Condominium condo;
     String token;
     String base;
@@ -42,9 +42,9 @@ class StatementImportIT extends IntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        org = data.organization();
+        org = data.administradora();
         condo = data.condominium(org, "Condomínio Extrato");
-        token = TestData.bearer(data.login(data.orgAdmin(org)));
+        token = TestData.bearer(data.login(data.adminAdministradora(org)));
         base = "/api/v1/condominiums/" + condo.getId() + "/finance";
         bank = call("POST", base + "/bank-accounts", Map.of("name", "Sicoob", "kind", "CHECKING", "bankCode", "756",
                 "agency", "4321", "accountNumber", "12345-6", "openingBalance", "1000.00",
@@ -144,7 +144,7 @@ class StatementImportIT extends IntegrationTest {
     @Test
     void rejectsStatementOfAnotherAccountAndOtherOrganizations() throws Exception {
         upload(ofx("99999-0", trn("X1", d1, "10,00", "PIX")), 422);
-        String foreign = TestData.bearer(data.login(data.orgAdmin(data.organization())));
+        String foreign = TestData.bearer(data.login(data.adminAdministradora(data.administradora())));
         mvc.perform(get(base + "/bank-accounts/" + bank + "/statement-lines").header("Authorization", foreign))
                 .andExpect(status().isNotFound());
     }

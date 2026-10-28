@@ -133,12 +133,12 @@ export class BankReturnTab {
 
   settle(item: ReturnItem): void {
     const c = this.context.id()!;
-    this.api.entries(c, { kind: 'INCOME', status: ['OPEN', 'PARTIAL'], size: 200, sort: 'dueDate,asc' }).subscribe((page) =>
+    this.api.entries(c, { kind: 'INCOME', status: ['OPEN', 'PARTIAL'], tamanho: 200, ordem: 'dueDate,asc' }).subscribe((page) =>
       openForm(this.dialog, {
         title: 'Baixar pagamento do retorno',
         intro: `Valor pago: R$ ${item.paidAmount.toFixed(2).replace('.', ',')}. Escolha a cobrança correspondente.`,
         fields: [{ key: 'entryId', label: 'Cobrança', type: 'select', required: true,
-          options: page.content.map((e) => ({ value: e.id, label: `${e.unitLabel ?? '—'} · ${e.description} · venc. ${e.dueDate.split('-').reverse().join('/')} · R$ ${e.remaining.toFixed(2).replace('.', ',')}` })) }],
+          options: page.conteudo.map((e) => ({ value: e.id, label: `${e.unitLabel ?? '—'} · ${e.description} · venc. ${e.dueDate.split('-').reverse().join('/')} · R$ ${e.remaining.toFixed(2).replace('.', ',')}` })) }],
         submit: (v) => this.api.settleReturnItem(c, item.id, v['entryId'] as string),
       }).pipe(filter((r) => !!r)).subscribe(() => {
         this.notify.success('Pagamento baixado.');

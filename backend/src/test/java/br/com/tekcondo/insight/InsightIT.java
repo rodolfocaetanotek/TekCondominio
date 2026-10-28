@@ -36,9 +36,9 @@ class InsightIT extends IntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        var org = data.organization();
+        var org = data.administradora();
         condo = data.condominium(org, "Condomínio Indicadores");
-        token = TestData.bearer(data.login(data.orgAdmin(org)));
+        token = TestData.bearer(data.login(data.adminAdministradora(org)));
         base = "/api/v1/condominiums/" + condo.getId();
         bank = call("POST", base + "/finance/bank-accounts", Map.of("name", "Conta", "kind", "CHECKING", "openingBalance", "1000.00",
                 "openingDate", today.minusYears(1).toString()), 201).get("id").asText();

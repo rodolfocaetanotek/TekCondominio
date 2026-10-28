@@ -15,8 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import br.com.tekcondo.audit.service.AuditAction;
-import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.auditoria.service.AcaoAuditoria;
+import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.condominium.entity.Condominium;
 import br.com.tekcondo.condominium.service.CondominiumAccess;
 import br.com.tekcondo.finance.entity.ChartAccount;
@@ -24,12 +24,12 @@ import br.com.tekcondo.finance.entity.FinancialEntry;
 import br.com.tekcondo.finance.repository.ChartAccountRepository;
 import br.com.tekcondo.finance.repository.FinancialEntryRepository;
 import br.com.tekcondo.finance.service.PeriodLock;
-import br.com.tekcondo.identity.access.Permission;
-import br.com.tekcondo.notification.NotificationService;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
+import br.com.tekcondo.notificacao.NotificacaoService;
 import br.com.tekcondo.people.entity.Occupancy;
 import br.com.tekcondo.people.entity.Person;
 import br.com.tekcondo.people.repository.OccupancyRepository;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import br.com.tekcondo.structure.entity.Unit;
 import br.com.tekcondo.structure.repository.UnitRepository;
 import jakarta.validation.constraints.DecimalMin;
@@ -109,14 +109,14 @@ public class ReservationService {
     private final ChartAccountRepository chartAccounts;
     private final PeriodLock periodLock;
     private final CondominiumAccess access;
-    private final NotificationService notifications;
-    private final AuditService auditService;
+    private final NotificacaoService notifications;
+    private final AuditoriaService auditService;
     private final Clock clock;
 
     public ReservationService(CommonAreaRepository areas, ReservationRepository reservations, UnitRepository units,
                               OccupancyRepository occupancies, FinancialEntryRepository entries, ChartAccountRepository chartAccounts,
-                              PeriodLock periodLock, CondominiumAccess access, NotificationService notifications,
-                              AuditService auditService, Clock clock) {
+                              PeriodLock periodLock, CondominiumAccess access, NotificacaoService notifications,
+                              AuditoriaService auditService, Clock clock) {
         this.areas = areas;
         this.reservations = reservations;
         this.units = units;
@@ -134,20 +134,20 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public List<AreaResponse> areas(UUID condominiumId) {
-        access.require(condominiumId, Permission.RESERVATION_VIEW);
+        access.require(condominiumId, Permissao.RESERVATION_VIEW);
         return areas.findByCondominiumIdOrderByNameAsc(condominiumId).stream().map(ReservationService::toArea).toList();
     }
 
     @Transactional
     public AreaResponse saveArea(UUID condominiumId, UUID id, AreaRequest r) {
-        Condominium condominium = access.requireActive(condominiumId, Permission.RESERVATION_EDIT);
+        Condominium condominium = access.requireActive(condominiumId, Permissao.RESERVATION_EDIT);
         if (!r.closeTime().isAfter(r.openTime())) {
-            throw ApiException.badRequest("INVALID_HOURS", "O horário de fechamento deve ser posterior ao de abertura.");
+            throw ApiException.requisicaoInvalida("INVALID_HOURS", "O horário de fechamento deve ser posterior ao de abertura.");
         }
         CommonArea area = id == null ? new CommonArea(condominium.getOrganizationId(), condominiumId)
-                : areas.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.notFound("Área comum"));
+                : areas.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Área comum"));
         if (areas.nameTaken(condominiumId, r.name().trim(), area.getId())) {
-            throw ApiException.conflict("AREA_NAME_TAKEN", "Já existe uma área com este nome.");
+            throw ApiException.conflito("AREA_NAME_TAKEN", "Já existe uma área com este nome.");
         }
         area.update(r.name().trim(), blank(r.description()), blank(r.rules()), r.capacity(), r.fee(), r.requiresApproval(),
                 r.blockDelinquent(), r.openTime(), r.closeTime(), r.maxDurationMinutes() == null ? 720 : r.maxDurationMinutes(),
@@ -157,7 +157,7 @@ public class ReservationService {
             area.setActive(r.active());
         }
         areas.saveAndFlush(area);
-        auditService.record(AuditAction.COMMON_AREA_SAVED, "CommonArea", area.getId(), Map.of("name", area.getName(),
+        auditService.registrar(AcaoAuditoria.COMMON_AREA_SAVED, "CommonArea", area.getId(), Map.of("name", area.getName(),
                 "fee", area.getFee().toPlainString(), "active", area.isActive()));
         return toArea(area);
     }
@@ -166,7 +166,7 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public List<ReservationResponse> list(UUID condominiumId, UUID areaId, LocalDate from, LocalDate to) {
-        access.require(condominiumId, Permission.RESERVATION_VIEW);
+        access.require(condominiumId, Permissao.RESERVATION_VIEW);
         LocalDate start = from == null ? today().minusDays(7) : from;
         LocalDate end = to == null ? start.plusDays(60) : to;
         return reservations.findInPeriod(condominiumId, areaId, start, end).stream().map(this::toResponse).toList();
@@ -175,26 +175,26 @@ public class ReservationService {
     /** Reserva lançada pela administração (ex.: pedido por telefone): dispensa aprovação e antecedência mínima. */
     @Transactional
     public ReservationResponse create(UUID condominiumId, ReservationRequest request) {
-        Condominium condominium = access.requireActive(condominiumId, Permission.RESERVATION_EDIT);
+        Condominium condominium = access.requireActive(condominiumId, Permissao.RESERVATION_EDIT);
         var user = access.user();
-        return toResponse(book(condominium, request, user.userId(), user.name(), false));
+        return toResponse(book(condominium, request, user.idUsuario(), user.nome(), false));
     }
 
     @Transactional
     public ReservationResponse decide(UUID condominiumId, UUID id, boolean approved, String note) {
-        Condominium condominium = access.requireActive(condominiumId, Permission.RESERVATION_EDIT);
+        Condominium condominium = access.requireActive(condominiumId, Permissao.RESERVATION_EDIT);
         Reservation r = load(condominiumId, id);
         if (!approved && (note == null || note.isBlank())) {
-            throw ApiException.badRequest("REASON_REQUIRED", "Informe o motivo da recusa.");
+            throw ApiException.requisicaoInvalida("REASON_REQUIRED", "Informe o motivo da recusa.");
         }
-        r.decide(approved, blank(note), access.user().userId(), Instant.now(clock));
+        r.decide(approved, blank(note), access.user().idUsuario(), Instant.now(clock));
         if (approved) {
             charge(condominium, r);
         }
         reservations.flush();
-        auditService.record(AuditAction.RESERVATION_DECIDED, "Reservation", id, Map.of("approved", approved, "note", String.valueOf(note)));
+        auditService.registrar(AcaoAuditoria.RESERVATION_DECIDED, "Reservation", id, Map.of("approved", approved, "note", String.valueOf(note)));
         if (r.getRequestedBy() != null) {
-            notifications.notify(r.getOrganizationId(), List.of(r.getRequestedBy()),
+            notifications.notificar(r.getOrganizationId(), List.of(r.getRequestedBy()),
                     "Reserva " + (approved ? "confirmada" : "recusada"), describe(r) + (note == null || note.isBlank() ? "" : " — " + note.trim()),
                     "/portal", null);
         }
@@ -203,11 +203,11 @@ public class ReservationService {
 
     @Transactional
     public ReservationResponse cancel(UUID condominiumId, UUID id, String reason) {
-        access.require(condominiumId, Permission.RESERVATION_EDIT);
+        access.require(condominiumId, Permissao.RESERVATION_EDIT);
         Reservation r = load(condominiumId, id);
         cancelInternal(r, reason);
         if (r.getRequestedBy() != null && r.isByResident()) {
-            notifications.notify(r.getOrganizationId(), List.of(r.getRequestedBy()), "Reserva cancelada pela administração",
+            notifications.notificar(r.getOrganizationId(), List.of(r.getRequestedBy()), "Reserva cancelada pela administração",
                     describe(r) + " — " + reason.trim(), "/portal", null);
         }
         return toResponse(r);
@@ -224,7 +224,7 @@ public class ReservationService {
     @Transactional(readOnly = true)
     public List<Slot> occupancy(UUID condominiumId, UUID areaId, LocalDate from, LocalDate to) {
         if (to.isBefore(from) || from.plusDays(120).isBefore(to)) {
-            throw ApiException.badRequest("INVALID_PERIOD", "Consulte um período de até 120 dias.");
+            throw ApiException.requisicaoInvalida("INVALID_PERIOD", "Consulte um período de até 120 dias.");
         }
         return reservations.findInPeriod(condominiumId, areaId, from, to).stream().filter(r -> r.getStatus().isActive())
                 .map(r -> new Slot(r.getAreaId(), r.getDate(), r.getStartTime(), r.getEndTime(), r.getStatus())).toList();
@@ -233,8 +233,8 @@ public class ReservationService {
     public ReservationResponse bookAsResident(Condominium condominium, ReservationRequest request, UUID userId, String userName) {
         Reservation r = book(condominium, request, userId, userName, true);
         if (r.getStatus() == Reservation.Status.PENDING) {
-            notifications.notify(condominium.getOrganizationId(),
-                    notifications.usersWithPermission(condominium.getOrganizationId(), condominium.getId(), Permission.RESERVATION_EDIT),
+            notifications.notificar(condominium.getOrganizationId(),
+                    notifications.usuariosComPermissao(condominium.getOrganizationId(), condominium.getId(), Permissao.RESERVATION_EDIT),
                     "Reserva aguardando aprovação", describe(r) + " · " + userName, "/reservas", null);
         }
         return toResponse(r);
@@ -246,9 +246,9 @@ public class ReservationService {
 
     public ReservationResponse cancelAsResident(UUID condominiumId, UUID id, Collection<UUID> unitIds, String reason) {
         Reservation r = reservations.findByIdAndCondominiumId(id, condominiumId).filter(x -> unitIds.contains(x.getUnitId()))
-                .orElseThrow(() -> ApiException.notFound("Reserva"));
+                .orElseThrow(() -> ApiException.naoEncontrado("Reserva"));
         if (!r.getDate().atTime(r.getStartTime()).isAfter(now())) {
-            throw ApiException.businessRule("RESERVATION_STARTED", "A reserva já começou ou passou e não pode ser cancelada pelo portal.");
+            throw ApiException.regraNegocio("RESERVATION_STARTED", "A reserva já começou ou passou e não pode ser cancelada pelo portal.");
         }
         cancelInternal(r, reason);
         return toResponse(r);
@@ -258,28 +258,28 @@ public class ReservationService {
 
     private Reservation book(Condominium condominium, ReservationRequest q, UUID userId, String userName, boolean byResident) {
         // Trava a área: duas reservas simultâneas do mesmo horário são serializadas (o banco também impede sobreposição).
-        CommonArea area = areas.lockInCondominium(q.areaId(), condominium.getId()).orElseThrow(() -> ApiException.notFound("Área comum"));
-        Unit unit = units.findByIdAndCondominiumId(q.unitId(), condominium.getId()).orElseThrow(() -> ApiException.notFound("Unidade"));
+        CommonArea area = areas.lockInCondominium(q.areaId(), condominium.getId()).orElseThrow(() -> ApiException.naoEncontrado("Área comum"));
+        Unit unit = units.findByIdAndCondominiumId(q.unitId(), condominium.getId()).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
         if (!area.isActive()) {
-            throw ApiException.businessRule("AREA_INACTIVE", "A área " + area.getName() + " não está disponível para reservas.");
+            throw ApiException.regraNegocio("AREA_INACTIVE", "A área " + area.getName() + " não está disponível para reservas.");
         }
         if (!unit.isActive()) {
-            throw ApiException.businessRule("UNIT_INACTIVE", "A unidade está inativa.");
+            throw ApiException.regraNegocio("UNIT_INACTIVE", "A unidade está inativa.");
         }
         validateWindow(area, q, byResident);
         if (reservations.overlaps(area.getId(), q.date(), q.startTime(), q.endTime())) {
-            throw ApiException.conflict("RESERVATION_CONFLICT", "Já existe reserva para " + area.getName() + " neste horário.");
+            throw ApiException.conflito("RESERVATION_CONFLICT", "Já existe reserva para " + area.getName() + " neste horário.");
         }
         if (area.getMaxPerUnitMonth() != null) {
             LocalDate first = q.date().withDayOfMonth(1);
             long count = reservations.countActiveForUnit(area.getId(), unit.getId(), first, first.plusMonths(1).minusDays(1));
             if (count >= area.getMaxPerUnitMonth()) {
-                throw ApiException.businessRule("RESERVATION_LIMIT", "A unidade já atingiu o limite de " + area.getMaxPerUnitMonth()
+                throw ApiException.regraNegocio("RESERVATION_LIMIT", "A unidade já atingiu o limite de " + area.getMaxPerUnitMonth()
                         + " reserva(s) por mês nesta área.");
             }
         }
         if (area.isBlockDelinquent() && hasOverdueCharges(condominium.getId(), unit.getId())) {
-            throw ApiException.businessRule("UNIT_DELINQUENT",
+            throw ApiException.regraNegocio("UNIT_DELINQUENT",
                     "A unidade possui cobranças vencidas. Conforme o regulamento desta área, a reserva fica bloqueada até a regularização.");
         }
         Reservation r = reservations.save(new Reservation(area, unit.getId(), q.date(), q.startTime(), q.endTime(), q.guests(),
@@ -294,31 +294,31 @@ public class ReservationService {
         details.put("date", q.date().toString());
         details.put("time", q.startTime() + "-" + q.endTime());
         details.put("status", r.getStatus().name());
-        auditService.record(AuditAction.RESERVATION_CREATED, "Reservation", r.getId(), details);
+        auditService.registrar(AcaoAuditoria.RESERVATION_CREATED, "Reservation", r.getId(), details);
         return r;
     }
 
     private void validateWindow(CommonArea area, ReservationRequest q, boolean byResident) {
         if (!q.endTime().isAfter(q.startTime())) {
-            throw ApiException.badRequest("INVALID_TIME", "O horário final deve ser posterior ao inicial.");
+            throw ApiException.requisicaoInvalida("INVALID_TIME", "O horário final deve ser posterior ao inicial.");
         }
         if (q.startTime().isBefore(area.getOpenTime()) || q.endTime().isAfter(area.getCloseTime())) {
-            throw ApiException.businessRule("OUTSIDE_HOURS", "A área funciona das " + area.getOpenTime() + " às " + area.getCloseTime() + ".");
+            throw ApiException.regraNegocio("OUTSIDE_HOURS", "A área funciona das " + area.getOpenTime() + " às " + area.getCloseTime() + ".");
         }
         if (Duration.between(q.startTime(), q.endTime()).toMinutes() > area.getMaxDurationMinutes()) {
-            throw ApiException.businessRule("DURATION_EXCEEDED", "Duração máxima de " + area.getMaxDurationMinutes() + " minutos.");
+            throw ApiException.regraNegocio("DURATION_EXCEEDED", "Duração máxima de " + area.getMaxDurationMinutes() + " minutos.");
         }
         LocalDateTime start = q.date().atTime(q.startTime());
         LocalDateTime now = now();
         if (!start.isAfter(now)) {
-            throw ApiException.businessRule("RESERVATION_IN_PAST", "Não é possível reservar horários passados.");
+            throw ApiException.regraNegocio("RESERVATION_IN_PAST", "Não é possível reservar horários passados.");
         }
         if (byResident && start.isBefore(now.plusHours(area.getMinAdvanceHours()))) {
-            throw ApiException.businessRule("ADVANCE_REQUIRED", "Reservas desta área exigem antecedência mínima de "
+            throw ApiException.regraNegocio("ADVANCE_REQUIRED", "Reservas desta área exigem antecedência mínima de "
                     + area.getMinAdvanceHours() + " hora(s).");
         }
         if (q.date().isAfter(today().plusDays(area.getMaxAdvanceDays()))) {
-            throw ApiException.businessRule("TOO_FAR_AHEAD", "Reservas abertas com até " + area.getMaxAdvanceDays() + " dias de antecedência.");
+            throw ApiException.regraNegocio("TOO_FAR_AHEAD", "Reservas abertas com até " + area.getMaxAdvanceDays() + " dias de antecedência.");
         }
     }
 
@@ -340,7 +340,7 @@ public class ReservationService {
                 .or(() -> occupancies.findCurrentByUnits(List.of(unit.getId())).stream()
                         .filter(o -> o.getRole() == Occupancy.Role.OWNER).map(Occupancy::getPerson).findFirst())
                 .orElse(null);
-        UUID by = access.user().userId();
+        UUID by = access.user().idUsuario();
         FinancialEntry entry = new FinancialEntry(condominium.getOrganizationId(), condominium.getId(), FinancialEntry.Kind.INCOME,
                 FinancialEntry.Origin.MANUAL, by);
         entry.details("Taxa de uso — " + areaName(r) + " em " + r.getDate().format(BR), account, null, null, unit, responsible,
@@ -356,15 +356,15 @@ public class ReservationService {
         if (r.getEntryId() != null) {
             entries.findById(r.getEntryId()).filter(e -> e.getStatus() == FinancialEntry.Status.OPEN).ifPresent(e -> {
                 periodLock.ensureOpen(r.getCondominiumId(), e.getCompetence());
-                e.cancel("Reserva cancelada: " + reason.trim(), access.user().userId(), now);
+                e.cancel("Reserva cancelada: " + reason.trim(), access.user().idUsuario(), now);
             });
         }
         reservations.flush();
-        auditService.record(AuditAction.RESERVATION_CANCELLED, "Reservation", r.getId(), Map.of("reason", reason.trim()));
+        auditService.registrar(AcaoAuditoria.RESERVATION_CANCELLED, "Reservation", r.getId(), Map.of("reason", reason.trim()));
     }
 
     private Reservation load(UUID condominiumId, UUID id) {
-        return reservations.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.notFound("Reserva"));
+        return reservations.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Reserva"));
     }
 
     private String areaName(Reservation r) {
@@ -379,13 +379,13 @@ public class ReservationService {
         return new ReservationResponse(r.getId(), r.getAreaId(), areaName(r), r.getUnitId(),
                 units.findById(r.getUnitId()).map(Unit::label).orElse(null), r.getDate(), r.getStartTime(), r.getEndTime(),
                 r.getGuests(), r.getNotes(), r.getStatus(), r.getFee(), r.getEntryId(), r.getRequesterName(), r.isByResident(),
-                r.getDecisionNote(), r.getCancelReason(), r.getCreatedAt());
+                r.getDecisionNote(), r.getCancelReason(), r.getCriadoEm());
     }
 
     private static AreaResponse toArea(CommonArea a) {
         return new AreaResponse(a.getId(), a.getName(), a.getDescription(), a.getRules(), a.getCapacity(), a.getFee(),
                 a.isRequiresApproval(), a.isBlockDelinquent(), a.getOpenTime(), a.getCloseTime(), a.getMaxDurationMinutes(),
-                a.getMinAdvanceHours(), a.getMaxAdvanceDays(), a.getMaxPerUnitMonth(), a.isActive(), a.getVersion());
+                a.getMinAdvanceHours(), a.getMaxAdvanceDays(), a.getMaxPerUnitMonth(), a.isActive(), a.getVersao());
     }
 
     private LocalDateTime now() {

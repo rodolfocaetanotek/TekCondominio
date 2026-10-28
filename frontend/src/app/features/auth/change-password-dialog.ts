@@ -24,14 +24,14 @@ import { DialogClose } from '../../shared/ui/dialog-close';
         }
         <mat-form-field class="wide">
           <mat-label>Senha atual</mat-label>
-          <input matInput type="password" formControlName="currentPassword" autocomplete="current-password" required cdkFocusInitial />
-          <mat-error><tc-field-error [control]="form.controls.currentPassword" /></mat-error>
+          <input matInput type="password" formControlName="senhaAtual" autocomplete="current-password" required cdkFocusInitial />
+          <mat-error><tc-field-error [control]="form.controls.senhaAtual" /></mat-error>
         </mat-form-field>
         <mat-form-field class="wide">
           <mat-label>Nova senha</mat-label>
-          <input matInput type="password" formControlName="newPassword" autocomplete="new-password" required />
+          <input matInput type="password" formControlName="novaSenha" autocomplete="new-password" required />
           <mat-hint>Mínimo de 10 caracteres, com letras e números.</mat-hint>
-          <mat-error><tc-field-error [control]="form.controls.newPassword" /></mat-error>
+          <mat-error><tc-field-error [control]="form.controls.novaSenha" /></mat-error>
         </mat-form-field>
         <mat-form-field class="wide">
           <mat-label>Confirme a nova senha</mat-label>
@@ -59,11 +59,11 @@ export class ChangePasswordDialog {
   protected readonly error = signal<string | null>(null);
   protected readonly form = inject(FormBuilder).nonNullable.group(
     {
-      currentPassword: ['', [Validators.required]],
-      newPassword: ['', [Validators.required]],
+      senhaAtual: ['', [Validators.required]],
+      novaSenha: ['', [Validators.required]],
       confirm: ['', [Validators.required]],
     },
-    { validators: passwordsMatch('newPassword', 'confirm') },
+    { validators: passwordsMatch('novaSenha', 'confirm') },
   );
 
   save(): void {
@@ -72,16 +72,16 @@ export class ChangePasswordDialog {
     this.saving.set(true);
     this.error.set(null);
     const v = this.form.getRawValue();
-    this.service.change(v.currentPassword, v.newPassword).subscribe({
+    this.service.change(v.senhaAtual, v.novaSenha).subscribe({
       next: () => this.ref.close(true),
       error: (err: unknown) => {
         this.saving.set(false);
         const problem = toProblem(err);
-        if (problem.code === 'WRONG_CURRENT_PASSWORD') {
-          this.form.controls.currentPassword.setErrors({ server: problem.detail });
-        } else if (problem.code === 'SAME_PASSWORD') {
-          this.form.controls.newPassword.setErrors({ server: problem.detail });
-        } else if (problem.code === 'VALIDATION_ERROR') {
+        if (problem.codigo === 'WRONG_CURRENT_PASSWORD') {
+          this.form.controls.senhaAtual.setErrors({ server: problem.detail });
+        } else if (problem.codigo === 'SAME_PASSWORD') {
+          this.form.controls.novaSenha.setErrors({ server: problem.detail });
+        } else if (problem.codigo === 'VALIDATION_ERROR') {
           const rest = applyServerErrors(this.form, problem);
           if (rest.length) this.error.set(rest.join(' '));
         } else {

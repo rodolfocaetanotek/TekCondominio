@@ -6,7 +6,7 @@ import java.util.UUID;
 
 import br.com.tekcondo.finance.entity.StatementLine;
 import br.com.tekcondo.finance.service.StatementImportService;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -41,7 +41,7 @@ public class StatementImportController {
         try {
             return ResponseEntity.status(201).body(service.importOfx(c, a, file.getOriginalFilename(), file.getBytes(), ignoreAccountCheck));
         } catch (IOException e) {
-            throw ApiException.badRequest("UPLOAD_FAILED", "Não foi possível ler o arquivo enviado.");
+            throw ApiException.requisicaoInvalida("UPLOAD_FAILED", "Não foi possível ler o arquivo enviado.");
         }
     }
 

@@ -135,7 +135,7 @@ export class GatePage {
 
   arrival(): void {
     const c = this.context.id()!;
-    this.structure.units(c, { page: 0, size: 500, active: 'true' }).pipe(map((p) => p.content)).subscribe((units) =>
+    this.structure.units(c, { page: 0, size: 500, active: 'true' }).pipe(map((p) => p.conteudo)).subscribe((units) =>
       openForm(this.dialog, {
         title: 'Registrar chegada',
         intro: 'Colete apenas os dados necessários. O documento é exibido mascarado e os registros são anonimizados após o prazo de retenção.',

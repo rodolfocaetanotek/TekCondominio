@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.organization.entity.Organization;
+import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
 import br.com.tekcondo.support.TestData;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -17,10 +17,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 
-import static br.com.tekcondo.integration.bank.Cnab240Fixture.header;
-import static br.com.tekcondo.integration.bank.Cnab240Fixture.segmentT;
-import static br.com.tekcondo.integration.bank.Cnab240Fixture.segmentU;
-import static br.com.tekcondo.integration.bank.Cnab240Fixture.trailer;
+import static br.com.tekcondo.integracao.banco.Cnab240Fixture.header;
+import static br.com.tekcondo.integracao.banco.Cnab240Fixture.segmentT;
+import static br.com.tekcondo.integracao.banco.Cnab240Fixture.segmentU;
+import static br.com.tekcondo.integracao.banco.Cnab240Fixture.trailer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -34,7 +34,7 @@ class BankReturnIT extends IntegrationTest {
     @Autowired
     ObjectMapper objectMapper;
 
-    Organization org;
+    Administradora org;
     Condominium condo;
     String token;
     String base;
@@ -45,9 +45,9 @@ class BankReturnIT extends IntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        org = data.organization();
+        org = data.administradora();
         condo = data.condominium(org, "Condomínio Retorno");
-        token = TestData.bearer(data.login(data.orgAdmin(org)));
+        token = TestData.bearer(data.login(data.adminAdministradora(org)));
         base = "/api/v1/condominiums/" + condo.getId();
         bank = call("POST", base + "/finance/bank-accounts", Map.of("name", "Sicoob Cobrança", "kind", "CHECKING", "bankCode", "756",
                 "openingBalance", "0", "openingDate", today.minusMonths(2).toString()), 201).get("id").asText();
@@ -145,7 +145,7 @@ class BankReturnIT extends IntegrationTest {
                 "openingBalance", "0", "openingDate", today.minusMonths(2).toString()), 201).get("id").asText();
         upload(bb, String.join("\n", header("756", today), trailer()), 422);
 
-        String foreign = TestData.bearer(data.login(data.orgAdmin(data.organization())));
+        String foreign = TestData.bearer(data.login(data.adminAdministradora(data.administradora())));
         mvc.perform(get(base + "/billing/bank-returns").header("Authorization", foreign)).andExpect(status().isNotFound());
     }
 }

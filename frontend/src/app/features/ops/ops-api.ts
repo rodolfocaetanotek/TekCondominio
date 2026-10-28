@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { PageResponse } from '../../core/api/api.models';
+import { PaginaResponse } from '../../core/api/api.models';
 import { downloadFile } from '../../shared/download';
 
 export interface Doc { id: string; category: string; title: string; description?: string; fileName: string; contentType: string; sizeBytes: number; visibility: string; entityType?: string; entityId?: string; unitId?: string; archived: boolean; createdAt: string; createdByName?: string; }
@@ -15,7 +15,7 @@ export interface AgendaItem { id: string; position: number; title: string; descr
 export interface Attendance { id: string; unitId: string; unitLabel: string; attendeeName: string; byProxy: boolean; proxyName?: string; registeredAt: string; }
 export interface AssemblyDetail { id: string; title: string; kind: string; scheduledAt: string; secondCallAt?: string; location: string; voteWeight: string; status: string; calledAt?: string; closedAt?: string; cancelReason?: string; minutes?: string; version: number; agenda: AgendaItem[]; attendance: Attendance[]; quorum: { unitsPresent: number; totalUnits: number; fractionPresent: number }; }
 export interface Contract { id: string; supplierId: string; supplierName: string; title: string; description?: string; amount: number; periodicity: string; startDate: string; endDate?: string; readjustmentIndex?: string; readjustmentMonth?: number; noticeDays: number; status: string; expiring: boolean; expired: boolean; terminatedOn?: string; terminationReason?: string; version: number; history: { change: string; createdAt: string; createdByName?: string }[]; }
-export interface Inbox { unread: number; items: { id: string; title: string; body?: string; link?: string; read: boolean; createdAt: string }[]; }
+export interface CaixaEntrada { naoLidas: number; itens: { id: string; titulo: string; texto?: string; link?: string; lida: boolean; criadoEm: string }[]; }
 export interface ReportTable { title: string; subtitle?: string; columns: { key: string; label: string; type: string }[]; rows: unknown[][]; totals?: unknown[]; notes?: string[]; }
 export interface Dashboard {
   from: string; to: string; condominiums: number; units: number; residents: number; finance: boolean; income: number; expense: number;
@@ -34,7 +34,7 @@ export class OpsApi {
   }
 
   // documentos
-  documents(c: string, q: Record<string, string> = {}): Observable<PageResponse<Doc>> { return this.http.get<PageResponse<Doc>>(`${this.b(c)}/documents`, { params: { size: '100', ...q } }); }
+  documents(c: string, q: Record<string, string> = {}): Observable<PaginaResponse<Doc>> { return this.http.get<PaginaResponse<Doc>>(`${this.b(c)}/documents`, { params: { tamanho: '100', ...q } }); }
   upload(c: string, file: File, meta: Record<string, string>): Observable<Doc> {
     const form = new FormData();
     form.append('file', file);
@@ -44,7 +44,7 @@ export class OpsApi {
   archiveDocument(c: string, id: string): Observable<Doc> { return this.http.post<Doc>(`${this.b(c)}/documents/${id}/archive`, null); }
 
   // ocorrências
-  occurrences(c: string, q: Record<string, string | string[]>): Observable<PageResponse<OccurrenceSummary>> { return this.http.get<PageResponse<OccurrenceSummary>>(`${this.b(c)}/occurrences`, { params: q }); }
+  occurrences(c: string, q: Record<string, string | string[]>): Observable<PaginaResponse<OccurrenceSummary>> { return this.http.get<PaginaResponse<OccurrenceSummary>>(`${this.b(c)}/occurrences`, { params: q }); }
   occurrenceStats(c: string): Observable<OccurrenceStats> { return this.http.get<OccurrenceStats>(`${this.b(c)}/occurrences/stats`); }
   occurrence(c: string, id: string): Observable<OccurrenceDetail> { return this.http.get<OccurrenceDetail>(`${this.b(c)}/occurrences/${id}`); }
   createOccurrence(c: string, body: Record<string, unknown>): Observable<OccurrenceDetail> { return this.http.post<OccurrenceDetail>(`${this.b(c)}/occurrences`, body); }
@@ -82,9 +82,9 @@ export class OpsApi {
   terminateContract(c: string, id: string, body: Record<string, unknown>): Observable<Contract> { return this.http.post<Contract>(`${this.b(c)}/contracts/${id}/terminate`, body); }
 
   // notificações, painel, relatórios
-  inbox(): Observable<Inbox> { return this.http.get<Inbox>('/api/v1/notifications'); }
-  readNotification(id: string): Observable<void> { return this.http.post<void>(`/api/v1/notifications/${id}/read`, null); }
-  readAllNotifications(): Observable<void> { return this.http.post<void>('/api/v1/notifications/read-all', null); }
+  inbox(): Observable<CaixaEntrada> { return this.http.get<CaixaEntrada>('/api/v1/notificacoes'); }
+  readNotification(id: string): Observable<void> { return this.http.post<void>(`/api/v1/notificacoes/${id}/marcar-lida`, null); }
+  readAllNotifications(): Observable<void> { return this.http.post<void>('/api/v1/notificacoes/marcar-todas-lidas', null); }
   dashboard(q: Record<string, string>): Observable<Dashboard> { return this.http.get<Dashboard>('/api/v1/dashboard', { params: q }); }
   report(c: string, kind: string, q: Record<string, string>): Observable<ReportTable> { return this.http.get<ReportTable>(`${this.b(c)}/reports/${kind}`, { params: q }); }
   exportReport(c: string, kind: string, q: Record<string, string>): Observable<void> { return downloadFile(this.http, `${this.b(c)}/reports/${kind}/export`, q); }

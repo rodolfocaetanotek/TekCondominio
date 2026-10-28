@@ -1,58 +1,58 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, shareReplay } from 'rxjs';
-import { PageResponse } from '../../core/api/api.models';
-import { AssignmentRequest, RoleOption, UserDetail, UserQuery, UserSummary } from './user.models';
+import { PaginaResponse } from '../../core/api/api.models';
+import { AtribuicaoRequest, PapelOpcao, UsuarioDetalhe, UserQuery, UsuarioResumo } from './user.models';
 
-const BASE = '/api/v1/users';
+const BASE = '/api/v1/usuarios';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
   private readonly http = inject(HttpClient);
-  private roles$?: Observable<RoleOption[]>;
+  private roles$?: Observable<PapelOpcao[]>;
 
-  list(query: UserQuery): Observable<PageResponse<UserSummary>> {
-    let params = new HttpParams().set('page', query.page).set('size', query.size);
-    if (query.search?.trim()) params = params.set('search', query.search.trim());
-    if (query.active) params = params.set('active', query.active);
-    return this.http.get<PageResponse<UserSummary>>(BASE, { params });
+  list(query: UserQuery): Observable<PaginaResponse<UsuarioResumo>> {
+    let params = new HttpParams().set('pagina', query.page).set('tamanho', query.size);
+    if (query.search?.trim()) params = params.set('busca', query.search.trim());
+    if (query.active) params = params.set('ativo', query.active);
+    return this.http.get<PaginaResponse<UsuarioResumo>>(BASE, { params });
   }
 
-  get(id: string): Observable<UserDetail> {
-    return this.http.get<UserDetail>(`${BASE}/${id}`);
+  get(id: string): Observable<UsuarioDetalhe> {
+    return this.http.get<UsuarioDetalhe>(`${BASE}/${id}`);
   }
 
-  create(body: { name: string; email: string; assignment: AssignmentRequest }): Observable<UserDetail> {
-    return this.http.post<UserDetail>(BASE, body);
+  create(body: { nome: string; email: string; atribuicao: AtribuicaoRequest }): Observable<UsuarioDetalhe> {
+    return this.http.post<UsuarioDetalhe>(BASE, body);
   }
 
-  rename(id: string, name: string, version: number): Observable<UserDetail> {
-    return this.http.put<UserDetail>(`${BASE}/${id}`, { name, version });
+  rename(id: string, nome: string, versao: number): Observable<UsuarioDetalhe> {
+    return this.http.put<UsuarioDetalhe>(`${BASE}/${id}`, { nome, versao });
   }
 
-  deactivate(id: string): Observable<UserDetail> {
-    return this.http.post<UserDetail>(`${BASE}/${id}/deactivate`, null);
+  deactivate(id: string): Observable<UsuarioDetalhe> {
+    return this.http.post<UsuarioDetalhe>(`${BASE}/${id}/desativar`, null);
   }
 
-  activate(id: string): Observable<UserDetail> {
-    return this.http.post<UserDetail>(`${BASE}/${id}/activate`, null);
+  activate(id: string): Observable<UsuarioDetalhe> {
+    return this.http.post<UsuarioDetalhe>(`${BASE}/${id}/ativar`, null);
   }
 
-  addAssignment(id: string, body: AssignmentRequest): Observable<UserDetail> {
-    return this.http.post<UserDetail>(`${BASE}/${id}/assignments`, body);
+  addAssignment(id: string, body: AtribuicaoRequest): Observable<UsuarioDetalhe> {
+    return this.http.post<UsuarioDetalhe>(`${BASE}/${id}/atribuicoes`, body);
   }
 
-  removeAssignment(id: string, assignmentId: string): Observable<UserDetail> {
-    return this.http.delete<UserDetail>(`${BASE}/${id}/assignments/${assignmentId}`);
+  removeAssignment(id: string, idAtribuicao: string): Observable<UsuarioDetalhe> {
+    return this.http.delete<UsuarioDetalhe>(`${BASE}/${id}/atribuicoes/${idAtribuicao}`);
   }
 
   resendInvite(id: string): Observable<void> {
-    return this.http.post<void>(`${BASE}/${id}/invite`, null);
+    return this.http.post<void>(`${BASE}/${id}/convite`, null);
   }
 
   /** Catálogo de papéis (estável durante a sessão). */
-  roles(): Observable<RoleOption[]> {
-    this.roles$ ??= this.http.get<RoleOption[]>('/api/v1/roles').pipe(shareReplay(1));
+  roles(): Observable<PapelOpcao[]> {
+    this.roles$ ??= this.http.get<PapelOpcao[]>('/api/v1/papeis').pipe(shareReplay(1));
     return this.roles$;
   }
 }

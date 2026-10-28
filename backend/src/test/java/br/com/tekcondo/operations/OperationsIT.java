@@ -11,13 +11,13 @@ import java.util.Map;
 import br.com.tekcondo.announcement.AnnouncementRepository;
 import br.com.tekcondo.condominium.entity.Condominium;
 import br.com.tekcondo.finance.repository.FinancialEntryRepository;
-import br.com.tekcondo.identity.entity.User;
+import br.com.tekcondo.acesso.entity.Usuario;
 import br.com.tekcondo.jobs.DailyRemindersJob;
-import br.com.tekcondo.notification.NotificationService;
-import br.com.tekcondo.organization.entity.Organization;
+import br.com.tekcondo.notificacao.NotificacaoService;
+import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.supplier.repository.ContractRepository;
 import br.com.tekcondo.support.IntegrationTest;
-import br.com.tekcondo.support.RecordingMailGateway;
+import br.com.tekcondo.support.GravacaoEmailGateway;
 import br.com.tekcondo.support.TestData;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -44,7 +44,7 @@ class OperationsIT extends IntegrationTest {
     @Autowired
     JdbcTemplate jdbc;
     @Autowired
-    RecordingMailGateway mail;
+    GravacaoEmailGateway mail;
     @Autowired
     ContractRepository contractRepository;
     @Autowired
@@ -52,13 +52,13 @@ class OperationsIT extends IntegrationTest {
     @Autowired
     AnnouncementRepository announcementRepository;
     @Autowired
-    NotificationService notificationService;
+    NotificacaoService notificationService;
     @Autowired
     TransactionTemplate tx;
 
-    Organization org;
+    Administradora org;
     Condominium condo;
-    User admin;
+    Usuario admin;
     String token;
     String base;
     String unit101;
@@ -66,9 +66,9 @@ class OperationsIT extends IntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        org = data.organization();
+        org = data.administradora();
         condo = data.condominium(org, "Condomínio Operações");
-        admin = data.orgAdmin(org);
+        admin = data.adminAdministradora(org);
         token = TestData.bearer(data.login(admin));
         base = "/api/v1/condominiums/" + condo.getId();
         unit101 = call("POST", base + "/units", Map.of("identifier", "101", "type", "APARTMENT", "idealFraction", "60"), 201).get("id").asText();
@@ -113,7 +113,7 @@ class OperationsIT extends IntegrationTest {
                 .andReturn().getResponse().getContentAsByteArray();
         assertThat(downloaded).isEqualTo(pdf);
 
-        String foreign = TestData.bearer(data.login(data.orgAdmin(data.organization())));
+        String foreign = TestData.bearer(data.login(data.adminAdministradora(data.administradora())));
         mvc.perform(get(base + "/documents/" + id + "/download").header("Authorization", foreign)).andExpect(status().isNotFound());
         String storageKey = jdbc.queryForObject("select storage_key from document where id = ?::uuid", String.class, id);
         assertThat(storageKey).matches("[0-9a-f]{32}");
@@ -144,7 +144,7 @@ class OperationsIT extends IntegrationTest {
 
     @Test
     void announcementReachesResidentsByNotificationAndEmail() throws Exception {
-        String email = TestData.uniqueEmail();
+        String email = TestData.emailUnico();
         String person = call("POST", "/api/v1/people", Map.of("name", "Rita Moradora", "kind", "INDIVIDUAL", "email", email), 201)
                 .get("id").asText();
         call("POST", base + "/occurrences", Map.of("title", "x", "description", "x", "category", "OTHER"), 201);
@@ -163,12 +163,12 @@ class OperationsIT extends IntegrationTest {
                 "sendEmail", true, "pinned", true), 201);
         assertThat(jdbc.queryForObject("select count(*) from notification where user_id = ?::uuid and title like 'Comunicado%'",
                 Integer.class, residentUser)).isEqualTo(1);
-        assertThat(mail.to(email).stream().anyMatch(m -> m.subject().contains("Assembleia em breve"))).isTrue();
+        assertThat(mail.para(email).stream().anyMatch(m -> m.assunto().contains("Assembleia em breve"))).isTrue();
 
-        JsonNode inbox = call("GET", "/api/v1/notifications", null, 200);
-        assertThat(inbox.get("unread").asInt()).isGreaterThanOrEqualTo(1);
-        call("POST", "/api/v1/notifications/read-all", null, 204);
-        assertThat(call("GET", "/api/v1/notifications", null, 200).get("unread").asInt()).isZero();
+        JsonNode inbox = call("GET", "/api/v1/notificacoes", null, 200);
+        assertThat(inbox.get("naoLidas").asInt()).isGreaterThanOrEqualTo(1);
+        call("POST", "/api/v1/notificacoes/marcar-todas-lidas", null, 204);
+        assertThat(call("GET", "/api/v1/notificacoes", null, 200).get("naoLidas").asInt()).isZero();
     }
 
     @Test

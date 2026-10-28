@@ -5,8 +5,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.exception.ApiException;
-import br.com.tekcondo.shared.persistence.AuditableEntity;
+import br.com.tekcondo.comum.exception.ApiException;
+import br.com.tekcondo.comum.persistence.AuditableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -93,10 +93,10 @@ public final class AssemblyEntities {
 
         public void details(String title, Kind kind, Instant scheduledAt, Instant secondCallAt, String location, VoteWeight weight) {
             if (status != Status.DRAFT && status != Status.CALLED) {
-                throw ApiException.businessRule("ASSEMBLY_LOCKED", "A assembleia já foi iniciada e não pode ser alterada.");
+                throw ApiException.regraNegocio("ASSEMBLY_LOCKED", "A assembleia já foi iniciada e não pode ser alterada.");
             }
             if (secondCallAt != null && secondCallAt.isBefore(scheduledAt)) {
-                throw ApiException.businessRule("SECOND_CALL_BEFORE_FIRST", "A segunda convocação deve ser após a primeira.");
+                throw ApiException.regraNegocio("SECOND_CALL_BEFORE_FIRST", "A segunda convocação deve ser após a primeira.");
             }
             this.title = title;
             this.kind = kind;
@@ -125,7 +125,7 @@ public final class AssemblyEntities {
 
         public void cancel(String reason) {
             if (status == Status.CLOSED || status == Status.CANCELLED) {
-                throw ApiException.businessRule("ASSEMBLY_FINISHED", "A assembleia já foi encerrada ou cancelada.");
+                throw ApiException.regraNegocio("ASSEMBLY_FINISHED", "A assembleia já foi encerrada ou cancelada.");
             }
             status = Status.CANCELLED;
             cancelReason = reason;
@@ -133,7 +133,7 @@ public final class AssemblyEntities {
 
         public void writeMinutes(String text) {
             if (status != Status.IN_PROGRESS && status != Status.CLOSED) {
-                throw ApiException.businessRule("ASSEMBLY_NOT_HELD", "A ata é registrada durante ou após a realização da assembleia.");
+                throw ApiException.regraNegocio("ASSEMBLY_NOT_HELD", "A ata é registrada durante ou após a realização da assembleia.");
             }
             minutes = text;
         }
@@ -144,7 +144,7 @@ public final class AssemblyEntities {
 
         private void require(Status expected, String message) {
             if (status != expected) {
-                throw ApiException.businessRule("ASSEMBLY_INVALID_STATUS", message);
+                throw ApiException.regraNegocio("ASSEMBLY_INVALID_STATUS", message);
             }
         }
 
@@ -321,7 +321,7 @@ public final class AssemblyEntities {
 
         public Attendance(UUID assemblyId, UUID unitId, String attendeeName, boolean byProxy, String proxyName, UUID registeredBy) {
             if (byProxy && (proxyName == null || proxyName.isBlank())) {
-                throw ApiException.badRequest("PROXY_NAME_REQUIRED", "Informe o nome do procurador.");
+                throw ApiException.requisicaoInvalida("PROXY_NAME_REQUIRED", "Informe o nome do procurador.");
             }
             this.assemblyId = assemblyId;
             this.unitId = unitId;

@@ -2,19 +2,19 @@ import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Me } from './auth.models';
+import { Perfil } from './auth.models';
 import { authInterceptor } from './auth.interceptor';
 import { AuthService } from './auth.service';
 
-const ME: Me = {
+const PERFIL: Perfil = {
   id: 'u1',
-  name: 'Ana Síndica',
+  nome: 'Ana Síndica',
   email: 'ana@x.com',
-  platformAdmin: false,
-  organizationId: 'org1',
-  organizationName: 'Adm',
-  organizationPermissions: ['AUDIT_VIEW'],
-  condominiumPermissions: { c1: ['CONDOMINIUM_VIEW', 'CONDOMINIUM_EDIT'] },
+  administradorPlataforma: false,
+  idAdministradora: 'org1',
+  nomeAdministradora: 'Adm',
+  permissoesAdministradora: ['AUDIT_VIEW'],
+  permissoesCondominio: { c1: ['CONDOMINIUM_VIEW', 'CONDOMINIUM_EDIT'] },
 };
 
 describe('AuthService + authInterceptor', () => {
@@ -39,8 +39,8 @@ describe('AuthService + authInterceptor', () => {
 
   function signIn(): void {
     auth.login('ana@x.com', 'segredo123456').subscribe();
-    backend.expectOne('/api/v1/auth/login').flush({ accessToken: 'T1', tokenType: 'Bearer', expiresAt: '' });
-    backend.expectOne('/api/v1/auth/me').flush(ME);
+    backend.expectOne('/api/v1/auth/login').flush({ accessToken: 'T1', tokenType: 'Bearer', expiraEm: '' });
+    backend.expectOne('/api/v1/auth/perfil').flush(PERFIL);
   }
 
   it('faz login, guarda o token só em memória e carrega o perfil', () => {
@@ -71,7 +71,7 @@ describe('AuthService + authInterceptor', () => {
     const refresh = backend.expectOne('/api/v1/auth/refresh');
     expect(refresh.request.headers.get('X-TekCondo-Client')).toBe('web');
     expect(refresh.request.headers.has('Authorization')).toBe(false);
-    refresh.flush({ accessToken: 'T2', tokenType: 'Bearer', expiresAt: '' });
+    refresh.flush({ accessToken: 'T2', tokenType: 'Bearer', expiraEm: '' });
 
     const retry = backend.expectOne('/api/v1/condominiums');
     expect(retry.request.headers.get('Authorization')).toBe('Bearer T2');
@@ -83,7 +83,7 @@ describe('AuthService + authInterceptor', () => {
     signIn();
     http.get('/api/v1/condominiums').subscribe({ error: () => undefined });
     backend.expectOne('/api/v1/condominiums').flush({}, { status: 401, statusText: 'Unauthorized' });
-    backend.expectOne('/api/v1/auth/refresh').flush({ code: 'SESSION_EXPIRED' }, { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne('/api/v1/auth/refresh').flush({ codigo: 'SESSION_EXPIRED' }, { status: 401, statusText: 'Unauthorized' });
 
     expect(auth.isAuthenticated()).toBe(false);
     expect(auth.accessToken()).toBeNull();

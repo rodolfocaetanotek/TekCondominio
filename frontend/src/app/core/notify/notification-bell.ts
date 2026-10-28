@@ -8,26 +8,26 @@ import { MatMenuModule } from '@angular/material/menu';
 import { Router } from '@angular/router';
 import { catchError, of, startWith, switchMap, timer, combineLatest } from 'rxjs';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { Inbox, OpsApi } from '../../features/ops/ops-api';
+import { CaixaEntrada, OpsApi } from '../../features/ops/ops-api';
 
 /** Sino de notificações (atualiza a cada 60 s). */
 @Component({
   selector: 'tc-notification-bell',
   imports: [DatePipe, MatButtonModule, MatIconModule, MatMenuModule, MatBadgeModule],
   template: `
-    <button mat-icon-button [matMenuTriggerFor]="menu" [attr.aria-label]="'Notificações: ' + (inbox()?.unread ?? 0) + ' não lidas'">
-      <mat-icon [matBadge]="inbox()?.unread || null" matBadgeColor="warn" matBadgeSize="small" aria-hidden="false">notifications</mat-icon>
+    <button mat-icon-button [matMenuTriggerFor]="menu" [attr.aria-label]="'Notificações: ' + (inbox()?.naoLidas ?? 0) + ' não lidas'">
+      <mat-icon [matBadge]="inbox()?.naoLidas || null" matBadgeColor="warn" matBadgeSize="small" aria-hidden="false">notifications</mat-icon>
     </button>
     <mat-menu #menu="matMenu" xPosition="before" class="tc-notifications">
       <div class="head" (click)="$event.stopPropagation()">
         <strong>Notificações</strong>
-        @if ((inbox()?.unread ?? 0) > 0) { <button mat-button (click)="readAll()">Marcar todas como lidas</button> }
+        @if ((inbox()?.naoLidas ?? 0) > 0) { <button mat-button (click)="readAll()">Marcar todas como lidas</button> }
       </div>
-      @for (n of inbox()?.items ?? []; track n.id) {
-        <button mat-menu-item class="item" [class.unread]="!n.read" (click)="open(n.id, n.link)">
-          <span class="t">{{ n.title }}</span>
-          <span class="b">{{ n.body }}</span>
-          <span class="d">{{ n.createdAt | date: 'dd/MM HH:mm' }}</span>
+      @for (n of inbox()?.itens ?? []; track n.id) {
+        <button mat-menu-item class="item" [class.unread]="!n.lida" (click)="open(n.id, n.link)">
+          <span class="t">{{ n.titulo }}</span>
+          <span class="b">{{ n.texto }}</span>
+          <span class="d">{{ n.criadoEm | date: 'dd/MM HH:mm' }}</span>
         </button>
       } @empty { <p class="empty">Nenhuma notificação.</p> }
     </mat-menu>
@@ -48,7 +48,7 @@ export class NotificationBell {
   private readonly router = inject(Router);
   private readonly tick = signal(0);
   protected readonly inbox = toSignal(combineLatest([timer(0, 60_000), toObservable(this.tick)]).pipe(
-    switchMap(() => this.api.inbox().pipe(catchError(() => of(null as Inbox | null)))), startWith(null)));
+    switchMap(() => this.api.inbox().pipe(catchError(() => of(null as CaixaEntrada | null)))), startWith(null)));
 
   open(id: string, link?: string): void {
     this.api.readNotification(id).subscribe(() => this.tick.update((t) => t + 1));

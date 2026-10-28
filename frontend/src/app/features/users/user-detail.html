@@ -10,11 +10,11 @@
   } @else if (loading()) {
     <mat-progress-bar mode="indeterminate" aria-label="Carregando" />
   } @else if (user(); as u) {
-    <tc-page-header eyebrow="Usuário" [title]="u.name" [subtitle]="u.email">
-      @if (u.pendingInvite && u.active) {
+    <tc-page-header eyebrow="Usuário" [title]="u.nome" [subtitle]="u.email">
+      @if (u.convitePendente && u.ativo) {
         <span class="tc-status is-pending big">Convite pendente</span>
       }
-      <span class="tc-status big" [class.is-active]="u.active" [class.is-inactive]="!u.active">{{ u.active ? 'Ativo' : 'Inativo' }}</span>
+      <span class="tc-status big" [class.is-active]="u.ativo" [class.is-inactive]="!u.ativo">{{ u.ativo ? 'Ativo' : 'Inativo' }}</span>
     </tc-page-header>
 
     @if (busy()) {
@@ -27,20 +27,20 @@
     <div class="layout">
       <section class="tc-card">
         <h2 class="tc-section-title">Papéis e acessos</h2>
-        @if (u.assignments.length === 0) {
+        @if (u.atribuicoes.length === 0) {
           <p class="tc-muted">Nenhum papel atribuído — o usuário não acessa nenhuma funcionalidade.</p>
         } @else {
           <ul class="assignments">
-            @for (a of u.assignments; track a.id) {
+            @for (a of u.atribuicoes; track a.id) {
               <li>
-                <mat-icon class="tc-ico" aria-hidden="true">{{ a.scope === 'ORGANIZATION' ? 'domain' : 'apartment' }}</mat-icon>
+                <mat-icon class="tc-ico" aria-hidden="true">{{ a.escopo === 'ORGANIZATION' ? 'domain' : 'apartment' }}</mat-icon>
                 <div class="what">
-                  <strong>{{ a.roleName }}</strong>
-                  <span class="tc-muted">{{ a.scope === 'ORGANIZATION' ? 'Toda a administradora' : a.condominiumName }}</span>
+                  <strong>{{ a.nomePapel }}</strong>
+                  <span class="tc-muted">{{ a.escopo === 'ORGANIZATION' ? 'Toda a administradora' : a.nomeCondominio }}</span>
                 </div>
                 @if (canManage()) {
                   <button mat-icon-button (click)="removeAssignment(a)" [disabled]="busy()"
-                    [attr.aria-label]="'Remover ' + a.roleName" matTooltip="Remover papel">
+                    [attr.aria-label]="'Remover ' + a.nomePapel" matTooltip="Remover papel">
                     <mat-icon>delete</mat-icon>
                   </button>
                 }
@@ -74,11 +74,11 @@
           <dl class="tc-dl cols">
             <div>
               <dt>Cadastro</dt>
-              <dd>{{ u.createdAt | date: 'dd/MM/yyyy HH:mm' }}</dd>
+              <dd>{{ u.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</dd>
             </div>
             <div>
               <dt>Último acesso</dt>
-              <dd>{{ u.lastLoginAt ? (u.lastLoginAt | date: 'dd/MM/yyyy HH:mm') : 'Nunca acessou' }}</dd>
+              <dd>{{ u.ultimoLoginEm ? (u.ultimoLoginEm | date: 'dd/MM/yyyy HH:mm') : 'Nunca acessou' }}</dd>
             </div>
           </dl>
         </section>
@@ -87,13 +87,13 @@
           <section class="tc-card">
             <h2 class="tc-section-title">Acesso</h2>
             <div class="stack">
-              @if (u.pendingInvite && u.active) {
+              @if (u.convitePendente && u.ativo) {
                 <button mat-stroked-button (click)="resendInvite()" [disabled]="busy()"><mat-icon>forward_to_inbox</mat-icon> Reenviar convite</button>
               }
               @if (!isSelf()) {
-                <button mat-button (click)="toggleActive()" [disabled]="busy()" [class.danger-text]="u.active">
-                  <mat-icon>{{ u.active ? 'person_off' : 'person_check' }}</mat-icon>
-                  {{ u.active ? 'Desativar usuário' : 'Reativar usuário' }}
+                <button mat-button (click)="toggleActive()" [disabled]="busy()" [class.danger-text]="u.ativo">
+                  <mat-icon>{{ u.ativo ? 'person_off' : 'person_check' }}</mat-icon>
+                  {{ u.ativo ? 'Desativar usuário' : 'Reativar usuário' }}
                 </button>
               } @else {
                 <p class="tc-muted small">Você não pode desativar o próprio usuário.</p>

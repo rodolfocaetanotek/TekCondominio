@@ -10,8 +10,8 @@ import br.com.tekcondo.condominium.dto.CondominiumSummary;
 import br.com.tekcondo.condominium.dto.InactivationRequest;
 import br.com.tekcondo.condominium.entity.CondominiumStatus;
 import br.com.tekcondo.condominium.service.CondominiumService;
-import br.com.tekcondo.shared.web.PageRequests;
-import br.com.tekcondo.shared.web.PageResponse;
+import br.com.tekcondo.comum.web.PaginaRequests;
+import br.com.tekcondo.comum.web.PaginaResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CondominiumController {
 
     private static final Map<String, String> SORTS = Map.of(
-            "name", "name", "city", "address.city", "status", "status", "createdAt", "createdAt");
+            "name", "name", "city", "address.city", "status", "status", "createdAt", "criadoEm");
 
     private final CondominiumService service;
 
@@ -42,12 +42,12 @@ public class CondominiumController {
 
     @GetMapping
     @Operation(summary = "Lista condomínios visíveis ao usuário", description = "Busca por nome, razão social ou CNPJ. Ordenação: name, city, status, createdAt.")
-    public PageResponse<CondominiumSummary> list(@RequestParam(required = false) String search,
+    public PaginaResponse<CondominiumSummary> list(@RequestParam(required = false) String search,
                                                  @RequestParam(required = false) CondominiumStatus status,
-                                                 @RequestParam(defaultValue = "0") int page,
-                                                 @RequestParam(defaultValue = "20") int size,
-                                                 @RequestParam(required = false) String sort) {
-        return service.list(search, status, PageRequests.of(page, size, sort, SORTS, Sort.by("name").and(Sort.by("id"))));
+                                                 @RequestParam(defaultValue = "0") int pagina,
+                                                 @RequestParam(defaultValue = "20") int tamanho,
+                                                 @RequestParam(required = false) String ordem) {
+        return service.list(search, status, PaginaRequests.of(pagina, tamanho, ordem, SORTS, Sort.by("name").and(Sort.by("id"))));
     }
 
     @GetMapping("/accessible")

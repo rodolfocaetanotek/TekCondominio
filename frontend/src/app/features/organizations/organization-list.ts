@@ -9,13 +9,13 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { catchError, filter, finalize, of, switchMap, tap } from 'rxjs';
-import { PageResponse, toProblem } from '../../core/api/api.models';
+import { PaginaResponse, toProblem } from '../../core/api/api.models';
 import { NotificationService } from '../../core/notify/notification.service';
 import { DocPipe } from '../../shared/format/doc.pipe';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { PageHeader } from '../../shared/ui/page-header';
 import { OrganizationDialog } from './organization-dialog';
-import { Organization, OrganizationService } from './organization.service';
+import { Administradora, OrganizationService } from './organization.service';
 
 @Component({
   selector: 'tc-organization-list',
@@ -32,14 +32,14 @@ import { Organization, OrganizationService } from './organization.service';
         @if (error(); as message) {
           <tc-empty-state icon="cloud_off" title="Não foi possível carregar" [description]="message" />
         } @else if (result(); as page) {
-          @if (page.totalElements === 0) {
+          @if (page.totalElementos === 0) {
             <tc-empty-state icon="corporate_fare" title="Nenhuma administradora cadastrada"
               description="Cadastre a primeira administradora e seu administrador para iniciar o uso da plataforma.">
               <button mat-flat-button (click)="create()">Cadastrar administradora</button>
             </tc-empty-state>
           } @else {
             <div class="table-scroll">
-              <table mat-table [dataSource]="page.content">
+              <table mat-table [dataSource]="page.conteudo">
                 <caption class="sr-only">Administradoras</caption>
                 <ng-container matColumnDef="name">
                   <th mat-header-cell *matHeaderCellDef>Nome</th>
@@ -64,7 +64,7 @@ import { Organization, OrganizationService } from './organization.service';
                   [attr.aria-label]="'Abrir ' + row.name" (click)="open(row)" (keydown.enter)="open(row)"></tr>
               </table>
             </div>
-            <mat-paginator [length]="page.totalElements" [pageIndex]="page.page" [pageSize]="page.size"
+            <mat-paginator [length]="page.totalElementos" [pageIndex]="page.pagina" [pageSize]="page.tamanho"
               [pageSizeOptions]="[20, 50, 100]" (page)="onPage($event)" aria-label="Paginação" />
           }
         }
@@ -93,7 +93,7 @@ export class OrganizationList {
         this.service.list(q.page, q.size).pipe(
           catchError((err: unknown) => {
             this.error.set(toProblem(err).detail);
-            return of<PageResponse<Organization> | null>(null);
+            return of<PaginaResponse<Administradora> | null>(null);
           }),
           finalize(() => this.loading.set(false)),
         ),
@@ -104,16 +104,16 @@ export class OrganizationList {
 
   create(): void {
     this.dialog
-      .open<OrganizationDialog, void, Organization>(OrganizationDialog, { width: '720px', maxWidth: '95vw' })
+      .open<OrganizationDialog, void, Administradora>(OrganizationDialog, { width: '720px', maxWidth: '95vw' })
       .afterClosed()
-      .pipe(filter((org): org is Organization => !!org))
+      .pipe(filter((org): org is Administradora => !!org))
       .subscribe((org) => {
-        this.notify.success(`Administradora "${org.name}" cadastrada.`);
+        this.notify.success(`Administradora "${org.nome}" cadastrada.`);
         this.query.update((q) => ({ ...q }));
       });
   }
 
-  open(o: Organization): void {
+  open(o: Administradora): void {
     void this.router.navigate(['/organizacoes', o.id]);
   }
 

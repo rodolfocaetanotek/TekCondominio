@@ -9,7 +9,7 @@ import { toProblem } from '../../core/api/api.models';
 import { FieldError } from '../../shared/forms/field-error';
 import { applyServerErrors } from '../../shared/forms/server-errors';
 import { RoleFields } from './role-fields';
-import { UserDetail } from './user.models';
+import { UsuarioDetalhe } from './user.models';
 import { UserService } from './user.service';
 import { DialogClose } from '../../shared/ui/dialog-close';
 
@@ -28,8 +28,8 @@ import { DialogClose } from '../../shared/ui/dialog-close';
         <div class="tc-grid">
           <mat-form-field class="span-6">
             <mat-label>Nome completo</mat-label>
-            <input matInput formControlName="name" required maxlength="150" cdkFocusInitial />
-            <mat-error><tc-field-error [control]="form.controls.name" /></mat-error>
+            <input matInput formControlName="nome" required maxlength="150" cdkFocusInitial />
+            <mat-error><tc-field-error [control]="form.controls.nome" /></mat-error>
           </mat-form-field>
           <mat-form-field class="span-6">
             <mat-label>E-mail</mat-label>
@@ -52,7 +52,7 @@ import { DialogClose } from '../../shared/ui/dialog-close';
 })
 export class UserCreateDialog {
   private readonly service = inject(UserService);
-  private readonly ref = inject(MatDialogRef<UserCreateDialog, UserDetail>);
+  private readonly ref = inject(MatDialogRef<UserCreateDialog, UsuarioDetalhe>);
 
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -60,9 +60,9 @@ export class UserCreateDialog {
   protected readonly roleCode = new FormControl('', { nonNullable: true, validators: [Validators.required] });
   protected readonly condominiumId = new FormControl<string | null>(null);
   protected readonly form = inject(FormBuilder).nonNullable.group({
-    name: ['', [Validators.required, Validators.maxLength(150)]],
+    nome: ['', [Validators.required, Validators.maxLength(150)]],
     email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
-    assignment: inject(FormBuilder).group({ roleCode: this.roleCode, condominiumId: this.condominiumId }),
+    atribuicao: inject(FormBuilder).group({ codigoPapel: this.roleCode, idCondominio: this.condominiumId }),
   });
 
   save(): void {
@@ -73,20 +73,20 @@ export class UserCreateDialog {
     const v = this.form.getRawValue();
     this.service
       .create({
-        name: v.name.trim(),
+        nome: v.nome.trim(),
         email: v.email.trim(),
-        assignment: { roleCode: v.assignment.roleCode ?? '', condominiumId: v.assignment.condominiumId ?? null },
+        atribuicao: { codigoPapel: v.atribuicao.codigoPapel ?? '', idCondominio: v.atribuicao.idCondominio ?? null },
       })
       .subscribe({
         next: (user) => this.ref.close(user),
         error: (err: unknown) => {
           this.saving.set(false);
           const problem = toProblem(err);
-          if (problem.code === 'USER_EMAIL_TAKEN') {
+          if (problem.codigo === 'USER_EMAIL_TAKEN') {
             this.form.controls.email.setErrors({ server: problem.detail });
             return;
           }
-          const rest = problem.code === 'VALIDATION_ERROR' ? applyServerErrors(this.form, problem) : [problem.detail];
+          const rest = problem.codigo === 'VALIDATION_ERROR' ? applyServerErrors(this.form, problem) : [problem.detail];
           if (rest.length) this.error.set(rest.join(' '));
         },
       });

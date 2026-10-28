@@ -31,12 +31,12 @@ public interface VisitorPassRepository extends JpaRepository<VisitorPass, UUID> 
     List<VisitorPass> findForDay(UUID condominiumId, LocalDate day, Instant dayStart, Instant dayEnd);
 
     @Query("""
-            select v from VisitorPass v where v.condominiumId = :condominiumId and v.createdAt >= :from and v.createdAt < :to
-            order by v.createdAt desc
+            select v from VisitorPass v where v.condominiumId = :condominiumId and v.criadoEm >= :from and v.criadoEm < :to
+            order by v.criadoEm desc
             """)
     List<VisitorPass> findCreatedBetween(UUID condominiumId, Instant from, Instant to);
 
-    @Query("select v from VisitorPass v where v.condominiumId = :condominiumId and v.unitId in :unitIds order by v.validFrom desc, v.createdAt desc")
+    @Query("select v from VisitorPass v where v.condominiumId = :condominiumId and v.unitId in :unitIds order by v.validFrom desc, v.criadoEm desc")
     List<VisitorPass> findByUnits(UUID condominiumId, Collection<UUID> unitIds);
 
     /** Registros encerrados há mais tempo que a retenção e ainda não anonimizados. */

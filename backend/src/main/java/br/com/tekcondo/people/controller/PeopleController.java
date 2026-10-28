@@ -11,8 +11,8 @@ import br.com.tekcondo.people.dto.PeopleDtos.PersonDetail;
 import br.com.tekcondo.people.dto.PeopleDtos.PersonRequest;
 import br.com.tekcondo.people.dto.PeopleDtos.PersonSummary;
 import br.com.tekcondo.people.service.PeopleService;
-import br.com.tekcondo.shared.web.PageRequests;
-import br.com.tekcondo.shared.web.PageResponse;
+import br.com.tekcondo.comum.web.PaginaRequests;
+import br.com.tekcondo.comum.web.PaginaResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Pessoas e ocupações")
 public class PeopleController {
 
-    private static final Map<String, String> SORTS = Map.of("name", "name", "createdAt", "createdAt");
+    private static final Map<String, String> SORTS = Map.of("name", "name", "createdAt", "criadoEm");
 
     private final PeopleService service;
 
@@ -42,14 +42,14 @@ public class PeopleController {
 
     @GetMapping("/people")
     @Operation(summary = "Lista pessoas (busca por nome, e-mail ou CPF/CNPJ)")
-    public PageResponse<PersonSummary> list(@RequestParam(required = false) String search,
+    public PaginaResponse<PersonSummary> list(@RequestParam(required = false) String search,
                                             @RequestParam(required = false) Boolean active,
                                             @RequestParam(required = false) UUID condominiumId,
-                                            @RequestParam(defaultValue = "0") int page,
-                                            @RequestParam(defaultValue = "20") int size,
-                                            @RequestParam(required = false) String sort) {
+                                            @RequestParam(defaultValue = "0") int pagina,
+                                            @RequestParam(defaultValue = "20") int tamanho,
+                                            @RequestParam(required = false) String ordem) {
         return service.list(search, active, condominiumId,
-                PageRequests.of(page, size, sort, SORTS, Sort.by("name").and(Sort.by("id"))));
+                PaginaRequests.of(pagina, tamanho, ordem, SORTS, Sort.by("name").and(Sort.by("id"))));
     }
 
     @GetMapping("/people/{id}")

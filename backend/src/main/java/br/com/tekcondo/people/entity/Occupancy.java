@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import br.com.tekcondo.structure.entity.Unit;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -88,10 +88,10 @@ public class Occupancy {
 
     public void end(LocalDate date, String reason) {
         if (endDate != null) {
-            throw ApiException.businessRule("OCCUPANCY_ALREADY_ENDED", "Este vínculo já foi encerrado.");
+            throw ApiException.regraNegocio("OCCUPANCY_ALREADY_ENDED", "Este vínculo já foi encerrado.");
         }
         if (date.isBefore(startDate)) {
-            throw ApiException.businessRule("OCCUPANCY_END_BEFORE_START",
+            throw ApiException.regraNegocio("OCCUPANCY_END_BEFORE_START",
                     "A data de encerramento não pode ser anterior ao início do vínculo.");
         }
         this.endDate = date;

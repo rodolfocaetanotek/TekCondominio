@@ -56,11 +56,11 @@ import { EntrySummary, FinanceApi } from './finance-api';
       @if (error(); as message) {
         <tc-empty-state icon="cloud_off" title="Não foi possível carregar" [description]="message" />
       } @else if (page(); as p) {
-        @if (p.totalElements === 0) {
+        @if (p.totalElementos === 0) {
           <tc-empty-state icon="receipt_long" title="Nenhum lançamento encontrado" description="Ajuste os filtros ou cadastre um novo lançamento." />
         } @else {
           <div class="table-scroll">
-            <table mat-table [dataSource]="p.content">
+            <table mat-table [dataSource]="p.conteudo">
               <caption class="sr-only">Lançamentos</caption>
               <ng-container matColumnDef="due">
                 <th mat-header-cell *matHeaderCellDef>Vencimento</th>
@@ -97,7 +97,7 @@ import { EntrySummary, FinanceApi } from './finance-api';
                 [attr.aria-label]="'Abrir ' + row.description" (click)="open(row)" (keydown.enter)="open(row)"></tr>
             </table>
           </div>
-          <mat-paginator [length]="p.totalElements" [pageIndex]="p.page" [pageSize]="p.size" [pageSizeOptions]="[25, 50, 100]"
+          <mat-paginator [length]="p.totalElementos" [pageIndex]="p.pagina" [pageSize]="p.tamanho" [pageSizeOptions]="[25, 50, 100]"
             (page)="onPage($event)" aria-label="Paginação" />
         }
       }
@@ -138,7 +138,7 @@ export class EntryList {
           open: { status: ['OPEN', 'PARTIAL'] }, overdue: { overdue: 'true' }, pending: { approval: 'PENDING', status: ['OPEN'] },
           paid: { status: ['PAID'] }, all: {},
         };
-        return this.api.entries(q.c!, { kind: q.kind, search: q.search, dueFrom: q.from, dueTo: q.to, page: q.page, size: q.size, ...statusFilter[q.status] })
+        return this.api.entries(q.c!, { kind: q.kind, search: q.search, dueFrom: q.from, dueTo: q.to, pagina: q.page, tamanho: q.size, ...statusFilter[q.status] })
           .pipe(catchError((err: unknown) => { this.error.set(toProblem(err).detail); return of(null); }), finalize(() => this.loading.set(false)));
       }),
     ),

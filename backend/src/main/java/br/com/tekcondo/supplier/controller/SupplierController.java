@@ -3,8 +3,8 @@ package br.com.tekcondo.supplier.controller;
 import java.util.Map;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.web.PageRequests;
-import br.com.tekcondo.shared.web.PageResponse;
+import br.com.tekcondo.comum.web.PaginaRequests;
+import br.com.tekcondo.comum.web.PaginaResponse;
 import br.com.tekcondo.supplier.dto.SupplierDtos.SupplierRequest;
 import br.com.tekcondo.supplier.dto.SupplierDtos.SupplierResponse;
 import br.com.tekcondo.supplier.service.SupplierService;
@@ -33,11 +33,11 @@ public class SupplierController {
     }
 
     @GetMapping
-    public PageResponse<SupplierResponse> list(@RequestParam(required = false) String search,
+    public PaginaResponse<SupplierResponse> list(@RequestParam(required = false) String search,
                                                @RequestParam(required = false) Boolean active,
-                                               @RequestParam(defaultValue = "0") int page,
-                                               @RequestParam(defaultValue = "20") int size) {
-        return service.list(search, active, PageRequests.of(page, size, null, Map.of(), Sort.by("name").and(Sort.by("id"))));
+                                               @RequestParam(defaultValue = "0") int pagina,
+                                               @RequestParam(defaultValue = "20") int tamanho) {
+        return service.list(search, active, PaginaRequests.of(pagina, tamanho, null, Map.of(), Sort.by("name").and(Sort.by("id"))));
     }
 
     @GetMapping("/{id}")

@@ -19,7 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * próprios (CNPJs/e-mails únicos), dispensando limpeza entre testes.
  */
 @SpringBootTest
-@Import({TestData.class, TestMailConfig.class})
+@Import({TestData.class, TestEmailConfig.class})
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 public abstract class IntegrationTest {

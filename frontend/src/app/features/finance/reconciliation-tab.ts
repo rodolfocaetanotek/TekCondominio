@@ -144,7 +144,7 @@ export class ReconciliationTab {
       error: (err: unknown) => {
         this.busy.set(false);
         const p = toProblem(err);
-        if (p.code === 'STATEMENT_ACCOUNT_MISMATCH') {
+        if (p.codigo === 'STATEMENT_ACCOUNT_MISMATCH') {
           askConfirm(this.dialog, 'Conta diferente', p.detail + ' Deseja importar mesmo assim?', 'Importar assim mesmo', true)
             .subscribe(() => this.send(file, true));
         } else {

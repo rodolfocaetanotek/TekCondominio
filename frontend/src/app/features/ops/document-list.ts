@@ -108,7 +108,7 @@ export class DocumentList {
   private readonly categoryValue = toSignal(this.filterCategory.valueChanges, { initialValue: '' });
   protected readonly docs = toSignal(combineLatest([toObservable(this.context.id), toObservable(this.categoryValue), toObservable(this.tick)]).pipe(
     filter(([c]) => !!c),
-    switchMap(([c, cat]) => this.api.documents(c!, cat ? { category: cat } : {}).pipe(map((p) => p.content), catchError(() => of([] as Doc[]))))),
+    switchMap(([c, cat]) => this.api.documents(c!, cat ? { category: cat } : {}).pipe(map((p) => p.conteudo), catchError(() => of([] as Doc[]))))),
     { initialValue: [] as Doc[] });
 
   pick(event: Event): void {

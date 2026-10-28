@@ -47,7 +47,7 @@ export class PersonPicker {
         search.length < 2
           ? of([])
           : this.service.people({ search, active: 'true', page: 0, size: 10 }).pipe(
-              map((p) => p.content),
+              map((p) => p.conteudo),
               catchError(() => of([])),
             ),
       ),

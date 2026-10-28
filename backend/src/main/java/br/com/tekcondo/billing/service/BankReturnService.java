@@ -10,8 +10,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import br.com.tekcondo.audit.service.AuditAction;
-import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.auditoria.service.AcaoAuditoria;
+import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.billing.entity.BankReturnFile;
 import br.com.tekcondo.billing.entity.BankReturnItem;
 import br.com.tekcondo.billing.repository.BankReturnFileRepository;
@@ -28,10 +28,10 @@ import br.com.tekcondo.finance.service.EntryService;
 import br.com.tekcondo.finance.service.FinanceSetupService;
 import br.com.tekcondo.finance.service.LateFeeCalculator;
 import br.com.tekcondo.finance.service.PeriodLock;
-import br.com.tekcondo.identity.access.Permission;
-import br.com.tekcondo.integration.bank.Cnab240ReturnParser;
-import br.com.tekcondo.integration.bank.OfxParser;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
+import br.com.tekcondo.integracao.banco.RetornoCnab240Parser;
+import br.com.tekcondo.integracao.banco.OfxParser;
+import br.com.tekcondo.comum.exception.ApiException;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -69,12 +69,12 @@ public class BankReturnService {
     private final FinanceSetupService setup;
     private final PeriodLock periodLock;
     private final CondominiumAccess access;
-    private final AuditService auditService;
+    private final AuditoriaService auditService;
     private final Clock clock;
 
     public BankReturnService(BankReturnFileRepository files, BankReturnItemRepository items, FinancialEntryRepository entries,
                              EntryService entryService, FinanceSetupService setup, PeriodLock periodLock, CondominiumAccess access,
-                             AuditService auditService, Clock clock) {
+                             AuditoriaService auditService, Clock clock) {
         this.files = files;
         this.items = items;
         this.entries = entries;
@@ -88,29 +88,29 @@ public class BankReturnService {
 
     @Transactional
     public FileSummary process(UUID condominiumId, UUID bankAccountId, String fileName, byte[] content) {
-        Condominium condominium = access.requireActive(condominiumId, Permission.BILLING_EDIT);
-        access.require(condominiumId, Permission.FINANCE_EDIT);
+        Condominium condominium = access.requireActive(condominiumId, Permissao.BILLING_EDIT);
+        access.require(condominiumId, Permissao.FINANCE_EDIT);
         BankAccount account = setup.loadBankAccount(condominiumId, bankAccountId);
         if (!account.isActive()) {
-            throw ApiException.businessRule("BANK_ACCOUNT_INACTIVE", "A conta bancária está inativa.");
+            throw ApiException.regraNegocio("BANK_ACCOUNT_INACTIVE", "A conta bancária está inativa.");
         }
         String hash = OfxParser.sha256(content);
         if (files.existsByBankAccountIdAndFileHash(bankAccountId, hash)) {
-            throw ApiException.conflict("RETURN_ALREADY_PROCESSED", "Este arquivo de retorno já foi processado nesta conta.");
+            throw ApiException.conflito("RETURN_ALREADY_PROCESSED", "Este arquivo de retorno já foi processado nesta conta.");
         }
-        Cnab240ReturnParser.ReturnFile parsed = Cnab240ReturnParser.parse(content);
-        if (account.getBankCode() != null && !strip(account.getBankCode()).equals(strip(parsed.bankCode()))) {
-            throw ApiException.businessRule("RETURN_BANK_MISMATCH", "O retorno é do banco " + parsed.bankCode()
+        RetornoCnab240Parser.Retorno parsed = RetornoCnab240Parser.parse(content);
+        if (account.getBankCode() != null && !strip(account.getBankCode()).equals(strip(parsed.codigoBanco()))) {
+            throw ApiException.regraNegocio("RETURN_BANK_MISMATCH", "O retorno é do banco " + parsed.codigoBanco()
                     + ", mas a conta " + account.getName() + " é do banco " + account.getBankCode() + ".");
         }
         var user = access.user();
         BankReturnFile file = files.save(new BankReturnFile(condominium.getOrganizationId(), condominiumId, bankAccountId,
-                safeName(fileName), hash, parsed.bankCode(), parsed.generatedOn(), parsed.items().size(), user.userId(), user.name()));
+                safeName(fileName), hash, parsed.codigoBanco(), parsed.dataGeracao(), parsed.itens().size(), user.idUsuario(), user.nome()));
         int settled = 0;
         int pending = 0;
-        for (Cnab240ReturnParser.Item parsedItem : parsed.items()) {
+        for (RetornoCnab240Parser.Item parsedItem : parsed.itens()) {
             BankReturnItem item = new BankReturnItem(condominium.getOrganizationId(), condominiumId, bankAccountId, file.getId(), parsedItem);
-            if (parsedItem.isSettlement()) {
+            if (parsedItem.isLiquidacao()) {
                 if (items.alreadySettled(bankAccountId, item.getMovementCode(), item.getOccurrenceDate(), item.getOurNumber(), item.getYourNumber())) {
                     item.pending(null, "Liquidação já baixada em retorno anterior (não baixada de novo).");
                 } else {
@@ -131,63 +131,63 @@ public class BankReturnService {
         file.result(settled, pending);
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("file", file.getFileName());
-        details.put("bank", parsed.bankCode());
-        details.put("items", parsed.items().size());
+        details.put("bank", parsed.codigoBanco());
+        details.put("items", parsed.itens().size());
         details.put("settled", settled);
         details.put("pending", pending);
-        auditService.record(AuditAction.BANK_RETURN_PROCESSED, "BankAccount", bankAccountId, details);
+        auditService.registrar(AcaoAuditoria.BANK_RETURN_PROCESSED, "BankAccount", bankAccountId, details);
         return toSummary(file);
     }
 
     @Transactional(readOnly = true)
     public List<FileSummary> files(UUID condominiumId) {
-        access.require(condominiumId, Permission.BILLING_VIEW);
+        access.require(condominiumId, Permissao.BILLING_VIEW);
         return files.findTop30ByCondominiumIdOrderByCreatedAtDesc(condominiumId).stream().map(BankReturnService::toSummary).toList();
     }
 
     @Transactional(readOnly = true)
     public List<ItemView> items(UUID condominiumId, UUID fileId) {
-        access.require(condominiumId, Permission.BILLING_VIEW);
+        access.require(condominiumId, Permissao.BILLING_VIEW);
         BankReturnFile file = files.findById(fileId).filter(f -> fileBelongs(f, condominiumId))
-                .orElseThrow(() -> ApiException.notFound("Arquivo de retorno"));
+                .orElseThrow(() -> ApiException.naoEncontrado("Arquivo de retorno"));
         return items.findByFileIdOrderBySequenceAsc(file.getId()).stream().map(this::toView).toList();
     }
 
     @Transactional(readOnly = true)
     public List<ItemView> pending(UUID condominiumId) {
-        access.require(condominiumId, Permission.BILLING_VIEW);
+        access.require(condominiumId, Permissao.BILLING_VIEW);
         return items.findByStatus(condominiumId, BankReturnItem.Status.PENDING).stream().map(this::toView).toList();
     }
 
     /** Baixa manual de uma pendência na cobrança escolhida pelo usuário (ex.: pagador usou boleto antigo). */
     @Transactional
     public ItemView settleManually(UUID condominiumId, UUID itemId, SettleRequest request) {
-        access.requireActive(condominiumId, Permission.BILLING_EDIT);
-        access.require(condominiumId, Permission.FINANCE_EDIT);
+        access.requireActive(condominiumId, Permissao.BILLING_EDIT);
+        access.require(condominiumId, Permissao.FINANCE_EDIT);
         BankReturnItem item = load(condominiumId, itemId);
         if (item.getStatus() != BankReturnItem.Status.PENDING) {
-            throw ApiException.businessRule("RETURN_ITEM_NOT_PENDING", "Este item do retorno não está pendente.");
+            throw ApiException.regraNegocio("RETURN_ITEM_NOT_PENDING", "Este item do retorno não está pendente.");
         }
         if (items.alreadySettled(item.getBankAccountId(), item.getMovementCode(), item.getOccurrenceDate(),
                 item.getOurNumber(), item.getYourNumber())) {
-            throw ApiException.conflict("RETURN_ALREADY_SETTLED", "Esta liquidação já foi baixada em outro retorno.");
+            throw ApiException.conflito("RETURN_ALREADY_SETTLED", "Esta liquidação já foi baixada em outro retorno.");
         }
         FinancialEntry entry = entryService.load(condominiumId, request.entryId());
         BankAccount account = setup.loadBankAccount(condominiumId, item.getBankAccountId());
         settle(condominiumId, account, item, entry);
         if (item.getStatus() != BankReturnItem.Status.SETTLED) {
-            throw ApiException.businessRule("RETURN_ITEM_NOT_SETTLED", item.getMessage());
+            throw ApiException.regraNegocio("RETURN_ITEM_NOT_SETTLED", item.getMessage());
         }
-        auditService.record(AuditAction.BANK_RETURN_ITEM_RESOLVED, "BankReturnItem", itemId, Map.of("entryId", entry.getId().toString()));
+        auditService.registrar(AcaoAuditoria.BANK_RETURN_ITEM_RESOLVED, "BankReturnItem", itemId, Map.of("entryId", entry.getId().toString()));
         return toView(item);
     }
 
     @Transactional
     public ItemView ignore(UUID condominiumId, UUID itemId, IgnoreRequest request) {
-        access.requireActive(condominiumId, Permission.BILLING_EDIT);
+        access.requireActive(condominiumId, Permissao.BILLING_EDIT);
         BankReturnItem item = load(condominiumId, itemId);
-        item.ignore(request.note().trim(), access.user().userId(), Instant.now(clock));
-        auditService.record(AuditAction.BANK_RETURN_ITEM_RESOLVED, "BankReturnItem", itemId, Map.of("ignored", request.note().trim()));
+        item.ignore(request.note().trim(), access.user().idUsuario(), Instant.now(clock));
+        auditService.registrar(AcaoAuditoria.BANK_RETURN_ITEM_RESOLVED, "BankReturnItem", itemId, Map.of("ignored", request.note().trim()));
         return toView(item);
     }
 
@@ -254,7 +254,7 @@ public class BankReturnService {
     }
 
     private BankReturnItem load(UUID condominiumId, UUID itemId) {
-        return items.findInCondominium(itemId, condominiumId).orElseThrow(() -> ApiException.notFound("Item do retorno"));
+        return items.findInCondominium(itemId, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Item do retorno"));
     }
 
     private static boolean fileBelongs(BankReturnFile f, UUID condominiumId) {

@@ -11,14 +11,14 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
-import br.com.tekcondo.audit.service.AuditAction;
-import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.auditoria.service.AcaoAuditoria;
+import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.condominium.entity.Condominium;
 import br.com.tekcondo.condominium.service.CondominiumAccess;
-import br.com.tekcondo.identity.access.Permission;
-import br.com.tekcondo.notification.NotificationService;
-import br.com.tekcondo.shared.exception.ApiException;
-import br.com.tekcondo.shared.web.PageResponse;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
+import br.com.tekcondo.notificacao.NotificacaoService;
+import br.com.tekcondo.comum.exception.ApiException;
+import br.com.tekcondo.comum.web.PaginaResponse;
 import br.com.tekcondo.structure.repository.UnitRepository;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.validation.constraints.NotBlank;
@@ -69,12 +69,12 @@ public class OccurrenceService {
     private final OccurrenceInteractionRepository interactions;
     private final UnitRepository units;
     private final CondominiumAccess access;
-    private final NotificationService notifications;
-    private final AuditService auditService;
+    private final NotificacaoService notifications;
+    private final AuditoriaService auditService;
     private final Clock clock;
 
     public OccurrenceService(OccurrenceRepository repository, OccurrenceInteractionRepository interactions, UnitRepository units,
-                             CondominiumAccess access, NotificationService notifications, AuditService auditService, Clock clock) {
+                             CondominiumAccess access, NotificacaoService notifications, AuditoriaService auditService, Clock clock) {
         this.repository = repository;
         this.interactions = interactions;
         this.units = units;
@@ -85,10 +85,10 @@ public class OccurrenceService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<Summary> list(UUID condominiumId, List<Occurrence.Status> statuses, Occurrence.Category category,
+    public PaginaResponse<Summary> list(UUID condominiumId, List<Occurrence.Status> statuses, Occurrence.Category category,
                                       Occurrence.Priority priority, String search, Pageable pageable) {
-        access.require(condominiumId, Permission.OCCURRENCE_VIEW);
-        return PageResponse.of(repository.findAll(spec(condominiumId, statuses, category, priority, search, null), pageable),
+        access.require(condominiumId, Permissao.OCCURRENCE_VIEW);
+        return PaginaResponse.of(repository.findAll(spec(condominiumId, statuses, category, priority, search, null), pageable),
                 this::summary);
     }
 
@@ -111,29 +111,29 @@ public class OccurrenceService {
 
     @Transactional(readOnly = true)
     public Detail get(UUID condominiumId, UUID id) {
-        access.require(condominiumId, Permission.OCCURRENCE_VIEW);
+        access.require(condominiumId, Permissao.OCCURRENCE_VIEW);
         return detail(load(condominiumId, id), true);
     }
 
     @Transactional
     public Detail create(UUID condominiumId, CreateRequest request) {
-        Condominium condominium = access.requireActive(condominiumId, Permission.OCCURRENCE_EDIT);
+        Condominium condominium = access.requireActive(condominiumId, Permissao.OCCURRENCE_EDIT);
         var user = access.user();
-        return detail(createInternal(condominium, request, user.userId(), user.name()), true);
+        return detail(createInternal(condominium, request, user.idUsuario(), user.nome()), true);
     }
 
     /** Usado também pelo portal do morador (permissão verificada pelo chamador). */
     public Occurrence createInternal(Condominium condominium, CreateRequest request, UUID userId, String userName) {
         if (request.unitId() != null) {
-            units.findByIdAndCondominiumId(request.unitId(), condominium.getId()).orElseThrow(() -> ApiException.notFound("Unidade"));
+            units.findByIdAndCondominiumId(request.unitId(), condominium.getId()).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
         }
         Occurrence o = repository.save(new Occurrence(condominium.getOrganizationId(), condominium.getId(),
                 repository.nextNumber(condominium.getId()), request.title().trim(), request.description().trim(),
                 request.category(), request.priority() == null ? Occurrence.Priority.MEDIUM : request.priority(),
                 request.unitId(), userId, userName));
-        auditService.record(AuditAction.OCCURRENCE_CREATED, "Occurrence", o.getId(), Map.of("number", o.getNumber(), "title", o.getTitle()));
-        notifications.notify(condominium.getOrganizationId(),
-                notifications.usersWithPermission(condominium.getOrganizationId(), condominium.getId(), Permission.OCCURRENCE_EDIT)
+        auditService.registrar(AcaoAuditoria.OCCURRENCE_CREATED, "Occurrence", o.getId(), Map.of("number", o.getNumber(), "title", o.getTitle()));
+        notifications.notificar(condominium.getOrganizationId(),
+                notifications.usuariosComPermissao(condominium.getOrganizationId(), condominium.getId(), Permissao.OCCURRENCE_EDIT)
                         .stream().filter(u -> !u.equals(userId)).toList(),
                 "Nova ocorrência nº " + o.getNumber(), o.getTitle(), "/ocorrencias/" + o.getId(), null);
         return o;
@@ -141,18 +141,18 @@ public class OccurrenceService {
 
     @Transactional
     public Detail update(UUID condominiumId, UUID id, UpdateRequest request) {
-        access.requireActive(condominiumId, Permission.OCCURRENCE_EDIT);
+        access.requireActive(condominiumId, Permissao.OCCURRENCE_EDIT);
         Occurrence o = load(condominiumId, id);
         o.triage(request.category(), request.priority(), blank(request.assigneeName()), request.dueDate());
         repository.flush();
-        auditService.record(AuditAction.OCCURRENCE_UPDATED, "Occurrence", id, Map.of("priority", request.priority().name(),
+        auditService.registrar(AcaoAuditoria.OCCURRENCE_UPDATED, "Occurrence", id, Map.of("priority", request.priority().name(),
                 "assignee", String.valueOf(request.assigneeName()), "dueDate", String.valueOf(request.dueDate())));
         return detail(o, true);
     }
 
     @Transactional
     public Detail changeStatus(UUID condominiumId, UUID id, StatusRequest request) {
-        access.requireActive(condominiumId, Permission.OCCURRENCE_EDIT);
+        access.requireActive(condominiumId, Permissao.OCCURRENCE_EDIT);
         Occurrence o = load(condominiumId, id);
         var user = access.user();
         if (request.status() == Occurrence.Status.OPEN && o.getStatus() != Occurrence.Status.OPEN) {
@@ -160,13 +160,13 @@ public class OccurrenceService {
         } else {
             o.changeStatus(request.status(), blank(request.message()), Instant.now(clock));
         }
-        interactions.save(new OccurrenceInteraction(o.getId(), user.userId(), user.name(),
+        interactions.save(new OccurrenceInteraction(o.getId(), user.idUsuario(), user.nome(),
                 request.message() == null || request.message().isBlank() ? "Situação alterada." : request.message().trim(),
                 request.status(), false));
         repository.flush();
-        auditService.record(AuditAction.OCCURRENCE_UPDATED, "Occurrence", id, Map.of("status", request.status().name()));
-        if (o.getReporterUserId() != null && !o.getReporterUserId().equals(user.userId())) {
-            notifications.notify(o.getOrganizationId(), List.of(o.getReporterUserId()),
+        auditService.registrar(AcaoAuditoria.OCCURRENCE_UPDATED, "Occurrence", id, Map.of("status", request.status().name()));
+        if (o.getReporterUserId() != null && !o.getReporterUserId().equals(user.idUsuario())) {
+            notifications.notificar(o.getOrganizationId(), List.of(o.getReporterUserId()),
                     "Ocorrência nº " + o.getNumber() + " atualizada", statusLabel(request.status()), "/portal/ocorrencias/" + o.getId(), null);
         }
         return detail(o, true);
@@ -174,13 +174,13 @@ public class OccurrenceService {
 
     @Transactional
     public Detail comment(UUID condominiumId, UUID id, CommentRequest request) {
-        access.require(condominiumId, Permission.OCCURRENCE_EDIT);
+        access.require(condominiumId, Permissao.OCCURRENCE_EDIT);
         Occurrence o = load(condominiumId, id);
         var user = access.user();
-        interactions.save(new OccurrenceInteraction(o.getId(), user.userId(), user.name(), request.message().trim(), null,
+        interactions.save(new OccurrenceInteraction(o.getId(), user.idUsuario(), user.nome(), request.message().trim(), null,
                 request.internal()));
-        if (!request.internal() && o.getReporterUserId() != null && !o.getReporterUserId().equals(user.userId())) {
-            notifications.notify(o.getOrganizationId(), List.of(o.getReporterUserId()),
+        if (!request.internal() && o.getReporterUserId() != null && !o.getReporterUserId().equals(user.idUsuario())) {
+            notifications.notificar(o.getOrganizationId(), List.of(o.getReporterUserId()),
                     "Nova mensagem na ocorrência nº " + o.getNumber(), request.message().trim(), "/portal/ocorrencias/" + o.getId(), null);
         }
         return detail(o, true);
@@ -188,7 +188,7 @@ public class OccurrenceService {
 
     @Transactional(readOnly = true)
     public Stats stats(UUID condominiumId) {
-        access.require(condominiumId, Permission.OCCURRENCE_VIEW);
+        access.require(condominiumId, Permissao.OCCURRENCE_VIEW);
         LocalDate today = LocalDate.now(clock);
         Map<Occurrence.Status, Long> byStatus = new EnumMap<>(Occurrence.Status.class);
         long overdue = 0;
@@ -199,7 +199,7 @@ public class OccurrenceService {
             if (o.isOverdue(today)) overdue++;
             if (o.getStatus() == Occurrence.Status.RESOLVED && o.getResolvedAt() != null) {
                 resolvedCount++;
-                resolvedHours += Duration.between(o.getCreatedAt(), o.getResolvedAt()).toHours();
+                resolvedHours += Duration.between(o.getCriadoEm(), o.getResolvedAt()).toHours();
             }
         }
         long open = byStatus.getOrDefault(Occurrence.Status.OPEN, 0L) + byStatus.getOrDefault(Occurrence.Status.IN_PROGRESS, 0L)
@@ -210,14 +210,14 @@ public class OccurrenceService {
     // ------------------------------------------------------------------
 
     public Occurrence load(UUID condominiumId, UUID id) {
-        return repository.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.notFound("Ocorrência"));
+        return repository.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Ocorrência"));
     }
 
     public Summary summary(Occurrence o) {
         String unitLabel = o.getUnitId() == null ? null : units.findById(o.getUnitId()).map(u -> u.label()).orElse(null);
         return new Summary(o.getId(), o.getNumber(), o.getTitle(), o.getCategory(), o.getPriority(), o.getStatus(),
                 o.getUnitId(), unitLabel, o.getReporterName(), o.getAssigneeName(), o.getDueDate(),
-                o.isOverdue(LocalDate.now(clock)), o.getCreatedAt(), o.getResolvedAt());
+                o.isOverdue(LocalDate.now(clock)), o.getCriadoEm(), o.getResolvedAt());
     }
 
     public Detail detail(Occurrence o, boolean includeInternal) {
@@ -226,7 +226,7 @@ public class OccurrenceService {
                 .map(i -> new Interaction(i.getId(), i.getAuthorName(), i.getMessage(), i.getStatusChange(), i.isInternal(),
                         i.getCreatedAt()))
                 .toList();
-        return new Detail(summary(o), o.getDescription(), o.getResolution(), o.getVersion(), list);
+        return new Detail(summary(o), o.getDescription(), o.getResolution(), o.getVersao(), list);
     }
 
     private static String statusLabel(Occurrence.Status s) {

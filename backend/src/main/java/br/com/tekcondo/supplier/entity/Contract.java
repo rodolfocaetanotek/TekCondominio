@@ -4,8 +4,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.exception.ApiException;
-import br.com.tekcondo.shared.persistence.AuditableEntity;
+import br.com.tekcondo.comum.exception.ApiException;
+import br.com.tekcondo.comum.persistence.AuditableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -87,10 +87,10 @@ public class Contract extends AuditableEntity {
     public void update(Supplier supplier, String title, String description, BigDecimal amount, Periodicity periodicity,
                        LocalDate startDate, LocalDate endDate, String readjustmentIndex, Integer readjustmentMonth, int noticeDays) {
         if (status == Status.TERMINATED) {
-            throw ApiException.businessRule("CONTRACT_TERMINATED", "Contrato encerrado não pode ser alterado.");
+            throw ApiException.regraNegocio("CONTRACT_TERMINATED", "Contrato encerrado não pode ser alterado.");
         }
         if (endDate != null && endDate.isBefore(startDate)) {
-            throw ApiException.businessRule("CONTRACT_DATES", "O término deve ser posterior ao início.");
+            throw ApiException.regraNegocio("CONTRACT_DATES", "O término deve ser posterior ao início.");
         }
         this.supplier = supplier;
         this.title = title;
@@ -106,7 +106,7 @@ public class Contract extends AuditableEntity {
 
     public void terminate(LocalDate on, String reason) {
         if (status == Status.TERMINATED) {
-            throw ApiException.businessRule("CONTRACT_TERMINATED", "O contrato já está encerrado.");
+            throw ApiException.regraNegocio("CONTRACT_TERMINATED", "O contrato já está encerrado.");
         }
         status = Status.TERMINATED;
         terminatedOn = on;

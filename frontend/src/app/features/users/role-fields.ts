@@ -6,7 +6,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { catchError, map, of, startWith, switchMap } from 'rxjs';
 import { FieldError } from '../../shared/forms/field-error';
 import { CondominiumService } from '../condominiums/condominium.service';
-import { RoleOption } from './user.models';
+import { PapelOpcao } from './user.models';
 import { UserService } from './user.service';
 
 /**
@@ -22,17 +22,17 @@ import { UserService } from './user.service';
         <mat-label>Papel</mat-label>
         <mat-select [formControl]="roleCode()" required>
           <mat-optgroup label="Toda a administradora">
-            @for (r of orgRoles(); track r.code) {
-              <mat-option [value]="r.code">{{ r.name }}</mat-option>
+            @for (r of orgRoles(); track r.codigo) {
+              <mat-option [value]="r.codigo">{{ r.nome }}</mat-option>
             }
           </mat-optgroup>
           <mat-optgroup label="Por condomínio">
-            @for (r of condoRoles(); track r.code) {
-              <mat-option [value]="r.code">{{ r.name }}</mat-option>
+            @for (r of condoRoles(); track r.codigo) {
+              <mat-option [value]="r.codigo">{{ r.nome }}</mat-option>
             }
           </mat-optgroup>
         </mat-select>
-        @if (selectedRole()?.description; as d) {
+        @if (selectedRole()?.descricao; as d) {
           <mat-hint>{{ d }}</mat-hint>
         }
         <mat-error><tc-field-error [control]="roleCode()" /></mat-error>
@@ -58,14 +58,14 @@ export class RoleFields {
   readonly roleCode = input.required<FormControl<string>>();
   readonly condominiumId = input.required<FormControl<string | null>>();
 
-  private readonly roles = toSignal(inject(UserService).roles().pipe(catchError(() => of<RoleOption[]>([]))), {
-    initialValue: [] as RoleOption[],
+  private readonly roles = toSignal(inject(UserService).roles().pipe(catchError(() => of<PapelOpcao[]>([]))), {
+    initialValue: [] as PapelOpcao[],
   });
   protected readonly condominiums = toSignal(
     inject(CondominiumService)
       .list({ page: 0, size: 100, status: 'ACTIVE', sort: 'name,asc' })
       .pipe(
-        map((p) => p.content),
+        map((p) => p.conteudo),
         catchError(() => of([])),
       ),
     { initialValue: [] },
@@ -76,10 +76,10 @@ export class RoleFields {
     { initialValue: '' },
   );
 
-  protected readonly orgRoles = computed(() => this.roles().filter((r) => r.scope === 'ORGANIZATION'));
-  protected readonly condoRoles = computed(() => this.roles().filter((r) => r.scope === 'CONDOMINIUM'));
-  protected readonly selectedRole = computed(() => this.roles().find((r) => r.code === this.roleValue()));
-  protected readonly needsCondominium = computed(() => this.selectedRole()?.scope === 'CONDOMINIUM');
+  protected readonly orgRoles = computed(() => this.roles().filter((r) => r.escopo === 'ORGANIZATION'));
+  protected readonly condoRoles = computed(() => this.roles().filter((r) => r.escopo === 'CONDOMINIUM'));
+  protected readonly selectedRole = computed(() => this.roles().find((r) => r.codigo === this.roleValue()));
+  protected readonly needsCondominium = computed(() => this.selectedRole()?.escopo === 'CONDOMINIUM');
 
   constructor() {
     effect(() => {

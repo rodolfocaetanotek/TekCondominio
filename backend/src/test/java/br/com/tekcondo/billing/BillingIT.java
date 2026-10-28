@@ -8,8 +8,8 @@ import java.util.List;
 import java.util.Map;
 
 import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.identity.entity.User;
-import br.com.tekcondo.organization.entity.Organization;
+import br.com.tekcondo.acesso.entity.Usuario;
+import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
 import br.com.tekcondo.support.TestData;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -32,7 +32,7 @@ class BillingIT extends IntegrationTest {
     @Autowired
     ObjectMapper objectMapper;
 
-    Organization org;
+    Administradora org;
     Condominium condo;
     String token;
     String base;
@@ -41,9 +41,9 @@ class BillingIT extends IntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        org = data.organization();
+        org = data.administradora();
         condo = data.condominium(org, "Condomínio Cobrança");
-        token = TestData.bearer(data.login(data.orgAdmin(org)));
+        token = TestData.bearer(data.login(data.adminAdministradora(org)));
         base = "/api/v1/condominiums/" + condo.getId();
         unitA = call("POST", base + "/units", Map.of("identifier", "A", "type", "APARTMENT", "idealFraction", "50"), 201).get("id").asText();
         call("POST", base + "/units", Map.of("identifier", "B", "type", "APARTMENT", "idealFraction", "30"), 201);
@@ -89,8 +89,8 @@ class BillingIT extends IntegrationTest {
         call("POST", base + "/billing/allocations", allocation(next, ACC_RESERVE, null), 201); // outra conta, mesma competência
 
         JsonNode charges = call("GET", base + "/finance/entries?kind=INCOME&unitId=" + unitA, null, 200);
-        assertThat(charges.get("totalElements").asInt()).isEqualTo(2);
-        assertThat(charges.get("content").get(0).get("personName").asText()).isEqualTo("Ana Pagadora");
+        assertThat(charges.get("totalElementos").asInt()).isEqualTo(2);
+        assertThat(charges.get("conteudo").get(0).get("personName").asText()).isEqualTo("Ana Pagadora");
 
         call("POST", base + "/billing/allocations/" + id + "/cancel", Map.of("reason", "Valor aprovado em assembleia mudou"), 200);
         call("POST", base + "/billing/allocations", allocation(next, ACC_CONDO_FEE, null), 201);
@@ -152,8 +152,8 @@ class BillingIT extends IntegrationTest {
 
     @Test
     void councilCanViewButNotGenerate() throws Exception {
-        User council = data.user(org);
-        data.grant(council, "COUNCIL", condo.getId());
+        Usuario council = data.usuario(org);
+        data.conceder(council, "COUNCIL", condo.getId());
         String councilToken = TestData.bearer(data.login(council));
         mvc.perform(get(base + "/billing/delinquency").header("Authorization", councilToken)).andExpect(status().isOk());
         mvc.perform(post(base + "/billing/allocations").header("Authorization", councilToken)

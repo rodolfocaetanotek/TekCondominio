@@ -103,7 +103,7 @@ export class AllocationDialog {
     map((list) => list.filter((a) => a.analytic && a.active && a.nature === 'INCOME').map((a) => ({ value: a.id, label: `${a.code} — ${a.name}` }))),
     catchError(() => of([]))), { initialValue: [] });
   protected readonly units = toSignal(inject(StructureService).units(this.data.condominiumId, { page: 0, size: 100, active: 'true' })
-    .pipe(map((p) => p.content), catchError(() => of([]))), { initialValue: [] });
+    .pipe(map((p) => p.conteudo), catchError(() => of([]))), { initialValue: [] });
 
   private readonly month = new Date().toISOString().slice(0, 7);
   protected readonly form = inject(FormBuilder).nonNullable.group({

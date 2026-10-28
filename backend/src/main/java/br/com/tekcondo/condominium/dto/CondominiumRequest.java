@@ -1,8 +1,8 @@
 package br.com.tekcondo.condominium.dto;
 
 import br.com.tekcondo.condominium.entity.CondominiumType;
-import br.com.tekcondo.shared.validation.Cnpj;
-import br.com.tekcondo.shared.validation.Phone;
+import br.com.tekcondo.comum.validation.Cnpj;
+import br.com.tekcondo.comum.validation.Telefone;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -20,6 +20,6 @@ public record CondominiumRequest(
         @NotNull(message = "Informe o tipo do condomínio.") CondominiumType type,
         @Valid AddressDto address,
         @Email(message = "E-mail inválido.") @Size(max = 254) String email,
-        @Phone String phone,
+        @Telefone String phone,
         Long version) {
 }

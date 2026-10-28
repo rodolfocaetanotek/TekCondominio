@@ -41,7 +41,7 @@
         <button mat-stroked-button (click)="retry()">Tentar novamente</button>
       </tc-empty-state>
     } @else if (result(); as page) {
-      @if (page.totalElements === 0) {
+      @if (page.totalElementos === 0) {
         @if (hasFilters()) {
           <tc-empty-state icon="search_off" title="Nenhum condomínio encontrado" description="Ajuste a busca ou os filtros.">
             <button mat-stroked-button (click)="clearFilters()">Limpar filtros</button>
@@ -61,7 +61,7 @@
         <div class="table-scroll">
           <table
             mat-table
-            [dataSource]="page.content"
+            [dataSource]="page.conteudo"
             matSort
             [matSortActive]="query().sort?.split(',')?.[0] ?? 'name'"
             [matSortDirection]="query().sort?.endsWith('desc') ? 'desc' : 'asc'"
@@ -106,9 +106,9 @@
           </table>
         </div>
         <mat-paginator
-          [length]="page.totalElements"
-          [pageIndex]="page.page"
-          [pageSize]="page.size"
+          [length]="page.totalElementos"
+          [pageIndex]="page.pagina"
+          [pageSize]="page.tamanho"
           [pageSizeOptions]="[10, 20, 50, 100]"
           (page)="onPage($event)"
           aria-label="Paginação de condomínios"

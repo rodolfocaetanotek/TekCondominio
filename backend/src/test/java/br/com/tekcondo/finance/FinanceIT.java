@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.identity.entity.User;
-import br.com.tekcondo.organization.entity.Organization;
+import br.com.tekcondo.acesso.entity.Usuario;
+import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
 import br.com.tekcondo.support.TestData;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -33,7 +33,7 @@ class FinanceIT extends IntegrationTest {
     @Autowired
     ObjectMapper objectMapper;
 
-    Organization org;
+    Administradora org;
     Condominium condo;
     String token;
     String base;
@@ -42,9 +42,9 @@ class FinanceIT extends IntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        org = data.organization();
+        org = data.administradora();
         condo = data.condominium(org, "Condomínio Financeiro");
-        token = TestData.bearer(data.login(data.orgAdmin(org)));
+        token = TestData.bearer(data.login(data.adminAdministradora(org)));
         base = "/api/v1/condominiums/" + condo.getId() + "/finance";
         bank = call("POST", base + "/bank-accounts", Map.of("name", "Conta Corrente", "kind", "CHECKING",
                 "openingBalance", "1000.00", "openingDate", today.minusMonths(6).toString()), 201).get("id").asText();
@@ -150,7 +150,7 @@ class FinanceIT extends IntegrationTest {
         assertThat(balance()).isEqualTo("1515.00");
 
         mvc.perform(get(base + "/entries").header("Authorization", token).param("overdue", "true"))
-                .andExpect(jsonPath("$.totalElements").value(0));
+                .andExpect(jsonPath("$.totalElementos").value(0));
     }
 
     @Test
@@ -217,17 +217,17 @@ class FinanceIT extends IntegrationTest {
         JsonNode entry = call("POST", base + "/entries", expense("90.00", null, null), 201).get(0);
         String id = entry.get("summary").get("id").asText();
 
-        User syndic = data.user(org);
-        data.grant(syndic, "SYNDIC", condo.getId());
+        Usuario syndic = data.usuario(org);
+        data.conceder(syndic, "SYNDIC", condo.getId());
         String syndicToken = TestData.bearer(data.login(syndic));
         mvc.perform(post(base + "/entries/" + id + "/approve").header("Authorization", syndicToken))
                 .andExpect(status().isOk());
         mvc.perform(post(base + "/entries").header("Authorization", syndicToken).contentType(MediaType.APPLICATION_JSON)
                 .content(data.json(expense("1.00", null, null)))).andExpect(status().isForbidden());
         mvc.perform(get(base + "/entries").header("Authorization", syndicToken))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.content", hasSize(1)));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.conteudo", hasSize(1)));
 
-        String foreign = TestData.bearer(data.login(data.orgAdmin(data.organization())));
+        String foreign = TestData.bearer(data.login(data.adminAdministradora(data.administradora())));
         mvc.perform(get(base + "/entries/" + id).header("Authorization", foreign)).andExpect(status().isNotFound());
         mvc.perform(get(base + "/bank-accounts").header("Authorization", foreign)).andExpect(status().isNotFound());
     }

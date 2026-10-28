@@ -6,18 +6,18 @@ import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
-import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.condominium.dto.CondominiumRequest;
 import br.com.tekcondo.condominium.entity.Condominium;
 import br.com.tekcondo.condominium.entity.CondominiumStatus;
 import br.com.tekcondo.condominium.entity.CondominiumType;
 import br.com.tekcondo.condominium.mapper.CondominiumMapper;
 import br.com.tekcondo.condominium.repository.CondominiumRepository;
-import br.com.tekcondo.identity.access.AccessService;
-import br.com.tekcondo.identity.access.Permission;
-import br.com.tekcondo.shared.exception.ApiException;
-import br.com.tekcondo.shared.security.CurrentUser;
-import br.com.tekcondo.shared.security.CurrentUserProvider;
+import br.com.tekcondo.acesso.autorizacao.AcessoService;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
+import br.com.tekcondo.comum.exception.ApiException;
+import br.com.tekcondo.comum.security.UsuarioAtual;
+import br.com.tekcondo.comum.security.UsuarioAtualProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,23 +40,23 @@ class CondominiumServiceTest {
     @Mock
     CondominiumRepository repository;
     @Mock
-    AccessService accessService;
+    AcessoService accessService;
     @Mock
-    CurrentUserProvider currentUserProvider;
+    UsuarioAtualProvider currentUserProvider;
     @Mock
-    AuditService auditService;
+    AuditoriaService auditService;
 
     CondominiumService service;
 
     final UUID orgId = UUID.randomUUID();
-    final CurrentUser user = new CurrentUser(UUID.randomUUID(), orgId, "u@x.com", "U", false);
+    final UsuarioAtual user = new UsuarioAtual(UUID.randomUUID(), orgId, "u@x.com", "U", false);
 
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(Instant.parse("2026-10-27T12:00:00Z"), ZoneOffset.UTC);
         service = new CondominiumService(repository, new CondominiumMapper(), accessService, currentUserProvider,
                 auditService, clock);
-        when(currentUserProvider.requireOrganizationMember()).thenReturn(user);
+        when(currentUserProvider.exigirMembroAdministradora()).thenReturn(user);
     }
 
     private static CondominiumRequest request(String cnpj, Long version) {
@@ -65,7 +65,7 @@ class CondominiumServiceTest {
     }
 
     private Condominium existing(UUID id) {
-        Condominium c = new Condominium(orgId, user.userId());
+        Condominium c = new Condominium(orgId, user.idUsuario());
         c.updateDetails("Residencial Aurora", null, null, CondominiumType.RESIDENTIAL, null, null, null, null);
         when(repository.findByIdAndOrganizationId(id, orgId)).thenReturn(Optional.of(c));
         return c;
@@ -74,7 +74,7 @@ class CondominiumServiceTest {
     @Test
     void createRequiresOrganizationWidePermission() {
         doThrow(new AccessDeniedException("x")).when(accessService)
-                .requireOrganizationWide(Permission.CONDOMINIUM_CREATE);
+                .exigirNaAdministradora(Permissao.CONDOMINIUM_CREATE);
 
         assertThatThrownBy(() -> service.create(request(null, null))).isInstanceOf(AccessDeniedException.class);
         verify(repository, never()).save(any());
@@ -87,7 +87,7 @@ class CondominiumServiceTest {
         assertThatThrownBy(() -> service.create(request("11.222.333/0001-81", null)))
                 .isInstanceOfSatisfying(ApiException.class, e -> {
                     assertThat(e.getStatus()).isEqualTo(HttpStatus.CONFLICT);
-                    assertThat(e.getCode()).isEqualTo("CONDOMINIUM_CNPJ_TAKEN");
+                    assertThat(e.getCodigo()).isEqualTo("CONDOMINIUM_CNPJ_TAKEN");
                 });
     }
 
@@ -98,7 +98,7 @@ class CondominiumServiceTest {
         assertThat(response.cnpj()).isEqualTo("11222333000181");
         assertThat(response.status()).isEqualTo(CondominiumStatus.ACTIVE);
         verify(repository).save(any(Condominium.class));
-        verify(auditService).record(any(), any(), any(), any());
+        verify(auditService).registrar(any(), any(), any(), any());
     }
 
     @Test
@@ -107,7 +107,7 @@ class CondominiumServiceTest {
         existing(id); // versão nula (não persistida) ≠ 7
 
         assertThatThrownBy(() -> service.update(id, request(null, 7L)))
-                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getCode()).isEqualTo("STALE_VERSION"));
+                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getCodigo()).isEqualTo("STALE_VERSION"));
     }
 
     @Test
@@ -116,7 +116,7 @@ class CondominiumServiceTest {
         existing(id);
 
         assertThatThrownBy(() -> service.update(id, request(null, null)))
-                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getCode()).isEqualTo("VERSION_REQUIRED"));
+                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getCodigo()).isEqualTo("VERSION_REQUIRED"));
     }
 
     @Test
@@ -132,11 +132,11 @@ class CondominiumServiceTest {
     void cannotInactivateTwice() {
         UUID id = UUID.randomUUID();
         Condominium c = existing(id);
-        c.inactivate("Encerramento do contrato", Instant.now(), user.userId());
+        c.inactivate("Encerramento do contrato", Instant.now(), user.idUsuario());
 
         assertThatThrownBy(() -> service.inactivate(id, "Outra justificativa"))
                 .isInstanceOfSatisfying(ApiException.class,
-                        e -> assertThat(e.getCode()).isEqualTo("CONDOMINIUM_ALREADY_INACTIVE"));
+                        e -> assertThat(e.getCodigo()).isEqualTo("CONDOMINIUM_ALREADY_INACTIVE"));
     }
 
     @Test

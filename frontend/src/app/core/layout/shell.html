@@ -96,8 +96,8 @@
         <div class="who">
           <span class="avatar small" aria-hidden="true">{{ initials() }}</span>
           <span class="who-text">
-            <strong>{{ auth.user()?.name }}</strong>
-            <small>{{ auth.user()?.organizationName ?? (auth.user()?.platformAdmin ? 'Administração da plataforma' : '') }}</small>
+            <strong>{{ auth.user()?.nome }}</strong>
+            <small>{{ auth.user()?.nomeAdministradora ?? (auth.user()?.administradorPlataforma ? 'Administração da plataforma' : '') }}</small>
           </span>
         </div>
       }
@@ -139,9 +139,9 @@
             </mat-select>
           </mat-form-field>
         }
-        @if (auth.user()?.organizationName; as org) {
+        @if (auth.user()?.nomeAdministradora; as org) {
           <span class="org" [class.compact]="showSelector()"><mat-icon aria-hidden="true">domain</mat-icon>{{ org }}</span>
-        } @else if (auth.user()?.platformAdmin) {
+        } @else if (auth.user()?.administradorPlataforma) {
           <span class="org"><mat-icon aria-hidden="true">shield_person</mat-icon>Administração da plataforma</span>
         }
       </div>
@@ -165,13 +165,13 @@
       }
       <button mat-button class="user-btn" [matMenuTriggerFor]="userMenu" aria-label="Menu do usuário">
         <span class="avatar" aria-hidden="true">{{ initials() }}</span>
-        <span class="user-name">{{ auth.user()?.name }}</span>
+        <span class="user-name">{{ auth.user()?.nome }}</span>
         <mat-icon iconPositionEnd>expand_more</mat-icon>
       </button>
       <mat-menu #userMenu="matMenu" xPosition="before">
         <div class="menu-header" mat-menu-item disabled>
           <span>
-            <strong>{{ auth.user()?.name }}</strong><br />
+            <strong>{{ auth.user()?.nome }}</strong><br />
             <small>{{ auth.user()?.email }}</small>
           </span>
         </div>

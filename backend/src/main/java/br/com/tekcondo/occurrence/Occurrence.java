@@ -4,8 +4,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.exception.ApiException;
-import br.com.tekcondo.shared.persistence.AuditableEntity;
+import br.com.tekcondo.comum.exception.ApiException;
+import br.com.tekcondo.comum.persistence.AuditableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -108,7 +108,7 @@ public class Occurrence extends AuditableEntity {
     public void changeStatus(Status next, String resolution, Instant now) {
         ensureOpen();
         if (next == Status.RESOLVED && (resolution == null || resolution.isBlank())) {
-            throw ApiException.badRequest("RESOLUTION_REQUIRED", "Descreva a solução para encerrar a ocorrência.");
+            throw ApiException.requisicaoInvalida("RESOLUTION_REQUIRED", "Descreva a solução para encerrar a ocorrência.");
         }
         this.status = next;
         if (next.isClosed()) {
@@ -120,7 +120,7 @@ public class Occurrence extends AuditableEntity {
     /** Reabre (ex.: o morador informa que o problema persiste). */
     public void reopen() {
         if (!status.isClosed()) {
-            throw ApiException.businessRule("OCCURRENCE_NOT_CLOSED", "A ocorrência não está encerrada.");
+            throw ApiException.regraNegocio("OCCURRENCE_NOT_CLOSED", "A ocorrência não está encerrada.");
         }
         status = Status.OPEN;
         resolvedAt = null;
@@ -132,7 +132,7 @@ public class Occurrence extends AuditableEntity {
 
     private void ensureOpen() {
         if (status.isClosed()) {
-            throw ApiException.businessRule("OCCURRENCE_CLOSED", "A ocorrência está encerrada. Reabra-a para alterar.");
+            throw ApiException.regraNegocio("OCCURRENCE_CLOSED", "A ocorrência está encerrada. Reabra-a para alterar.");
         }
     }
 

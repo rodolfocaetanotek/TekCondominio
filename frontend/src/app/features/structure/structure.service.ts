@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { PageResponse } from '../../core/api/api.models';
+import { PaginaResponse } from '../../core/api/api.models';
 import {
   Building,
   FractionSummary,
@@ -37,12 +37,12 @@ export class StructureService {
     return this.http.post<Building>(`${this.base(c)}/buildings/${id}/${active ? 'activate' : 'deactivate'}`, null);
   }
 
-  units(c: string, q: { search?: string; buildingId?: string; active?: string; page: number; size: number }): Observable<PageResponse<Unit>> {
-    let params = new HttpParams().set('page', q.page).set('size', q.size);
+  units(c: string, q: { search?: string; buildingId?: string; active?: string; page: number; size: number }): Observable<PaginaResponse<Unit>> {
+    let params = new HttpParams().set('pagina', q.page).set('tamanho', q.size);
     if (q.search) params = params.set('search', q.search);
     if (q.buildingId) params = params.set('buildingId', q.buildingId);
     if (q.active) params = params.set('active', q.active);
-    return this.http.get<PageResponse<Unit>>(`${this.base(c)}/units`, { params });
+    return this.http.get<PaginaResponse<Unit>>(`${this.base(c)}/units`, { params });
   }
 
   unit(c: string, id: string): Observable<Unit> {
@@ -84,12 +84,12 @@ export class StructureService {
   }
 
   // ---------- pessoas
-  people(q: { search?: string; active?: string; condominiumId?: string; page: number; size: number }): Observable<PageResponse<PersonSummary>> {
-    let params = new HttpParams().set('page', q.page).set('size', q.size);
+  people(q: { search?: string; active?: string; condominiumId?: string; page: number; size: number }): Observable<PaginaResponse<PersonSummary>> {
+    let params = new HttpParams().set('pagina', q.page).set('tamanho', q.size);
     if (q.search) params = params.set('search', q.search);
     if (q.active) params = params.set('active', q.active);
     if (q.condominiumId) params = params.set('condominiumId', q.condominiumId);
-    return this.http.get<PageResponse<PersonSummary>>('/api/v1/people', { params });
+    return this.http.get<PaginaResponse<PersonSummary>>('/api/v1/people', { params });
   }
 
   person(id: string): Observable<PersonDetail> {

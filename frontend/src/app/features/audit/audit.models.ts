@@ -1,13 +1,13 @@
-export interface AuditEntry {
+export interface RegistroAuditoria {
   id: string;
-  occurredAt: string;
-  userId?: string;
-  userEmail?: string;
-  action: string;
-  entityType?: string;
-  entityId?: string;
-  details?: Record<string, unknown>;
-  ipAddress?: string;
+  ocorridoEm: string;
+  idUsuario?: string;
+  emailUsuario?: string;
+  acao: string;
+  tipoEntidade?: string;
+  idEntidade?: string;
+  detalhes?: Record<string, unknown>;
+  enderecoIp?: string;
 }
 
 export const AUDIT_ACTION_LABELS: Record<string, string> = {

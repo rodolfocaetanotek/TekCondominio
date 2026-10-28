@@ -30,8 +30,8 @@ import br.com.tekcondo.finance.service.BudgetService;
 import br.com.tekcondo.finance.service.EntryService;
 import br.com.tekcondo.finance.service.FinanceSetupService;
 import br.com.tekcondo.finance.service.TreasuryService;
-import br.com.tekcondo.shared.web.PageRequests;
-import br.com.tekcondo.shared.web.PageResponse;
+import br.com.tekcondo.comum.web.PaginaRequests;
+import br.com.tekcondo.comum.web.PaginaResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -148,7 +148,7 @@ public class FinanceController {
     // ---------- lançamentos
     @GetMapping("/condominiums/{c}/finance/entries")
     @Operation(summary = "Contas a pagar e a receber", description = "Filtros: kind, status (lista), dueFrom, dueTo, chartAccountId, supplierId, unitId, search, overdue, approval")
-    public PageResponse<EntrySummary> entries(@PathVariable UUID c,
+    public PaginaResponse<EntrySummary> entries(@PathVariable UUID c,
                                               @RequestParam(required = false) FinancialEntry.Kind kind,
                                               @RequestParam(required = false) List<FinancialEntry.Status> status,
                                               @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueFrom,
@@ -159,11 +159,11 @@ public class FinanceController {
                                               @RequestParam(required = false) String search,
                                               @RequestParam(required = false) Boolean overdue,
                                               @RequestParam(required = false) FinancialEntry.Approval approval,
-                                              @RequestParam(defaultValue = "0") int page,
-                                              @RequestParam(defaultValue = "50") int size,
-                                              @RequestParam(required = false) String sort) {
+                                              @RequestParam(defaultValue = "0") int pagina,
+                                              @RequestParam(defaultValue = "50") int tamanho,
+                                              @RequestParam(required = false) String ordem) {
         return entries.list(c, new EntryService.Filter(kind, status, dueFrom, dueTo, chartAccountId, supplierId, unitId, search,
-                overdue, approval), PageRequests.of(page, size, sort, ENTRY_SORTS, Sort.by("dueDate").and(Sort.by("id"))));
+                overdue, approval), PaginaRequests.of(pagina, tamanho, ordem, ENTRY_SORTS, Sort.by("dueDate").and(Sort.by("id"))));
     }
 
     @GetMapping("/condominiums/{c}/finance/entries/{id}")

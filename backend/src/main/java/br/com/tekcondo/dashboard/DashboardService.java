@@ -18,8 +18,8 @@ import br.com.tekcondo.condominium.dto.CondominiumOption;
 import br.com.tekcondo.condominium.entity.CondominiumStatus;
 import br.com.tekcondo.condominium.service.CondominiumService;
 import br.com.tekcondo.finance.service.FinanceQueries;
-import br.com.tekcondo.identity.access.Permission;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
+import br.com.tekcondo.comum.exception.ApiException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -70,14 +70,14 @@ public class DashboardService {
         if (condominiumId != null) {
             options = options.stream().filter(o -> o.id().equals(condominiumId)).toList();
             if (options.isEmpty()) {
-                throw ApiException.notFound("Condomínio");
+                throw ApiException.naoEncontrado("Condomínio");
             }
         }
         Map<UUID, String> names = options.stream().collect(Collectors.toMap(CondominiumOption::id, CondominiumOption::name));
         Set<UUID> all = names.keySet();
-        Set<UUID> fin = ids(options, Permission.FINANCE_VIEW);
-        Set<UUID> occ = ids(options, Permission.OCCURRENCE_VIEW);
-        Set<UUID> ann = ids(options, Permission.ANNOUNCEMENT_VIEW);
+        Set<UUID> fin = ids(options, Permissao.FINANCE_VIEW);
+        Set<UUID> occ = ids(options, Permissao.OCCURRENCE_VIEW);
+        Set<UUID> ann = ids(options, Permissao.ANNOUNCEMENT_VIEW);
 
         long condoCount = options.stream().filter(o -> o.status() == CondominiumStatus.ACTIVE).count();
         long units = count("select count(*) from unit where active and condominium_id in (:ids)", all);
@@ -172,7 +172,7 @@ public class DashboardService {
                 overdue, overdueCount, issued, rate, series, dueSoon, occurrences, announcements);
     }
 
-    private static Set<UUID> ids(List<CondominiumOption> options, Permission permission) {
+    private static Set<UUID> ids(List<CondominiumOption> options, Permissao permission) {
         return options.stream().filter(o -> o.permissions().contains(permission)).map(CondominiumOption::id).collect(Collectors.toSet());
     }
 

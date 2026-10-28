@@ -62,7 +62,7 @@ def fail(msg):
 
 
 def login(email, password):
-    return call('POST', '/api/v1/auth/login', body={'email': email, 'password': password})['accessToken']
+    return call('POST', '/api/v1/auth/login', body={'email': email, 'senha': password})['accessToken']
 
 
 def token_from_outbox(email, after):
@@ -82,7 +82,7 @@ def token_from_outbox(email, after):
 
 def activate(email, after):
     token = token_from_outbox(email, after)
-    call('POST', '/api/v1/auth/password/reset', body={'token': token, 'newPassword': 'SenhaValida2026'}, expect=204)
+    call('POST', '/api/v1/auth/senha/redefinir', body={'token': token, 'novaSenha': 'SenhaValida2026'}, expect=204)
     return login(email, 'SenhaValida2026')
 
 
@@ -113,8 +113,8 @@ def main():
     platform = login(email, password)
     print('1. Plataforma e administradora')
     admin_email = f'admin.{STAMP}@e2e.local'
-    call('POST', '/api/v1/organizations', platform, {'name': f'Administradora E2E {STAMP}', 'cnpj': cnpj(),
-         'admin': {'name': 'Admin E2E', 'email': admin_email, 'password': 'SenhaValida2026'}}, expect=201)
+    call('POST', '/api/v1/administradoras', platform, {'nome': f'Administradora E2E {STAMP}', 'cnpj': cnpj(),
+         'administrador': {'nome': 'Admin E2E', 'email': admin_email, 'senha': 'SenhaValida2026'}}, expect=201)
     admin = login(admin_email, 'SenhaValida2026')
     ok('administradora criada e administrador autenticado', bool(admin))
 
@@ -142,7 +142,7 @@ def main():
     call('POST', b + '/billing/allocations', admin, alloc, expect=201)
     call('POST', b + '/billing/allocations', admin, alloc, expect=409)
     ok('geração duplicada da mesma competência é bloqueada', True)
-    charges = call('GET', b + '/finance/entries?kind=INCOME&size=10&sort=dueDate,asc', admin)['content']
+    charges = call('GET', b + '/finance/entries?kind=INCOME&tamanho=10&ordem=dueDate,asc', admin)['conteudo']
     ok('3 cobranças geradas, uma por unidade', len(charges) == 3)
     c101 = next(x for x in charges if x['unitLabel'] == '101')
 
@@ -219,8 +219,8 @@ def main():
     call('GET', b + '/finance/entries', resident_token, expect=403)
     ok('morador não acessa a área administrativa (403)', True)
     other_email = f'outra.{STAMP}@e2e.local'
-    call('POST', '/api/v1/organizations', platform, {'name': f'Outra Administradora {STAMP}', 'cnpj': cnpj(),
-         'admin': {'name': 'Outra', 'email': other_email, 'password': 'SenhaValida2026'}}, expect=201)
+    call('POST', '/api/v1/administradoras', platform, {'nome': f'Outra Administradora {STAMP}', 'cnpj': cnpj(),
+         'administrador': {'nome': 'Outra', 'email': other_email, 'senha': 'SenhaValida2026'}}, expect=201)
     foreign = login(other_email, 'SenhaValida2026')
     call('GET', b + '/finance/closing', foreign, expect=404)
     call('GET', b + '/common-areas', foreign, expect=404)

@@ -14,20 +14,20 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import br.com.tekcondo.audit.service.AuditAction;
-import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.auditoria.service.AcaoAuditoria;
+import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.condominium.entity.Condominium;
 import br.com.tekcondo.condominium.service.CondominiumAccess;
-import br.com.tekcondo.identity.access.Permission;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.people.entity.Occupancy;
 import br.com.tekcondo.people.entity.Person;
 import br.com.tekcondo.people.repository.OccupancyRepository;
 import br.com.tekcondo.people.repository.PersonRepository;
-import br.com.tekcondo.shared.exception.ApiException;
-import br.com.tekcondo.shared.io.BrazilianNumbers;
-import br.com.tekcondo.shared.io.CsvReader;
-import br.com.tekcondo.shared.validation.BrazilianDocuments;
-import br.com.tekcondo.shared.web.PageResponse;
+import br.com.tekcondo.comum.exception.ApiException;
+import br.com.tekcondo.comum.io.NumerosBrasileiros;
+import br.com.tekcondo.comum.io.CsvReader;
+import br.com.tekcondo.comum.validation.DocumentosBrasileiros;
+import br.com.tekcondo.comum.web.PaginaResponse;
 import br.com.tekcondo.structure.dto.StructureDtos.BuildingRequest;
 import br.com.tekcondo.structure.dto.StructureDtos.BuildingResponse;
 import br.com.tekcondo.structure.dto.StructureDtos.FractionSummary;
@@ -65,12 +65,12 @@ public class StructureService {
     private final PersonRepository personRepository;
     private final OccupancyRepository occupancyRepository;
     private final CondominiumAccess access;
-    private final AuditService auditService;
+    private final AuditoriaService auditService;
     private final Clock clock;
 
     public StructureService(BuildingRepository buildingRepository, UnitRepository unitRepository,
                             PersonRepository personRepository, OccupancyRepository occupancyRepository,
-                            CondominiumAccess access, AuditService auditService, Clock clock) {
+                            CondominiumAccess access, AuditoriaService auditService, Clock clock) {
         this.buildingRepository = buildingRepository;
         this.unitRepository = unitRepository;
         this.personRepository = personRepository;
@@ -84,7 +84,7 @@ public class StructureService {
 
     @Transactional(readOnly = true)
     public List<BuildingResponse> buildings(UUID condominiumId) {
-        access.require(condominiumId, Permission.STRUCTURE_VIEW);
+        access.require(condominiumId, Permissao.STRUCTURE_VIEW);
         return buildingRepository.findByCondominiumIdOrderByNameAsc(condominiumId).stream()
                 .map(b -> new BuildingResponse(b.getId(), b.getName(), b.getDescription(), b.isActive(),
                         buildingRepository.countActiveUnits(b.getId())))
@@ -93,46 +93,46 @@ public class StructureService {
 
     @Transactional
     public BuildingResponse createBuilding(UUID condominiumId, BuildingRequest request) {
-        Condominium condominium = access.requireActive(condominiumId, Permission.STRUCTURE_EDIT);
+        Condominium condominium = access.requireActive(condominiumId, Permissao.STRUCTURE_EDIT);
         ensureBuildingNameFree(condominiumId, request.name(), null);
         Building building = buildingRepository.save(new Building(condominium.getOrganizationId(), condominiumId,
                 request.name(), request.description()));
-        auditService.record(AuditAction.BUILDING_CREATED, "Building", building.getId(), Map.of("name", building.getName()));
+        auditService.registrar(AcaoAuditoria.BUILDING_CREATED, "Building", building.getId(), Map.of("name", building.getName()));
         return new BuildingResponse(building.getId(), building.getName(), building.getDescription(), true, 0);
     }
 
     @Transactional
     public BuildingResponse updateBuilding(UUID condominiumId, UUID id, BuildingRequest request) {
-        access.requireActive(condominiumId, Permission.STRUCTURE_EDIT);
+        access.requireActive(condominiumId, Permissao.STRUCTURE_EDIT);
         Building building = loadBuilding(condominiumId, id);
         ensureBuildingNameFree(condominiumId, request.name(), id);
         String before = building.getName();
         building.update(request.name(), request.description());
-        auditService.record(AuditAction.BUILDING_UPDATED, "Building", id, Map.of("name", Map.of("from", before, "to", building.getName())));
+        auditService.registrar(AcaoAuditoria.BUILDING_UPDATED, "Building", id, Map.of("name", Map.of("from", before, "to", building.getName())));
         return new BuildingResponse(id, building.getName(), building.getDescription(), building.isActive(),
                 buildingRepository.countActiveUnits(id));
     }
 
     @Transactional
     public BuildingResponse setBuildingActive(UUID condominiumId, UUID id, boolean active) {
-        access.requireActive(condominiumId, Permission.STRUCTURE_EDIT);
+        access.requireActive(condominiumId, Permissao.STRUCTURE_EDIT);
         Building building = loadBuilding(condominiumId, id);
         long units = buildingRepository.countActiveUnits(id);
         if (!active && units > 0) {
-            throw ApiException.businessRule("BUILDING_HAS_UNITS",
+            throw ApiException.regraNegocio("BUILDING_HAS_UNITS",
                     "O bloco possui " + units + " unidade(s) ativa(s). Inative ou mova as unidades antes.");
         }
         building.setActive(active);
-        auditService.record(active ? AuditAction.BUILDING_ACTIVATED : AuditAction.BUILDING_DEACTIVATED, "Building", id, null);
+        auditService.registrar(active ? AcaoAuditoria.BUILDING_ACTIVATED : AcaoAuditoria.BUILDING_DEACTIVATED, "Building", id, null);
         return new BuildingResponse(id, building.getName(), building.getDescription(), active, units);
     }
 
     // ---------------------------------------------------------------- unidades
 
     @Transactional(readOnly = true)
-    public PageResponse<UnitResponse> units(UUID condominiumId, String search, UUID buildingId, Boolean active,
+    public PaginaResponse<UnitResponse> units(UUID condominiumId, String search, UUID buildingId, Boolean active,
                                             Pageable pageable) {
-        access.require(condominiumId, Permission.STRUCTURE_VIEW);
+        access.require(condominiumId, Permissao.STRUCTURE_VIEW);
         Specification<Unit> spec = (root, query, cb) -> {
             List<Predicate> p = new ArrayList<>();
             p.add(cb.equal(root.get("condominiumId"), condominiumId));
@@ -152,58 +152,58 @@ public class StructureService {
         };
         Page<Unit> page = unitRepository.findAll(spec, pageable);
         Map<UUID, List<Occupancy>> occupants = currentOccupants(page.getContent());
-        return PageResponse.of(page, u -> toResponse(u, occupants.getOrDefault(u.getId(), List.of())));
+        return PaginaResponse.of(page, u -> toResponse(u, occupants.getOrDefault(u.getId(), List.of())));
     }
 
     @Transactional(readOnly = true)
     public UnitResponse unit(UUID condominiumId, UUID id) {
-        access.require(condominiumId, Permission.STRUCTURE_VIEW);
+        access.require(condominiumId, Permissao.STRUCTURE_VIEW);
         Unit unit = loadUnit(condominiumId, id);
         return toResponse(unit, currentOccupants(List.of(unit)).getOrDefault(id, List.of()));
     }
 
     @Transactional
     public UnitResponse createUnit(UUID condominiumId, UnitRequest request) {
-        Condominium condominium = access.requireActive(condominiumId, Permission.STRUCTURE_EDIT);
+        Condominium condominium = access.requireActive(condominiumId, Permissao.STRUCTURE_EDIT);
         Unit unit = new Unit(condominium.getOrganizationId(), condominiumId);
         apply(unit, condominiumId, request);
         unitRepository.save(unit);
-        auditService.record(AuditAction.UNIT_CREATED, "Unit", unit.getId(), Map.of("unit", unit.label(),
+        auditService.registrar(AcaoAuditoria.UNIT_CREATED, "Unit", unit.getId(), Map.of("unit", unit.label(),
                 "idealFraction", unit.getIdealFraction().toPlainString()));
         return toResponse(unit, List.of());
     }
 
     @Transactional
     public UnitResponse updateUnit(UUID condominiumId, UUID id, UnitRequest request) {
-        access.requireActive(condominiumId, Permission.STRUCTURE_EDIT);
+        access.requireActive(condominiumId, Permissao.STRUCTURE_EDIT);
         Unit unit = loadUnit(condominiumId, id);
-        if (request.version() == null || !request.version().equals(unit.getVersion())) {
-            throw ApiException.staleVersion();
+        if (request.version() == null || !request.version().equals(unit.getVersao())) {
+            throw ApiException.versaoObsoleta();
         }
         String before = unit.label() + " / fração " + unit.getIdealFraction().stripTrailingZeros().toPlainString();
         apply(unit, condominiumId, request);
         unitRepository.flush();
-        auditService.record(AuditAction.UNIT_UPDATED, "Unit", id, Map.of("from", before,
+        auditService.registrar(AcaoAuditoria.UNIT_UPDATED, "Unit", id, Map.of("from", before,
                 "to", unit.label() + " / fração " + unit.getIdealFraction().stripTrailingZeros().toPlainString()));
         return toResponse(unit, currentOccupants(List.of(unit)).getOrDefault(id, List.of()));
     }
 
     @Transactional
     public UnitResponse setUnitActive(UUID condominiumId, UUID id, boolean active) {
-        access.requireActive(condominiumId, Permission.STRUCTURE_EDIT);
+        access.requireActive(condominiumId, Permissao.STRUCTURE_EDIT);
         Unit unit = loadUnit(condominiumId, id);
         if (unit.isActive() == active) {
-            throw ApiException.businessRule("UNIT_STATUS_UNCHANGED", active ? "A unidade já está ativa." : "A unidade já está inativa.");
+            throw ApiException.regraNegocio("UNIT_STATUS_UNCHANGED", active ? "A unidade já está ativa." : "A unidade já está inativa.");
         }
         unit.setActive(active);
         unitRepository.flush();
-        auditService.record(active ? AuditAction.UNIT_ACTIVATED : AuditAction.UNIT_DEACTIVATED, "Unit", id, Map.of("unit", unit.label()));
+        auditService.registrar(active ? AcaoAuditoria.UNIT_ACTIVATED : AcaoAuditoria.UNIT_DEACTIVATED, "Unit", id, Map.of("unit", unit.label()));
         return toResponse(unit, currentOccupants(List.of(unit)).getOrDefault(id, List.of()));
     }
 
     @Transactional(readOnly = true)
     public FractionSummary fractionSummary(UUID condominiumId) {
-        access.require(condominiumId, Permission.STRUCTURE_VIEW);
+        access.require(condominiumId, Permissao.STRUCTURE_VIEW);
         return summarize(condominiumId);
     }
 
@@ -222,10 +222,10 @@ public class StructureService {
      */
     @Transactional
     public ImportResult importUnits(UUID condominiumId, byte[] content, boolean dryRun) {
-        Condominium condominium = access.requireActive(condominiumId, Permission.STRUCTURE_EDIT);
-        List<CsvReader.Row> rows = CsvReader.read(content);
+        Condominium condominium = access.requireActive(condominiumId, Permissao.STRUCTURE_EDIT);
+        List<CsvReader.Linha> rows = CsvReader.ler(content);
         List<ImportError> errors = new ArrayList<>();
-        if (!CsvReader.header(content).contains("unidade")) {
+        if (!CsvReader.cabecalho(content).contains("unidade")) {
             errors.add(new ImportError(1, "Cabeçalho inválido: a coluna \"unidade\" é obrigatória."));
             return new ImportResult(dryRun, rows.size(), 0, 0, 0, 0, errors);
         }
@@ -242,59 +242,59 @@ public class StructureService {
         Map<String, Building> buildingsByName = buildingRepository.findByCondominiumIdOrderByNameAsc(condominiumId)
                 .stream().collect(Collectors.toMap(b -> b.getName().toLowerCase(Locale.ROOT), Function.identity()));
 
-        for (CsvReader.Row row : rows) {
+        for (CsvReader.Linha row : rows) {
             int errorsBefore = errors.size();
             String identifier = row.get("unidade");
             String buildingName = row.get("bloco");
             if (identifier == null) {
-                errors.add(new ImportError(row.line(), "Unidade não informada."));
+                errors.add(new ImportError(row.numero(), "Unidade não informada."));
                 continue;
             }
             if (identifier.length() > 30 || (buildingName != null && buildingName.length() > 80)) {
-                errors.add(new ImportError(row.line(), "Bloco (até 80) ou unidade (até 30 caracteres) muito longos."));
+                errors.add(new ImportError(row.numero(), "Bloco (até 80) ou unidade (até 30 caracteres) muito longos."));
             }
             Unit.Type type = Unit.Type.APARTMENT;
             if (row.get("tipo") != null) {
-                type = TYPE_ALIASES.get(CsvReader.normalizeHeader(row.get("tipo")));
+                type = TYPE_ALIASES.get(CsvReader.normalizarCabecalho(row.get("tipo")));
                 if (type == null) {
-                    errors.add(new ImportError(row.line(), "Tipo inválido: \"" + row.get("tipo")
+                    errors.add(new ImportError(row.numero(), "Tipo inválido: \"" + row.get("tipo")
                             + "\" (use apartamento, casa, sala, loja, vaga ou outro)."));
                 }
             }
-            BigDecimal fraction = parseNumber(row.get("fracao"), row.line(), "Fração ideal", errors);
+            BigDecimal fraction = parseNumber(row.get("fracao"), row.numero(), "Fração ideal", errors);
             if (fraction != null && (fraction.signum() < 0 || fraction.compareTo(HUNDRED) > 0 || fraction.scale() > 6)) {
-                errors.add(new ImportError(row.line(), "Fração ideal deve estar entre 0 e 100, com até 6 casas decimais."));
+                errors.add(new ImportError(row.numero(), "Fração ideal deve estar entre 0 e 100, com até 6 casas decimais."));
             }
-            BigDecimal area = parseNumber(row.get("area"), row.line(), "Área", errors);
+            BigDecimal area = parseNumber(row.get("area"), row.numero(), "Área", errors);
             if (area != null && area.signum() <= 0) {
-                errors.add(new ImportError(row.line(), "Área deve ser positiva."));
+                errors.add(new ImportError(row.numero(), "Área deve ser positiva."));
             }
             String key = (buildingName == null ? "" : buildingName.toLowerCase(Locale.ROOT)) + "|" + identifier.toLowerCase(Locale.ROOT);
             if (!seen.add(key)) {
-                errors.add(new ImportError(row.line(), "Unidade repetida no arquivo: " + identifier));
+                errors.add(new ImportError(row.numero(), "Unidade repetida no arquivo: " + identifier));
             } else if (unitExists(condominiumId, buildingName == null ? null : buildingsByName.get(buildingName.toLowerCase(Locale.ROOT)), identifier)) {
-                errors.add(new ImportError(row.line(), "Unidade já cadastrada: " + identifier));
+                errors.add(new ImportError(row.numero(), "Unidade já cadastrada: " + identifier));
             }
             String owner = row.get("proprietario");
             String document = row.get("documento");
             String email = row.get("email");
             String phone = row.get("telefone");
             if (owner == null && (document != null || email != null || phone != null)) {
-                errors.add(new ImportError(row.line(), "Informe o nome do proprietário."));
+                errors.add(new ImportError(row.numero(), "Informe o nome do proprietário."));
             }
-            if (document != null && !BrazilianDocuments.isValidCpfOrCnpj(document)) {
-                errors.add(new ImportError(row.line(), "CPF/CNPJ inválido: " + document));
+            if (document != null && !DocumentosBrasileiros.isCpfOuCnpjValido(document)) {
+                errors.add(new ImportError(row.numero(), "CPF/CNPJ inválido: " + document));
             }
             if (email != null && !email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
-                errors.add(new ImportError(row.line(), "E-mail inválido: " + email));
+                errors.add(new ImportError(row.numero(), "E-mail inválido: " + email));
             }
-            if (phone != null && !BrazilianDocuments.isValidPhone(phone)) {
-                errors.add(new ImportError(row.line(), "Telefone inválido: " + phone));
+            if (phone != null && !DocumentosBrasileiros.isTelefoneValido(phone)) {
+                errors.add(new ImportError(row.numero(), "Telefone inválido: " + phone));
             }
             if (errors.size() == errorsBefore) {
-                parsed.add(new Parsed(row.line(), buildingName, identifier, type, fraction, area, owner,
-                        document == null ? null : BrazilianDocuments.normalizeDocument(document), email,
-                        BrazilianDocuments.digitsOnly(phone)));
+                parsed.add(new Parsed(row.numero(), buildingName, identifier, type, fraction, area, owner,
+                        document == null ? null : DocumentosBrasileiros.normalizarDocumento(document), email,
+                        DocumentosBrasileiros.somenteDigitos(phone)));
             }
         }
         if (!errors.isEmpty() || dryRun) {
@@ -309,7 +309,7 @@ public class StructureService {
         int peopleReused = 0;
         Map<String, Person> peopleByDocument = new HashMap<>();
         LocalDate today = LocalDate.now(clock);
-        UUID actor = access.user().userId();
+        UUID actor = access.user().idUsuario();
         for (Parsed p : parsed) {
             Building building = null;
             if (p.building() != null) {
@@ -341,7 +341,7 @@ public class StructureService {
                 occupancyRepository.save(new Occupancy(unit, person, Occupancy.Role.OWNER, true, today, actor));
             }
         }
-        auditService.record(AuditAction.UNITS_IMPORTED, "Condominium", condominiumId, Map.of("units", parsed.size(),
+        auditService.registrar(AcaoAuditoria.UNITS_IMPORTED, "Condominium", condominiumId, Map.of("units", parsed.size(),
                 "buildingsCreated", buildingsCreated, "peopleCreated", peopleCreated));
         return new ImportResult(false, rows.size(), buildingsCreated, parsed.size(), peopleCreated, peopleReused, List.of());
     }
@@ -349,31 +349,31 @@ public class StructureService {
     // ---------------------------------------------------------------- apoio
 
     public Unit loadUnit(UUID condominiumId, UUID id) {
-        return unitRepository.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.notFound("Unidade"));
+        return unitRepository.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
     }
 
     private Building loadBuilding(UUID condominiumId, UUID id) {
-        return buildingRepository.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.notFound("Bloco"));
+        return buildingRepository.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Bloco"));
     }
 
     private void ensureBuildingNameFree(UUID condominiumId, String name, UUID exceptId) {
         buildingRepository.findByName(condominiumId, name.trim())
                 .filter(b -> !b.getId().equals(exceptId))
                 .ifPresent(b -> {
-                    throw ApiException.conflict("BUILDING_NAME_TAKEN", "Já existe um bloco com este nome.");
+                    throw ApiException.conflito("BUILDING_NAME_TAKEN", "Já existe um bloco com este nome.");
                 });
     }
 
     private void apply(Unit unit, UUID condominiumId, UnitRequest request) {
         Building building = request.buildingId() == null ? null : loadBuilding(condominiumId, request.buildingId());
         if (building != null && !building.isActive()) {
-            throw ApiException.businessRule("BUILDING_INACTIVE", "O bloco selecionado está inativo.");
+            throw ApiException.regraNegocio("BUILDING_INACTIVE", "O bloco selecionado está inativo.");
         }
-        UUID self = unit.getVersion() == null ? null : unit.getId();
+        UUID self = unit.getVersao() == null ? null : unit.getId();
         boolean duplicate = unitRepository.findByIdentifier(condominiumId, request.identifier().trim()).stream()
                 .anyMatch(u -> !u.getId().equals(self) && sameBuilding(u.getBuilding(), building));
         if (duplicate) {
-            throw ApiException.conflict("UNIT_IDENTIFIER_TAKEN", "Já existe uma unidade com esta identificação neste bloco.");
+            throw ApiException.conflito("UNIT_IDENTIFIER_TAKEN", "Já existe uma unidade com esta identificação neste bloco.");
         }
         unit.update(building, request.identifier(), request.type(), request.floor(), request.area(),
                 request.idealFraction(), request.notes());
@@ -393,7 +393,7 @@ public class StructureService {
             return null;
         }
         try {
-            return BrazilianNumbers.parse(raw);
+            return NumerosBrasileiros.converter(raw);
         } catch (NumberFormatException e) {
             errors.add(new ImportError(line, label + " inválida: " + raw));
             return null;
@@ -415,7 +415,7 @@ public class StructureService {
                 .map(o -> o.getPerson().getName()).findFirst().orElse(null);
         return new UnitResponse(u.getId(), u.getBuilding() == null ? null : u.getBuilding().getId(),
                 u.getBuilding() == null ? null : u.getBuilding().getName(), u.getIdentifier(), u.label(), u.getType(),
-                u.getFloor(), u.getArea(), u.getIdealFraction(), u.getNotes(), u.isActive(), u.getVersion(),
+                u.getFloor(), u.getArea(), u.getIdealFraction(), u.getNotes(), u.isActive(), u.getVersao(),
                 owner.isEmpty() ? null : owner, financial);
     }
 }

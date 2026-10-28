@@ -61,7 +61,7 @@ export class BuildingDialog {
         error: (err: unknown) => {
           this.saving.set(false);
           const p = toProblem(err);
-          if (p.code === 'BUILDING_NAME_TAKEN') this.form.controls.name.setErrors({ server: p.detail });
+          if (p.codigo === 'BUILDING_NAME_TAKEN') this.form.controls.name.setErrors({ server: p.detail });
           else this.error.set(p.detail);
         },
       });

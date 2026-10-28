@@ -16,7 +16,7 @@ import { FieldError } from '../../shared/forms/field-error';
 import { ConfirmDialog, ConfirmDialogData } from '../../shared/ui/confirm-dialog';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { PageHeader } from '../../shared/ui/page-header';
-import { Organization, OrganizationService, OrganizationUser } from './organization.service';
+import { Administradora, OrganizationService, UsuarioAdministradora } from './organization.service';
 
 /**
  * Ficha da administradora para o administrador da plataforma: usuários, convite de administradores e situação.
@@ -32,10 +32,10 @@ import { Organization, OrganizationService, OrganizationUser } from './organizat
       @if (error(); as message) {
         <section class="tc-card"><tc-empty-state icon="error" title="Não foi possível abrir" [description]="message" /></section>
       } @else if (org(); as o) {
-        <tc-page-header eyebrow="Administradora" [title]="o.name" [subtitle]="'CNPJ ' + (o.cnpj | doc: 'cnpj')">
-          <span class="tc-status big" [class.is-active]="o.active" [class.is-inactive]="!o.active">{{ o.active ? 'Ativa' : 'Inativa' }}</span>
-          <button mat-stroked-button (click)="toggleActive(o)" [class.danger-text]="o.active">
-            <mat-icon>{{ o.active ? 'block' : 'check_circle' }}</mat-icon>{{ o.active ? 'Inativar' : 'Reativar' }}
+        <tc-page-header eyebrow="Administradora" [title]="o.nome" [subtitle]="'CNPJ ' + (o.cnpj | doc: 'cnpj')">
+          <span class="tc-status big" [class.is-active]="o.ativo" [class.is-inactive]="!o.ativo">{{ o.ativo ? 'Ativa' : 'Inativa' }}</span>
+          <button mat-stroked-button (click)="toggleActive(o)" [class.danger-text]="o.ativo">
+            <mat-icon>{{ o.ativo ? 'block' : 'check_circle' }}</mat-icon>{{ o.ativo ? 'Inativar' : 'Reativar' }}
           </button>
         </tc-page-header>
 
@@ -45,16 +45,16 @@ import { Organization, OrganizationService, OrganizationUser } from './organizat
             @for (u of users(); track u.id) {
               <div class="row">
                 <div class="who">
-                  <strong>{{ u.name }}</strong>
-                  <span class="tc-muted">{{ u.email }} · {{ u.roles.join(', ') || 'sem papel' }}</span>
+                  <strong>{{ u.nome }}</strong>
+                  <span class="tc-muted">{{ u.email }} · {{ u.papeis.join(', ') || 'sem papel' }}</span>
                 </div>
                 <div class="row-end">
-                @if (u.pendingInvite && u.active) {
+                @if (u.convitePendente && u.ativo) {
                   <span class="tc-status is-pending">Convite pendente</span>
-                } @else if (!u.active) {
+                } @else if (!u.ativo) {
                   <span class="tc-status is-inactive">Inativo</span>
                 } @else {
-                  <span class="tc-muted small">{{ u.lastLoginAt ? 'Último acesso ' + (u.lastLoginAt | date: 'dd/MM/yyyy') : '' }}</span>
+                  <span class="tc-muted small">{{ u.ultimoLoginEm ? 'Último acesso ' + (u.ultimoLoginEm | date: 'dd/MM/yyyy') : '' }}</span>
                 }
                 </div>
               </div>
@@ -112,8 +112,8 @@ export class OrganizationDetail implements OnInit {
   private readonly notify = inject(NotificationService);
 
   readonly id = input.required<string>();
-  protected readonly org = signal<Organization | null>(null);
-  protected readonly users = signal<OrganizationUser[]>([]);
+  protected readonly org = signal<Administradora | null>(null);
+  protected readonly users = signal<UsuarioAdministradora[]>([]);
   protected readonly error = signal<string | null>(null);
   protected readonly busy = signal(false);
 
@@ -130,7 +130,7 @@ export class OrganizationDetail implements OnInit {
     this.loadUsers();
   }
 
-  invite(o: Organization): void {
+  invite(o: Administradora): void {
     this.form.markAllAsTouched();
     if (this.form.invalid || this.busy()) return;
     this.busy.set(true);
@@ -145,27 +145,27 @@ export class OrganizationDetail implements OnInit {
       error: (err: unknown) => {
         this.busy.set(false);
         const p = toProblem(err);
-        if (p.code === 'USER_EMAIL_TAKEN') this.form.controls.email.setErrors({ server: p.detail });
+        if (p.codigo === 'USER_EMAIL_TAKEN') this.form.controls.email.setErrors({ server: p.detail });
         else this.notify.error(p.detail);
       },
     });
   }
 
-  toggleActive(o: Organization): void {
-    const data: ConfirmDialogData = o.active
-      ? { title: 'Inativar administradora', message: `Todos os usuários de "${o.name}" perderão o acesso imediatamente. Os dados são preservados.`, confirmLabel: 'Inativar', danger: true }
-      : { title: 'Reativar administradora', message: `Reativar o acesso de "${o.name}"?`, confirmLabel: 'Reativar' };
+  toggleActive(o: Administradora): void {
+    const data: ConfirmDialogData = o.ativo
+      ? { title: 'Inativar administradora', message: `Todos os usuários de "${o.nome}" perderão o acesso imediatamente. Os dados são preservados.`, confirmLabel: 'Inativar', danger: true }
+      : { title: 'Reativar administradora', message: `Reativar o acesso de "${o.nome}"?`, confirmLabel: 'Reativar' };
     this.dialog
       .open<ConfirmDialog, ConfirmDialogData, string | true>(ConfirmDialog, { data, width: '440px' })
       .afterClosed()
       .pipe(
         filter((r) => r === true),
-        switchMap(() => this.service.setActive(o.id, !o.active)),
+        switchMap(() => this.service.setActive(o.id, !o.ativo)),
       )
       .subscribe({
         next: (updated) => {
           this.org.set(updated);
-          this.notify.success(updated.active ? 'Administradora reativada.' : 'Administradora inativada.');
+          this.notify.success(updated.ativo ? 'Administradora reativada.' : 'Administradora inativada.');
         },
         error: (err: unknown) => this.notify.error(toProblem(err).detail),
       });

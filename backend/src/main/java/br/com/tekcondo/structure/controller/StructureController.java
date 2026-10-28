@@ -5,9 +5,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.exception.ApiException;
-import br.com.tekcondo.shared.web.PageRequests;
-import br.com.tekcondo.shared.web.PageResponse;
+import br.com.tekcondo.comum.exception.ApiException;
+import br.com.tekcondo.comum.web.PaginaRequests;
+import br.com.tekcondo.comum.web.PaginaResponse;
 import br.com.tekcondo.structure.dto.StructureDtos.BuildingRequest;
 import br.com.tekcondo.structure.dto.StructureDtos.BuildingResponse;
 import br.com.tekcondo.structure.dto.StructureDtos.FractionSummary;
@@ -78,15 +78,15 @@ public class StructureController {
 
     @GetMapping("/units")
     @Operation(summary = "Lista unidades com proprietário e responsável financeiro vigentes")
-    public PageResponse<UnitResponse> units(@PathVariable UUID condominiumId,
+    public PaginaResponse<UnitResponse> units(@PathVariable UUID condominiumId,
                                             @RequestParam(required = false) String search,
                                             @RequestParam(required = false) UUID buildingId,
                                             @RequestParam(required = false) Boolean active,
-                                            @RequestParam(defaultValue = "0") int page,
-                                            @RequestParam(defaultValue = "50") int size,
-                                            @RequestParam(required = false) String sort) {
+                                            @RequestParam(defaultValue = "0") int pagina,
+                                            @RequestParam(defaultValue = "50") int tamanho,
+                                            @RequestParam(required = false) String ordem) {
         return service.units(condominiumId, search, buildingId, active,
-                PageRequests.of(page, size, sort, UNIT_SORTS, Sort.by("identifier").and(Sort.by("id"))));
+                PaginaRequests.of(pagina, tamanho, ordem, UNIT_SORTS, Sort.by("identifier").and(Sort.by("id"))));
     }
 
     @GetMapping("/units/fraction-summary")
@@ -129,7 +129,7 @@ public class StructureController {
     public ImportResult importUnits(@PathVariable UUID condominiumId, @RequestPart("file") MultipartFile file,
                                     @RequestParam(defaultValue = "false") boolean dryRun) throws IOException {
         if (file.isEmpty() || file.getSize() > MAX_IMPORT_BYTES) {
-            throw ApiException.badRequest("INVALID_FILE", "Envie um arquivo CSV de até 2 MB.");
+            throw ApiException.requisicaoInvalida("INVALID_FILE", "Envie um arquivo CSV de até 2 MB.");
         }
         return service.importUnits(condominiumId, file.getBytes(), dryRun);
     }

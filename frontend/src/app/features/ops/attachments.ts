@@ -59,7 +59,7 @@ export class Attachments {
   protected readonly docs = toSignal(
     combineLatest([toObservable(this.condominiumId), toObservable(this.entityId), toObservable(this.tick)]).pipe(
       switchMap(([c, id]) => this.api.documents(c, { entityType: this.entityType(), entityId: id }).pipe(
-        map((p) => p.content), catchError(() => of([] as Doc[])))),
+        map((p) => p.conteudo), catchError(() => of([] as Doc[])))),
     ),
     { initialValue: [] as Doc[] },
   );

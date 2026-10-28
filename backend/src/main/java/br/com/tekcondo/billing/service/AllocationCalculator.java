@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 
 /**
  * Rateio de um valor entre unidades (premissas P04/P05):
@@ -39,7 +39,7 @@ public final class AllocationCalculator {
     public static Map<UUID, BigDecimal> allocate(Method method, BigDecimal amount, List<Share> units,
                                                  Map<UUID, BigDecimal> consumption) {
         if (units.isEmpty()) {
-            throw ApiException.businessRule("NO_UNITS", "O condomínio não possui unidades ativas para o rateio.");
+            throw ApiException.regraNegocio("NO_UNITS", "O condomínio não possui unidades ativas para o rateio.");
         }
         return switch (method) {
             case IDEAL_FRACTION -> byFraction(amount, units);
@@ -52,7 +52,7 @@ public final class AllocationCalculator {
     private static Map<UUID, BigDecimal> byFraction(BigDecimal total, List<Share> units) {
         BigDecimal fractions = units.stream().map(Share::idealFraction).reduce(BigDecimal.ZERO, BigDecimal::add);
         if (fractions.compareTo(HUNDRED) != 0) {
-            throw ApiException.businessRule("FRACTIONS_NOT_BALANCED",
+            throw ApiException.regraNegocio("FRACTIONS_NOT_BALANCED",
                     "A soma das frações ideais das unidades ativas é " + fractions.stripTrailingZeros().toPlainString()
                             + "%. Ajuste para 100% antes de ratear por fração ideal.");
         }
@@ -90,7 +90,7 @@ public final class AllocationCalculator {
 
     private static Map<UUID, BigDecimal> consumption(List<Share> units, Map<UUID, BigDecimal> values) {
         if (values == null || values.isEmpty()) {
-            throw ApiException.badRequest("CONSUMPTION_REQUIRED", "Informe o valor de consumo de cada unidade.");
+            throw ApiException.requisicaoInvalida("CONSUMPTION_REQUIRED", "Informe o valor de consumo de cada unidade.");
         }
         Map<UUID, BigDecimal> result = new LinkedHashMap<>();
         for (Share s : units) {
@@ -100,10 +100,10 @@ public final class AllocationCalculator {
             }
         }
         if (values.keySet().stream().anyMatch(id -> units.stream().noneMatch(u -> u.unitId().equals(id)))) {
-            throw ApiException.businessRule("UNKNOWN_UNIT", "Há valores de consumo para unidades inexistentes ou inativas.");
+            throw ApiException.regraNegocio("UNKNOWN_UNIT", "Há valores de consumo para unidades inexistentes ou inativas.");
         }
         if (result.isEmpty()) {
-            throw ApiException.businessRule("NO_CONSUMPTION", "Nenhuma unidade com consumo a cobrar.");
+            throw ApiException.regraNegocio("NO_CONSUMPTION", "Nenhuma unidade com consumo a cobrar.");
         }
         return result;
     }

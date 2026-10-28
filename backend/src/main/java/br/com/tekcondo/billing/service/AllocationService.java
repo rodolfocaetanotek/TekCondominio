@@ -12,8 +12,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import br.com.tekcondo.audit.service.AuditAction;
-import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.auditoria.service.AcaoAuditoria;
+import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.billing.dto.BillingDtos.AllocationLine;
 import br.com.tekcondo.billing.dto.BillingDtos.AllocationPreview;
 import br.com.tekcondo.billing.dto.BillingDtos.AllocationRequest;
@@ -28,11 +28,11 @@ import br.com.tekcondo.finance.repository.ChartAccountRepository;
 import br.com.tekcondo.finance.repository.FinancialEntryRepository;
 import br.com.tekcondo.finance.service.FinanceSetupService;
 import br.com.tekcondo.finance.service.PeriodLock;
-import br.com.tekcondo.identity.access.Permission;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.people.entity.Occupancy;
 import br.com.tekcondo.people.entity.Person;
 import br.com.tekcondo.people.repository.OccupancyRepository;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import br.com.tekcondo.structure.entity.Unit;
 import br.com.tekcondo.structure.repository.UnitRepository;
 import org.springframework.stereotype.Service;
@@ -50,12 +50,12 @@ public class AllocationService {
     private final FinanceSetupService setup;
     private final PeriodLock periodLock;
     private final CondominiumAccess access;
-    private final AuditService auditService;
+    private final AuditoriaService auditService;
     private final Clock clock;
 
     public AllocationService(AllocationRepository allocations, FinancialEntryRepository entries,
                              ChartAccountRepository chartAccounts, UnitRepository units, OccupancyRepository occupancies,
-                             FinanceSetupService setup, PeriodLock periodLock, CondominiumAccess access, AuditService auditService,
+                             FinanceSetupService setup, PeriodLock periodLock, CondominiumAccess access, AuditoriaService auditService,
                              Clock clock) {
         this.allocations = allocations;
         this.entries = entries;
@@ -82,7 +82,7 @@ public class AllocationService {
     public AllocationResponse generate(UUID condominiumId, AllocationRequest request) {
         Plan plan = plan(condominiumId, request);
         periodLock.ensureOpen(condominiumId, plan.competence());
-        UUID userId = access.user().userId();
+        UUID userId = access.user().idUsuario();
         Allocation allocation = allocations.save(new Allocation(plan.condominium().getOrganizationId(), condominiumId,
                 plan.competence(), request.description().trim(), plan.account().getId(), request.method(),
                 request.method() == AllocationCalculator.Method.CONSUMPTION ? plan.total() : request.amount(),
@@ -100,7 +100,7 @@ public class AllocationService {
             charge.linkAllocation(allocation.getId());
             entries.save(charge);
         }
-        auditService.record(AuditAction.ALLOCATION_GENERATED, "Allocation", allocation.getId(), Map.of(
+        auditService.registrar(AcaoAuditoria.ALLOCATION_GENERATED, "Allocation", allocation.getId(), Map.of(
                 "competence", plan.competence().toString(), "method", request.method().name(),
                 "units", plan.shares().size(), "total", plan.total().toPlainString()));
         return toResponse(allocation, plan.account());
@@ -108,7 +108,7 @@ public class AllocationService {
 
     @Transactional(readOnly = true)
     public List<AllocationResponse> list(UUID condominiumId) {
-        access.require(condominiumId, Permission.BILLING_VIEW);
+        access.require(condominiumId, Permissao.BILLING_VIEW);
         Map<UUID, ChartAccount> accounts = chartAccounts.findAvailable(access.organizationId()).stream()
                 .collect(Collectors.toMap(ChartAccount::getId, a -> a));
         return allocations.findByCondominiumIdOrderByCompetenceDescCreatedAtDesc(condominiumId).stream()
@@ -118,37 +118,37 @@ public class AllocationService {
     /** Cancela o rateio e suas cobranças — somente se nenhuma tiver sido paga. */
     @Transactional
     public AllocationResponse cancel(UUID condominiumId, UUID id, String reason) {
-        access.require(condominiumId, Permission.BILLING_EDIT);
-        access.require(condominiumId, Permission.FINANCE_CANCEL);
+        access.require(condominiumId, Permissao.BILLING_EDIT);
+        access.require(condominiumId, Permissao.FINANCE_CANCEL);
         Allocation allocation = allocations.findByIdAndCondominiumId(id, condominiumId)
-                .orElseThrow(() -> ApiException.notFound("Rateio"));
+                .orElseThrow(() -> ApiException.naoEncontrado("Rateio"));
         periodLock.ensureOpen(condominiumId, allocation.getCompetence());
         List<FinancialEntry> charges = entries.findByAllocationId(id);
         if (charges.stream().anyMatch(e -> e.getPaidAmount().signum() > 0)) {
-            throw ApiException.businessRule("ALLOCATION_HAS_PAYMENTS",
+            throw ApiException.regraNegocio("ALLOCATION_HAS_PAYMENTS",
                     "Há cobranças deste rateio com pagamento. Estorne as baixas ou cancele as cobranças individualmente.");
         }
-        UUID by = access.user().userId();
+        UUID by = access.user().idUsuario();
         Instant now = Instant.now(clock);
         charges.stream().filter(e -> e.getStatus() == FinancialEntry.Status.OPEN)
                 .forEach(e -> e.cancel("Rateio cancelado: " + reason.trim(), by, now));
         allocation.cancel(reason.trim(), by, now);
-        auditService.record(AuditAction.ALLOCATION_CANCELLED, "Allocation", id, Map.of("reason", reason.trim()));
+        auditService.registrar(AcaoAuditoria.ALLOCATION_CANCELLED, "Allocation", id, Map.of("reason", reason.trim()));
         return toResponse(allocation, chartAccounts.findById(allocation.getChartAccountId()).orElse(null));
     }
 
     // ------------------------------------------------------------------
 
     private Plan plan(UUID condominiumId, AllocationRequest request) {
-        Condominium condominium = access.requireActive(condominiumId, Permission.BILLING_EDIT);
+        Condominium condominium = access.requireActive(condominiumId, Permissao.BILLING_EDIT);
         ChartAccount account = setup.analyticAccount(request.chartAccountId(), ChartAccount.Nature.INCOME);
         LocalDate competence = YearMonth.parse(request.competence()).atDay(1);
         if (allocations.existsGenerated(condominiumId, competence, account.getId())) {
-            throw ApiException.conflict("ALLOCATION_EXISTS", "Já existe cobrança gerada para " + account.getName()
+            throw ApiException.conflito("ALLOCATION_EXISTS", "Já existe cobrança gerada para " + account.getName()
                     + " na competência " + YearMonth.from(competence) + ". Cancele a anterior para gerar novamente.");
         }
         if (request.method() != AllocationCalculator.Method.CONSUMPTION && request.amount() == null) {
-            throw ApiException.badRequest("AMOUNT_REQUIRED", "Informe o valor a ratear.");
+            throw ApiException.requisicaoInvalida("AMOUNT_REQUIRED", "Informe o valor a ratear.");
         }
         LocalDate dueDate = request.dueDate() != null ? request.dueDate()
                 : competence.withDayOfMonth(condominium.getBillingDueDay());

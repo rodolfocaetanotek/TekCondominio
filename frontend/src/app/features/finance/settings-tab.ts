@@ -138,7 +138,7 @@ export class SettingsTab {
       next: (s) => { this.form.reset(s); this.notify.success('Parâmetros salvos.'); },
       error: (err: unknown) => {
         const p = toProblem(err);
-        const rest = p.code === 'VALIDATION_ERROR' ? applyServerErrors(this.form, p) : [p.detail];
+        const rest = p.codigo === 'VALIDATION_ERROR' ? applyServerErrors(this.form, p) : [p.detail];
         if (rest.length) this.notify.error(rest.join(' '));
       },
     });

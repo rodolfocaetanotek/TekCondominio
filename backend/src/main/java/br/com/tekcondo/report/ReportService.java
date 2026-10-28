@@ -12,8 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import br.com.tekcondo.audit.service.AuditAction;
-import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.auditoria.service.AcaoAuditoria;
+import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.billing.dto.BillingDtos;
 import br.com.tekcondo.billing.service.CollectionService;
 import br.com.tekcondo.condominium.entity.Condominium;
@@ -24,10 +24,10 @@ import br.com.tekcondo.finance.repository.BankAccountRepository;
 import br.com.tekcondo.finance.service.BudgetService;
 import br.com.tekcondo.finance.service.FinanceQueries;
 import br.com.tekcondo.finance.service.TreasuryService;
-import br.com.tekcondo.identity.access.Permission;
-import br.com.tekcondo.organization.repository.OrganizationRepository;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
+import br.com.tekcondo.administradora.repository.AdministradoraRepository;
 import br.com.tekcondo.report.ReportTable.Column;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import br.com.tekcondo.supplier.service.ContractService;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -61,15 +61,15 @@ public class ReportService {
     private final ContractService contracts;
     private final FinanceQueries queries;
     private final BankAccountRepository bankAccounts;
-    private final OrganizationRepository organizations;
+    private final AdministradoraRepository organizations;
     private final ReportExporter exporter;
-    private final AuditService auditService;
+    private final AuditoriaService auditService;
     private final Clock clock;
 
     public ReportService(NamedParameterJdbcTemplate jdbc, CondominiumAccess access, CollectionService collection,
                          BudgetService budget, TreasuryService treasury, ContractService contracts, FinanceQueries queries,
-                         BankAccountRepository bankAccounts, OrganizationRepository organizations, ReportExporter exporter,
-                         AuditService auditService, Clock clock) {
+                         BankAccountRepository bankAccounts, AdministradoraRepository organizations, ReportExporter exporter,
+                         AuditoriaService auditService, Clock clock) {
         this.jdbc = jdbc;
         this.access = access;
         this.collection = collection;
@@ -86,11 +86,11 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public ReportTable build(UUID condominiumId, Kind kind, Params p) {
-        Condominium c = access.require(condominiumId, Permission.REPORT_VIEW);
+        Condominium c = access.require(condominiumId, Permissao.REPORT_VIEW);
         LocalDate to = p.to() == null ? LocalDate.now(clock) : p.to();
         LocalDate from = p.from() == null ? to.withDayOfMonth(1) : p.from();
         if (from.isAfter(to)) {
-            throw ApiException.badRequest("INVALID_PERIOD", "A data inicial deve ser anterior à final.");
+            throw ApiException.requisicaoInvalida("INVALID_PERIOD", "A data inicial deve ser anterior à final.");
         }
         String period = c.getName() + " · " + BR.format(from) + " a " + BR.format(to);
         var params = new MapSqlParameterSource("c", condominiumId).addValue("from", Date.valueOf(from)).addValue("to", Date.valueOf(to));
@@ -113,10 +113,10 @@ public class ReportService {
 
     @Transactional
     public Exported export(UUID condominiumId, Kind kind, Params p, ReportExporter.Format format) {
-        Condominium c = access.require(condominiumId, Permission.REPORT_EXPORT);
+        Condominium c = access.require(condominiumId, Permissao.REPORT_EXPORT);
         ReportTable table = build(condominiumId, kind, p);
-        String orgName = organizations.findById(c.getOrganizationId()).map(o -> o.getName()).orElse(null);
-        auditService.record(AuditAction.REPORT_EXPORTED, "Report", condominiumId, Map.of("report", kind.name(),
+        String orgName = organizations.findById(c.getOrganizationId()).map(o -> o.getNome()).orElse(null);
+        auditService.registrar(AcaoAuditoria.REPORT_EXPORTED, "Report", condominiumId, Map.of("report", kind.name(),
                 "format", format.name(), "rows", table.rows().size()));
         String file = kind.name().toLowerCase().replace('_', '-') + "-" + LocalDate.now(clock) + "." + format.extension;
         return new Exported(file, format.contentType, exporter.export(table, format, orgName));
@@ -306,7 +306,7 @@ public class ReportService {
 
     private ReportTable bankMovement(UUID condominiumId, String period, UUID bankAccountId, LocalDate from, LocalDate to) {
         if (bankAccountId == null) {
-            throw ApiException.badRequest("BANK_ACCOUNT_REQUIRED", "Selecione a conta bancária.");
+            throw ApiException.requisicaoInvalida("BANK_ACCOUNT_REQUIRED", "Selecione a conta bancária.");
         }
         FinanceDtos.Statement s = treasury.statement(condominiumId, bankAccountId, from, to);
         List<List<Object>> rows = new ArrayList<>();

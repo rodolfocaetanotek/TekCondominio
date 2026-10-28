@@ -13,7 +13,7 @@ import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, debounceTime, distinctUntilChanged, finalize, map, of, switchMap, tap } from 'rxjs';
-import { PageResponse, toProblem } from '../../core/api/api.models';
+import { PaginaResponse, toProblem } from '../../core/api/api.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { DocPipe } from '../../shared/format/doc.pipe';
 import { EmptyState } from '../../shared/ui/empty-state';
@@ -81,7 +81,7 @@ export class CondominiumList {
         this.service.list(q).pipe(
           catchError((err: unknown) => {
             this.error.set(toProblem(err).detail);
-            return of<PageResponse<CondominiumSummary> | null>(null);
+            return of<PaginaResponse<CondominiumSummary> | null>(null);
           }),
           finalize(() => this.loading.set(false)),
         ),

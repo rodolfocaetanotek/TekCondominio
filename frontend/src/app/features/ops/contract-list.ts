@@ -96,7 +96,7 @@ export class ContractList {
   }
 
   edit(c?: Contract): void {
-    this.finance.suppliers('', 0, 100).pipe(map((p) => p.content)).subscribe((suppliers) => openForm(this.dialog, {
+    this.finance.suppliers('', 0, 100).pipe(map((p) => p.conteudo)).subscribe((suppliers) => openForm(this.dialog, {
       title: c ? 'Editar contrato' : 'Novo contrato',
       fields: [
         { key: 'supplierId', label: 'Fornecedor', type: 'select', required: true, value: c?.supplierId, span: 6,

@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.persistence.AuditableEntity;
+import br.com.tekcondo.comum.persistence.AuditableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;

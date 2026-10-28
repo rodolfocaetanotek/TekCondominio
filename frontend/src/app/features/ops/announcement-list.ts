@@ -75,7 +75,7 @@ export class AnnouncementList {
 
   publish(): void {
     const c = this.context.id()!;
-    forkJoin({ buildings: this.structure.buildings(c), units: this.structure.units(c, { page: 0, size: 100, active: 'true' }).pipe(map((p) => p.content)) })
+    forkJoin({ buildings: this.structure.buildings(c), units: this.structure.units(c, { page: 0, size: 100, active: 'true' }).pipe(map((p) => p.conteudo)) })
       .subscribe(({ buildings, units }) => openForm(this.dialog, {
         title: 'Novo comunicado',
         intro: 'Os moradores com acesso ao portal e a equipe recebem notificação. Com "enviar por e-mail", os moradores cadastrados também recebem e-mail.',

@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -46,7 +46,7 @@ public class PeriodLock {
         }
         for (LocalDate date : dates) {
             if (date != null && !date.isAfter(closed)) {
-                throw ApiException.businessRule("PERIOD_CLOSED", "O período financeiro até " + closed.format(BR)
+                throw ApiException.regraNegocio("PERIOD_CLOSED", "O período financeiro até " + closed.format(BR)
                         + " está fechado. Operações com data ou competência até essa data exigem a reabertura do período.");
             }
         }

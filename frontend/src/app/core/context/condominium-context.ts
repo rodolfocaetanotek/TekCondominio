@@ -1,13 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
-import { Permission } from '../auth/auth.models';
+import { Permissao } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
 
 export interface CondominiumOption {
   id: string;
   name: string;
   status: 'ACTIVE' | 'INACTIVE';
-  permissions: Permission[];
+  permissions: Permissao[];
 }
 
 const STORAGE_KEY = 'tc.condominio';
@@ -33,7 +33,7 @@ export class CondominiumContext {
     effect(() => {
       const user = this.auth.user();
       untracked(() => {
-        if (user?.organizationId) {
+        if (user?.idAdministradora) {
           this.reload();
         } else {
           this.options.set([]);
@@ -71,12 +71,12 @@ export class CondominiumContext {
   }
 
   /** Permissão no condomínio selecionado (apenas para exibir/ocultar; o backend decide). */
-  can(permission: Permission): boolean {
+  can(permission: Permissao): boolean {
     return this.selected()?.permissions.includes(permission) ?? false;
   }
 
   /** Permissão em algum condomínio acessível. */
-  canAny(permission: Permission): boolean {
+  canAny(permission: Permissao): boolean {
     return this.options().some((o) => o.permissions.includes(permission));
   }
 }

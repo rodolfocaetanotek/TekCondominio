@@ -14,7 +14,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { ChangePasswordDialog } from '../../features/auth/change-password-dialog';
-import { Permission } from '../auth/auth.models';
+import { Permissao } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
 import { CondominiumContext } from '../context/condominium-context';
 import { NotificationBell } from '../notify/notification-bell';
@@ -89,7 +89,7 @@ export class Shell {
   );
 
   /** Permissão no condomínio selecionado. */
-  private readonly inCondo = (p: Permission) => () => this.context.can(p);
+  private readonly inCondo = (p: Permissao) => () => this.context.can(p);
 
   private readonly groups: NavGroup[] = [
     {
@@ -138,7 +138,7 @@ export class Shell {
       items: [
         { label: 'Usuários', icon: 'group', link: '/usuarios', visible: () => this.auth.can('USER_VIEW') },
         { label: 'Auditoria', icon: 'policy', link: '/auditoria', visible: () => this.auth.can('AUDIT_VIEW') },
-        { label: 'Administradoras', icon: 'corporate_fare', link: '/organizacoes', visible: () => !!this.auth.user()?.platformAdmin },
+        { label: 'Administradoras', icon: 'corporate_fare', link: '/organizacoes', visible: () => !!this.auth.user()?.administradorPlataforma },
       ],
     },
   ];
@@ -161,7 +161,7 @@ export class Shell {
   protected readonly showSelector = computed(() => this.auth.isOrganizationMember() && this.context.options().length > 0);
 
   protected readonly initials = computed(() => {
-    const name = this.auth.user()?.name ?? '';
+    const name = this.auth.user()?.nome ?? '';
     return name
       .split(/\s+/)
       .filter(Boolean)
@@ -206,8 +206,8 @@ export class Shell {
   /** Usuário cujo único acesso é o portal do morador. */
   isResidentOnly(): boolean {
     const me = this.auth.user();
-    if (!me || me.organizationPermissions.length > 0) return false;
-    return Object.values(me.condominiumPermissions).every((p) => p.length === 1 && p[0] === 'PORTAL_ACCESS');
+    if (!me || me.permissoesAdministradora.length > 0) return false;
+    return Object.values(me.permissoesCondominio).every((p) => p.length === 1 && p[0] === 'PORTAL_ACCESS');
   }
 
   changePassword(): void {

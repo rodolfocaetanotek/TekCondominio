@@ -15,8 +15,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import br.com.tekcondo.audit.service.AuditAction;
-import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.auditoria.service.AcaoAuditoria;
+import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.billing.dto.BillingDtos.AgreementRequest;
 import br.com.tekcondo.billing.dto.BillingDtos.AgreementResponse;
 import br.com.tekcondo.billing.dto.BillingDtos.DebtLine;
@@ -38,11 +38,11 @@ import br.com.tekcondo.finance.repository.FinancialEntryRepository;
 import br.com.tekcondo.finance.service.EntryService;
 import br.com.tekcondo.finance.service.LateFeeCalculator;
 import br.com.tekcondo.finance.service.PeriodLock;
-import br.com.tekcondo.identity.access.Permission;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.people.entity.Occupancy;
 import br.com.tekcondo.people.entity.Person;
 import br.com.tekcondo.people.repository.OccupancyRepository;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import br.com.tekcondo.structure.entity.Unit;
 import br.com.tekcondo.structure.repository.UnitRepository;
 import jakarta.persistence.criteria.JoinType;
@@ -69,12 +69,12 @@ public class CollectionService {
     private final EntryService entryService;
     private final PeriodLock periodLock;
     private final CondominiumAccess access;
-    private final AuditService auditService;
+    private final AuditoriaService auditService;
     private final Clock clock;
 
     public CollectionService(FinancialEntryRepository entries, AgreementRepository agreements, CollectionNoteRepository notes,
                              ChartAccountRepository chartAccounts, UnitRepository units, OccupancyRepository occupancies,
-                             EntryService entryService, PeriodLock periodLock, CondominiumAccess access, AuditService auditService,
+                             EntryService entryService, PeriodLock periodLock, CondominiumAccess access, AuditoriaService auditService,
                              Clock clock) {
         this.entries = entries;
         this.agreements = agreements;
@@ -93,7 +93,7 @@ public class CollectionService {
 
     @Transactional(readOnly = true)
     public DelinquencyReport delinquency(UUID condominiumId, LocalDate asOfParam) {
-        access.require(condominiumId, Permission.BILLING_VIEW);
+        access.require(condominiumId, Permissao.BILLING_VIEW);
         LocalDate asOf = asOfParam == null ? LocalDate.now(clock) : asOfParam;
         List<FinancialEntry> overdue = entries.findAll(overdueReceivables(condominiumId, asOf));
         Map<UUID, List<FinancialEntry>> byUnit = overdue.stream().collect(Collectors.groupingBy(e -> e.getUnit().getId(),
@@ -134,8 +134,8 @@ public class CollectionService {
     /** Demonstrativo de débitos da unidade, com valores atualizados (multa e juros) até a data. */
     @Transactional(readOnly = true)
     public UnitDebt unitDebt(UUID condominiumId, UUID unitId, LocalDate asOfParam) {
-        access.require(condominiumId, Permission.BILLING_VIEW);
-        Unit unit = units.findByIdAndCondominiumId(unitId, condominiumId).orElseThrow(() -> ApiException.notFound("Unidade"));
+        access.require(condominiumId, Permissao.BILLING_VIEW);
+        Unit unit = units.findByIdAndCondominiumId(unitId, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
         return buildUnitDebt(condominiumId, unit, asOfParam == null ? LocalDate.now(clock) : asOfParam);
     }
 
@@ -169,18 +169,18 @@ public class CollectionService {
 
     @Transactional
     public NoteResponse addNote(UUID condominiumId, UUID unitId, NoteRequest request) {
-        Condominium condominium = access.require(condominiumId, Permission.BILLING_EDIT);
-        units.findByIdAndCondominiumId(unitId, condominiumId).orElseThrow(() -> ApiException.notFound("Unidade"));
+        Condominium condominium = access.require(condominiumId, Permissao.BILLING_EDIT);
+        units.findByIdAndCondominiumId(unitId, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
         if (request.entryId() != null) {
             FinancialEntry e = entryService.load(condominiumId, request.entryId());
             if (e.getUnit() == null || !e.getUnit().getId().equals(unitId)) {
-                throw ApiException.businessRule("ENTRY_NOT_OF_UNIT", "A cobrança informada não pertence a esta unidade.");
+                throw ApiException.regraNegocio("ENTRY_NOT_OF_UNIT", "A cobrança informada não pertence a esta unidade.");
             }
         }
         var user = access.user();
         CollectionNote note = notes.save(new CollectionNote(condominium.getOrganizationId(), condominiumId, unitId,
-                request.entryId(), request.contactType(), request.contactDate(), request.note().trim(), user.userId(), user.name()));
-        auditService.record(AuditAction.COLLECTION_NOTE_ADDED, "Unit", unitId, Map.of("type", request.contactType().name()));
+                request.entryId(), request.contactType(), request.contactDate(), request.note().trim(), user.idUsuario(), user.nome()));
+        auditService.registrar(AcaoAuditoria.COLLECTION_NOTE_ADDED, "Unit", unitId, Map.of("type", request.contactType().name()));
         return NoteResponse.from(note);
     }
 
@@ -188,27 +188,27 @@ public class CollectionService {
 
     @Transactional(readOnly = true)
     public List<AgreementResponse> agreements(UUID condominiumId) {
-        access.require(condominiumId, Permission.BILLING_VIEW);
+        access.require(condominiumId, Permissao.BILLING_VIEW);
         return agreements.findByCondominiumIdOrderByCreatedAtDesc(condominiumId).stream()
                 .map(a -> toResponse(a, units.findById(a.getUnitId()).orElse(null))).toList();
     }
 
     @Transactional
     public AgreementResponse createAgreement(UUID condominiumId, AgreementRequest request) {
-        Condominium condominium = access.requireActive(condominiumId, Permission.BILLING_EDIT);
-        Unit unit = units.findByIdAndCondominiumId(request.unitId(), condominiumId).orElseThrow(() -> ApiException.notFound("Unidade"));
+        Condominium condominium = access.requireActive(condominiumId, Permissao.BILLING_EDIT);
+        Unit unit = units.findByIdAndCondominiumId(request.unitId(), condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
         LocalDate today = LocalDate.now(clock);
         if (request.firstDueDate().isBefore(today)) {
-            throw ApiException.businessRule("FIRST_DUE_IN_PAST", "O vencimento da 1ª parcela não pode estar no passado.");
+            throw ApiException.regraNegocio("FIRST_DUE_IN_PAST", "O vencimento da 1ª parcela não pode estar no passado.");
         }
         List<FinancialEntry> originals = new ArrayList<>();
         for (UUID id : new HashSet<>(request.entryIds())) {
             FinancialEntry e = entryService.load(condominiumId, id);
             if (e.getKind() != FinancialEntry.Kind.INCOME || e.getUnit() == null || !e.getUnit().getId().equals(unit.getId())) {
-                throw ApiException.businessRule("ENTRY_NOT_OF_UNIT", "Selecione apenas cobranças desta unidade.");
+                throw ApiException.regraNegocio("ENTRY_NOT_OF_UNIT", "Selecione apenas cobranças desta unidade.");
             }
             if (e.getStatus() != FinancialEntry.Status.OPEN && e.getStatus() != FinancialEntry.Status.PARTIAL) {
-                throw ApiException.businessRule("ENTRY_NOT_OPEN", "A cobrança \"" + e.getDescription() + "\" não está em aberto.");
+                throw ApiException.regraNegocio("ENTRY_NOT_OPEN", "A cobrança \"" + e.getDescription() + "\" não está em aberto.");
             }
             originals.add(e);
         }
@@ -223,7 +223,7 @@ public class CollectionService {
         }
         BigDecimal discount = request.discount() == null ? BigDecimal.ZERO : request.discount();
         Person responsible = responsibles(Set.of(unit.getId())).get(unit.getId());
-        UUID by = access.user().userId();
+        UUID by = access.user().idUsuario();
         Agreement agreement = agreements.save(new Agreement(condominium.getOrganizationId(), condominiumId, unit.getId(),
                 responsible == null ? null : responsible.getId(), principal, charges, discount, request.installments(),
                 request.firstDueDate(), blank(request.notes()), by));
@@ -248,7 +248,7 @@ public class CollectionService {
             entries.save(e);
         }
         entries.flush();
-        auditService.record(AuditAction.AGREEMENT_CREATED, "Agreement", agreement.getId(), Map.of("unit", unit.label(),
+        auditService.registrar(AcaoAuditoria.AGREEMENT_CREATED, "Agreement", agreement.getId(), Map.of("unit", unit.label(),
                 "original", principal.toPlainString(), "charges", charges.toPlainString(), "discount", discount.toPlainString(),
                 "total", agreement.getTotalAmount().toPlainString(), "installments", request.installments()));
         return toResponse(agreement, unit);
@@ -257,21 +257,21 @@ public class CollectionService {
     /** Cancela acordo sem parcelas pagas: as parcelas são canceladas e os débitos originais voltam a ficar em aberto. */
     @Transactional
     public AgreementResponse cancelAgreement(UUID condominiumId, UUID id, String reason) {
-        access.require(condominiumId, Permission.BILLING_EDIT);
-        Agreement agreement = agreements.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.notFound("Acordo"));
+        access.require(condominiumId, Permissao.BILLING_EDIT);
+        Agreement agreement = agreements.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Acordo"));
         List<FinancialEntry> parcels = entries.findByAgreementId(id);
         if (parcels.stream().anyMatch(e -> e.getPaidAmount().signum() > 0)) {
-            throw ApiException.businessRule("AGREEMENT_HAS_PAYMENTS",
+            throw ApiException.regraNegocio("AGREEMENT_HAS_PAYMENTS",
                     "O acordo possui parcelas pagas e não pode ser cancelado. Registre o descumprimento no histórico de cobrança.");
         }
         periodLock.ensureOpen(condominiumId, parcels.stream().map(FinancialEntry::getCompetence).toArray(LocalDate[]::new));
-        UUID by = access.user().userId();
+        UUID by = access.user().idUsuario();
         Instant now = Instant.now(clock);
         agreement.cancel(reason.trim(), by, now);
         parcels.forEach(e -> e.cancel("Acordo cancelado: " + reason.trim(), by, now));
         agreements.originalEntryIds(id).forEach(entryId -> entries.findById(entryId).ifPresent(e -> e.restoreFromAgreement(by)));
         entries.flush();
-        auditService.record(AuditAction.AGREEMENT_CANCELLED, "Agreement", id, Map.of("reason", reason.trim()));
+        auditService.registrar(AcaoAuditoria.AGREEMENT_CANCELLED, "Agreement", id, Map.of("reason", reason.trim()));
         return toResponse(agreement, units.findById(agreement.getUnitId()).orElse(null));
     }
 

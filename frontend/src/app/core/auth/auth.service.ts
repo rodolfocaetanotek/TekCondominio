@@ -2,7 +2,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, catchError, finalize, firstValueFrom, map, of, shareReplay, switchMap, tap } from 'rxjs';
-import { Me, Permission, TokenResponse } from './auth.models';
+import { Perfil, Permissao, TokenResponse } from './auth.models';
 
 /** Cabeçalho exigido pela API nos endpoints baseados em cookie (proteção CSRF). */
 const CLIENT_HEADERS = new HttpHeaders({ 'X-TekCondo-Client': 'web' });
@@ -19,16 +19,16 @@ export class AuthService {
   private readonly token = signal<string | null>(null);
   private refreshInFlight: Observable<string> | null = null;
 
-  readonly user = signal<Me | null>(null);
+  readonly user = signal<Perfil | null>(null);
   readonly isAuthenticated = computed(() => this.user() !== null);
-  readonly isOrganizationMember = computed(() => !!this.user()?.organizationId);
+  readonly isOrganizationMember = computed(() => !!this.user()?.idAdministradora);
 
   accessToken(): string | null {
     return this.token();
   }
 
-  login(email: string, password: string): Observable<Me> {
-    return this.http.post<TokenResponse>('/api/v1/auth/login', { email, password }).pipe(
+  login(email: string, senha: string): Observable<Perfil> {
+    return this.http.post<TokenResponse>('/api/v1/auth/login', { email, senha }).pipe(
       tap((res) => this.token.set(res.accessToken)),
       switchMap(() => this.loadProfile()),
     );
@@ -77,30 +77,30 @@ export class AuthService {
   }
 
   /** Permissão válida para toda a organização. */
-  can(permission: Permission): boolean {
-    return this.user()?.organizationPermissions.includes(permission) ?? false;
+  can(permission: Permissao): boolean {
+    return this.user()?.permissoesAdministradora.includes(permission) ?? false;
   }
 
   /** Permissão em um condomínio específico (ou na organização inteira). */
-  canIn(permission: Permission, condominiumId: string): boolean {
+  canIn(permission: Permissao, condominiumId: string): boolean {
     const me = this.user();
     if (!me) {
       return false;
     }
-    return this.can(permission) || (me.condominiumPermissions[condominiumId]?.includes(permission) ?? false);
+    return this.can(permission) || (me.permissoesCondominio[condominiumId]?.includes(permission) ?? false);
   }
 
   /** Possui a permissão em pelo menos um condomínio. */
-  canAny(permission: Permission): boolean {
+  canAny(permission: Permissao): boolean {
     const me = this.user();
     if (!me) {
       return false;
     }
-    return this.can(permission) || Object.values(me.condominiumPermissions).some((p) => p.includes(permission));
+    return this.can(permission) || Object.values(me.permissoesCondominio).some((p) => p.includes(permission));
   }
 
-  private loadProfile(): Observable<Me> {
-    return this.http.get<Me>('/api/v1/auth/me').pipe(tap((me) => this.user.set(me)));
+  private loadProfile(): Observable<Perfil> {
+    return this.http.get<Perfil>('/api/v1/auth/perfil').pipe(tap((me) => this.user.set(me)));
   }
 
   private clear(): void {

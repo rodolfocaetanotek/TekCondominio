@@ -18,7 +18,7 @@ import { ConfirmDialog, ConfirmDialogData } from '../../shared/ui/confirm-dialog
 import { EmptyState } from '../../shared/ui/empty-state';
 import { PageHeader } from '../../shared/ui/page-header';
 import { RoleFields } from './role-fields';
-import { Assignment, UserDetail as User } from './user.models';
+import { Atribuicao, UsuarioDetalhe as User } from './user.models';
 import { UserService } from './user.service';
 
 @Component({
@@ -79,7 +79,7 @@ export class UserDetail implements OnInit {
     const u = this.user();
     this.name.markAsTouched();
     if (!u || this.name.invalid) return;
-    this.run(this.service.rename(u.id, this.name.value.trim(), u.version), 'Nome atualizado.');
+    this.run(this.service.rename(u.id, this.name.value.trim(), u.versao), 'Nome atualizado.');
   }
 
   addAssignment(): void {
@@ -88,7 +88,7 @@ export class UserDetail implements OnInit {
     this.condominiumId.markAsTouched();
     if (!u || this.roleCode.invalid || this.condominiumId.invalid) return;
     this.run(
-      this.service.addAssignment(u.id, { roleCode: this.roleCode.value, condominiumId: this.condominiumId.value }),
+      this.service.addAssignment(u.id, { codigoPapel: this.roleCode.value, idCondominio: this.condominiumId.value }),
       'Papel atribuído.',
       () => {
         this.roleCode.reset('');
@@ -97,12 +97,12 @@ export class UserDetail implements OnInit {
     );
   }
 
-  removeAssignment(a: Assignment): void {
+  removeAssignment(a: Atribuicao): void {
     const u = this.user();
     if (!u) return;
     this.confirm({
       title: 'Remover papel',
-      message: `Remover "${a.roleName}"${a.condominiumName ? ' em ' + a.condominiumName : ''} de ${u.name}? O acesso correspondente é retirado imediatamente.`,
+      message: `Remover "${a.nomePapel}"${a.nomeCondominio ? ' em ' + a.nomeCondominio : ''} de ${u.nome}? O acesso correspondente é retirado imediatamente.`,
       confirmLabel: 'Remover',
       danger: true,
     }).subscribe(() => this.run(this.service.removeAssignment(u.id, a.id), 'Papel removido.'));
@@ -111,11 +111,11 @@ export class UserDetail implements OnInit {
   toggleActive(): void {
     const u = this.user();
     if (!u) return;
-    const deactivating = u.active;
+    const deactivating = u.ativo;
     this.confirm(
       deactivating
-        ? { title: 'Desativar usuário', message: `${u.name} perderá o acesso imediatamente e todas as sessões serão encerradas.`, confirmLabel: 'Desativar', danger: true }
-        : { title: 'Reativar usuário', message: `Reativar o acesso de ${u.name}?`, confirmLabel: 'Reativar' },
+        ? { title: 'Desativar usuário', message: `${u.nome} perderá o acesso imediatamente e todas as sessões serão encerradas.`, confirmLabel: 'Desativar', danger: true }
+        : { title: 'Reativar usuário', message: `Reativar o acesso de ${u.nome}?`, confirmLabel: 'Reativar' },
     ).subscribe(() =>
       this.run(deactivating ? this.service.deactivate(u.id) : this.service.activate(u.id), deactivating ? 'Usuário desativado.' : 'Usuário reativado.'),
     );
@@ -153,7 +153,7 @@ export class UserDetail implements OnInit {
     this.busy.set(false);
     const problem = toProblem(err);
     if (problem.status !== 403 && problem.status !== 0 && problem.status < 500) {
-      this.actionError.set(problem.code === 'VALIDATION_ERROR' ? (problem.errors ?? []).map((e) => e.message).join(' ') : problem.detail);
+      this.actionError.set(problem.codigo === 'VALIDATION_ERROR' ? (problem.erros ?? []).map((e) => e.mensagem).join(' ') : problem.detail);
     }
   }
 
@@ -166,7 +166,7 @@ export class UserDetail implements OnInit {
 
   private apply(u: User): void {
     this.user.set(u);
-    this.name.reset(u.name);
+    this.name.reset(u.nome);
     if (this.canManage()) {
       this.name.enable();
     } else {

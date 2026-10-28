@@ -8,8 +8,8 @@ import java.util.List;
 import br.com.tekcondo.announcement.AnnouncementRepository;
 import br.com.tekcondo.finance.entity.FinancialEntry;
 import br.com.tekcondo.finance.repository.FinancialEntryRepository;
-import br.com.tekcondo.identity.access.Permission;
-import br.com.tekcondo.notification.NotificationService;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
+import br.com.tekcondo.notificacao.NotificacaoService;
 import br.com.tekcondo.supplier.entity.Contract;
 import br.com.tekcondo.supplier.repository.ContractRepository;
 import org.slf4j.Logger;
@@ -35,11 +35,11 @@ public class DailyRemindersJob {
     private final ContractRepository contracts;
     private final FinancialEntryRepository entries;
     private final AnnouncementRepository announcements;
-    private final NotificationService notifications;
+    private final NotificacaoService notifications;
     private final Clock clock;
 
     public DailyRemindersJob(ContractRepository contracts, FinancialEntryRepository entries,
-                             AnnouncementRepository announcements, NotificationService notifications, Clock clock) {
+                             AnnouncementRepository announcements, NotificacaoService notifications, Clock clock) {
         this.contracts = contracts;
         this.entries = entries;
         this.announcements = announcements;
@@ -59,8 +59,8 @@ public class DailyRemindersJob {
         int sent = 0;
         for (Contract c : contracts.findActiveWithEndDate()) {
             if (c.isExpiring(today) || c.isExpired(today)) {
-                sent += notifications.notify(c.getOrganizationId(),
-                        notifications.usersWithPermission(c.getOrganizationId(), c.getCondominiumId(), Permission.SUPPLIER_VIEW),
+                sent += notifications.notificar(c.getOrganizationId(),
+                        notifications.usuariosComPermissao(c.getOrganizationId(), c.getCondominiumId(), Permissao.SUPPLIER_VIEW),
                         (c.isExpired(today) ? "Contrato vencido: " : "Contrato a vencer: ") + c.getTitle(),
                         c.getSupplier().getName() + " — término em " + BR.format(c.getEndDate()),
                         "/contratos", "contract-expiring:" + c.getId() + ":" + c.getEndDate());
@@ -77,8 +77,8 @@ public class DailyRemindersJob {
                 cb.lessThanOrEqualTo(root.get("dueDate"), today.plusDays(DAYS_AHEAD)));
         int sent = 0;
         for (FinancialEntry e : entries.findAll(spec)) {
-            sent += notifications.notify(e.getOrganizationId(),
-                    notifications.usersWithPermission(e.getOrganizationId(), e.getCondominiumId(), Permission.FINANCE_APPROVE),
+            sent += notifications.notificar(e.getOrganizationId(),
+                    notifications.usuariosComPermissao(e.getOrganizationId(), e.getCondominiumId(), Permissao.FINANCE_APPROVE),
                     "Pagamento aguardando aprovação", e.getDescription() + " — R$ " + e.getAmount().toPlainString()
                             + ", vence em " + BR.format(e.getDueDate()), "/financeiro/lancamentos/" + e.getId(),
                     "payable-approval:" + e.getId());
@@ -95,7 +95,7 @@ public class DailyRemindersJob {
         int sent = 0;
         for (FinancialEntry e : entries.findAll(spec)) {
             List<java.util.UUID> residents = announcements.residentUsers(e.getCondominiumId(), "UNIT", null, e.getUnit().getId());
-            sent += notifications.notify(e.getOrganizationId(), residents, "Cobrança a vencer",
+            sent += notifications.notificar(e.getOrganizationId(), residents, "Cobrança a vencer",
                     e.getDescription() + " — R$ " + e.remaining().toPlainString() + ", vencimento " + BR.format(e.getDueDate()),
                     "/portal", "charge-due:" + e.getId());
         }

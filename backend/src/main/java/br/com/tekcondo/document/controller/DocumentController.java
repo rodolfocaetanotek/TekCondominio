@@ -9,8 +9,8 @@ import br.com.tekcondo.document.entity.Document;
 import br.com.tekcondo.document.service.DocumentService;
 import br.com.tekcondo.document.service.DocumentService.DocumentResponse;
 import br.com.tekcondo.document.service.DocumentService.FileContent;
-import br.com.tekcondo.shared.web.PageRequests;
-import br.com.tekcondo.shared.web.PageResponse;
+import br.com.tekcondo.comum.web.PaginaRequests;
+import br.com.tekcondo.comum.web.PaginaResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Sort;
@@ -39,16 +39,16 @@ public class DocumentController {
     }
 
     @GetMapping
-    public PageResponse<DocumentResponse> list(@PathVariable UUID c,
+    public PaginaResponse<DocumentResponse> list(@PathVariable UUID c,
                                                @RequestParam(required = false) Document.Category category,
                                                @RequestParam(required = false) String entityType,
                                                @RequestParam(required = false) UUID entityId,
                                                @RequestParam(required = false) String search,
                                                @RequestParam(defaultValue = "false") boolean archived,
-                                               @RequestParam(defaultValue = "0") int page,
-                                               @RequestParam(defaultValue = "50") int size) {
+                                               @RequestParam(defaultValue = "0") int pagina,
+                                               @RequestParam(defaultValue = "50") int tamanho) {
         return service.list(c, category, entityType, entityId, search, archived,
-                PageRequests.of(page, size, null, Map.of(), Sort.by(Sort.Direction.DESC, "createdAt")));
+                PaginaRequests.of(pagina, tamanho, null, Map.of(), Sort.by(Sort.Direction.DESC, "createdAt")));
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

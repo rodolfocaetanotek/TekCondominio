@@ -109,11 +109,11 @@ export class PersonDialog {
         error: (err: unknown) => {
           this.saving.set(false);
           const problem = toProblem(err);
-          if (problem.code === 'PERSON_DOCUMENT_TAKEN' || problem.code === 'DOCUMENT_KIND_MISMATCH') {
+          if (problem.codigo === 'PERSON_DOCUMENT_TAKEN' || problem.codigo === 'DOCUMENT_KIND_MISMATCH') {
             this.form.controls.document.setErrors({ server: problem.detail });
             return;
           }
-          const rest = problem.code === 'VALIDATION_ERROR' ? applyServerErrors(this.form, problem) : [problem.detail];
+          const rest = problem.codigo === 'VALIDATION_ERROR' ? applyServerErrors(this.form, problem) : [problem.detail];
           if (rest.length) this.error.set(rest.join(' '));
         },
       });

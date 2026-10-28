@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 import br.com.tekcondo.people.entity.Person;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import br.com.tekcondo.structure.entity.Unit;
 import br.com.tekcondo.supplier.entity.Supplier;
 import jakarta.persistence.Column;
@@ -204,7 +204,7 @@ public class FinancialEntry {
                         Person person, BigDecimal amount, LocalDate dueDate, LocalDate competence,
                         String documentNumber, String notes, UUID by) {
         if (paidAmount.signum() > 0) {
-            throw ApiException.businessRule("ENTRY_HAS_PAYMENTS",
+            throw ApiException.regraNegocio("ENTRY_HAS_PAYMENTS",
                     "O lançamento possui baixas. Estorne as baixas antes de alterá-lo.");
         }
         ensureMutable();
@@ -255,7 +255,7 @@ public class FinancialEntry {
 
     public void approve(UUID by, Instant now, String note) {
         if (approval != Approval.PENDING) {
-            throw ApiException.businessRule("ENTRY_NOT_PENDING", "Este lançamento não está aguardando aprovação.");
+            throw ApiException.regraNegocio("ENTRY_NOT_PENDING", "Este lançamento não está aguardando aprovação.");
         }
         approval = Approval.APPROVED;
         approvedBy = by;
@@ -266,7 +266,7 @@ public class FinancialEntry {
 
     public void reject(UUID by, Instant now, String note) {
         if (approval != Approval.PENDING) {
-            throw ApiException.businessRule("ENTRY_NOT_PENDING", "Este lançamento não está aguardando aprovação.");
+            throw ApiException.regraNegocio("ENTRY_NOT_PENDING", "Este lançamento não está aguardando aprovação.");
         }
         approval = Approval.REJECTED;
         approvedBy = by;
@@ -278,14 +278,14 @@ public class FinancialEntry {
     /** Registra baixa (parcial ou total) do valor principal. */
     public void registerPayment(BigDecimal principal, UUID by) {
         if (status != Status.OPEN && status != Status.PARTIAL) {
-            throw ApiException.businessRule("ENTRY_NOT_PAYABLE", "Somente lançamentos em aberto podem receber baixa.");
+            throw ApiException.regraNegocio("ENTRY_NOT_PAYABLE", "Somente lançamentos em aberto podem receber baixa.");
         }
         if (approval == Approval.PENDING || approval == Approval.REJECTED) {
-            throw ApiException.businessRule("ENTRY_NOT_APPROVED",
+            throw ApiException.regraNegocio("ENTRY_NOT_APPROVED",
                     approval == Approval.PENDING ? "O pagamento aguarda aprovação." : "O pagamento foi reprovado.");
         }
         if (principal.compareTo(remaining()) > 0) {
-            throw ApiException.businessRule("PAYMENT_EXCEEDS_BALANCE",
+            throw ApiException.regraNegocio("PAYMENT_EXCEEDS_BALANCE",
                     "O valor da baixa excede o saldo em aberto (R$ " + remaining().toPlainString() + ").");
         }
         paidAmount = paidAmount.add(principal);
@@ -296,7 +296,7 @@ public class FinancialEntry {
     /** Desfaz o efeito de uma baixa estornada. */
     public void reversePayment(BigDecimal principal, UUID by) {
         if (status == Status.CANCELLED || status == Status.RENEGOTIATED) {
-            throw ApiException.businessRule("ENTRY_CLOSED", "O lançamento está encerrado.");
+            throw ApiException.regraNegocio("ENTRY_CLOSED", "O lançamento está encerrado.");
         }
         paidAmount = paidAmount.subtract(principal);
         status = paidAmount.signum() == 0 ? Status.OPEN : Status.PARTIAL;
@@ -305,10 +305,10 @@ public class FinancialEntry {
 
     public void cancel(String reason, UUID by, Instant now) {
         if (status == Status.CANCELLED || status == Status.RENEGOTIATED) {
-            throw ApiException.businessRule("ENTRY_ALREADY_CLOSED", "O lançamento já está cancelado ou renegociado.");
+            throw ApiException.regraNegocio("ENTRY_ALREADY_CLOSED", "O lançamento já está cancelado ou renegociado.");
         }
         if (paidAmount.signum() > 0) {
-            throw ApiException.businessRule("ENTRY_HAS_PAYMENTS",
+            throw ApiException.regraNegocio("ENTRY_HAS_PAYMENTS",
                     "O lançamento possui baixas. Estorne as baixas antes de cancelá-lo.");
         }
         status = Status.CANCELLED;
@@ -321,7 +321,7 @@ public class FinancialEntry {
     /** Título substituído por acordo de parcelamento. */
     public void renegotiate(UUID agreementId, UUID by) {
         if (status != Status.OPEN && status != Status.PARTIAL) {
-            throw ApiException.businessRule("ENTRY_NOT_OPEN", "Somente títulos em aberto podem ser renegociados.");
+            throw ApiException.regraNegocio("ENTRY_NOT_OPEN", "Somente títulos em aberto podem ser renegociados.");
         }
         status = Status.RENEGOTIATED;
         cancelReason = "Renegociado no acordo " + agreementId;
@@ -340,7 +340,7 @@ public class FinancialEntry {
 
     private void ensureMutable() {
         if (status == Status.CANCELLED || status == Status.RENEGOTIATED || status == Status.PAID) {
-            throw ApiException.businessRule("ENTRY_CLOSED", "Lançamento encerrado não pode ser alterado.");
+            throw ApiException.regraNegocio("ENTRY_CLOSED", "Lançamento encerrado não pode ser alterado.");
         }
     }
 

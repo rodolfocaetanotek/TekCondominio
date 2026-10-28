@@ -11,18 +11,18 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
-import br.com.tekcondo.audit.service.AuditAction;
-import br.com.tekcondo.audit.service.AuditService;
+import br.com.tekcondo.auditoria.service.AcaoAuditoria;
+import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.condominium.entity.Condominium;
 import br.com.tekcondo.condominium.service.CondominiumAccess;
 import br.com.tekcondo.document.entity.Document;
 import br.com.tekcondo.document.repository.DocumentRepository;
-import br.com.tekcondo.identity.access.AccessService;
-import br.com.tekcondo.identity.access.Permission;
-import br.com.tekcondo.integration.storage.FileStorage;
-import br.com.tekcondo.shared.config.TekCondoProperties;
-import br.com.tekcondo.shared.exception.ApiException;
-import br.com.tekcondo.shared.web.PageResponse;
+import br.com.tekcondo.acesso.autorizacao.AcessoService;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
+import br.com.tekcondo.integracao.armazenamento.ArmazenamentoArquivos;
+import br.com.tekcondo.comum.config.TekCondoProperties;
+import br.com.tekcondo.comum.exception.ApiException;
+import br.com.tekcondo.comum.web.PaginaResponse;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -44,11 +44,11 @@ public class DocumentService {
             "csv", "text/csv", "txt", "text/plain");
 
     /** Anexos vinculados a registros de outros módulos e a permissão exigida (consulta, edição). */
-    private static final Map<String, Permission[]> ENTITY_PERMISSIONS = Map.of(
-            "FinancialEntry", new Permission[]{Permission.FINANCE_VIEW, Permission.FINANCE_EDIT},
-            "Occurrence", new Permission[]{Permission.OCCURRENCE_VIEW, Permission.OCCURRENCE_EDIT},
-            "Contract", new Permission[]{Permission.SUPPLIER_VIEW, Permission.SUPPLIER_EDIT},
-            "Assembly", new Permission[]{Permission.ASSEMBLY_VIEW, Permission.ASSEMBLY_EDIT});
+    private static final Map<String, Permissao[]> ENTITY_PERMISSIONS = Map.of(
+            "FinancialEntry", new Permissao[]{Permissao.FINANCE_VIEW, Permissao.FINANCE_EDIT},
+            "Occurrence", new Permissao[]{Permissao.OCCURRENCE_VIEW, Permissao.OCCURRENCE_EDIT},
+            "Contract", new Permissao[]{Permissao.SUPPLIER_VIEW, Permissao.SUPPLIER_EDIT},
+            "Assembly", new Permissao[]{Permissao.ASSEMBLY_VIEW, Permissao.ASSEMBLY_EDIT});
 
     public record Upload(Document.Category category, String title, String description, Document.Visibility visibility,
                          String entityType, UUID entityId, UUID unitId, String originalName, byte[] content) {
@@ -69,15 +69,15 @@ public class DocumentService {
     }
 
     private final DocumentRepository repository;
-    private final FileStorage storage;
+    private final ArmazenamentoArquivos storage;
     private final CondominiumAccess access;
-    private final AccessService accessService;
-    private final AuditService auditService;
+    private final AcessoService accessService;
+    private final AuditoriaService auditService;
     private final TekCondoProperties props;
     private final Clock clock;
 
-    public DocumentService(DocumentRepository repository, FileStorage storage, CondominiumAccess access,
-                           AccessService accessService, AuditService auditService, TekCondoProperties props, Clock clock) {
+    public DocumentService(DocumentRepository repository, ArmazenamentoArquivos storage, CondominiumAccess access,
+                           AcessoService accessService, AuditoriaService auditService, TekCondoProperties props, Clock clock) {
         this.repository = repository;
         this.storage = storage;
         this.access = access;
@@ -88,7 +88,7 @@ public class DocumentService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<DocumentResponse> list(UUID condominiumId, Document.Category category, String entityType, UUID entityId,
+    public PaginaResponse<DocumentResponse> list(UUID condominiumId, Document.Category category, String entityType, UUID entityId,
                                                String search, boolean includeArchived, Pageable pageable) {
         requireView(condominiumId, entityType);
         Specification<Document> spec = (root, query, cb) -> {
@@ -104,7 +104,7 @@ public class DocumentService {
             }
             return cb.and(p.toArray(Predicate[]::new));
         };
-        return PageResponse.of(repository.findAll(spec, pageable), DocumentResponse::from);
+        return PaginaResponse.of(repository.findAll(spec, pageable), DocumentResponse::from);
     }
 
     @Transactional
@@ -112,37 +112,37 @@ public class DocumentService {
         Condominium condominium = access.require(condominiumId, editPermission(u.entityType()));
         validate(u);
         String extension = extension(u.originalName());
-        String key = storage.store(u.content());
+        String key = storage.gravar(u.content());
         var user = access.user();
         Document document = repository.save(new Document(condominium.getOrganizationId(), condominiumId, u.category(),
                 u.title().trim(), blank(u.description()), safeName(u.originalName()), ALLOWED.get(extension),
                 u.content().length, sha256(u.content()), key,
                 u.visibility() == null ? Document.Visibility.INTERNAL : u.visibility(), u.entityType(), u.entityId(),
-                u.unitId(), user.userId(), user.name()));
-        auditService.record(AuditAction.DOCUMENT_UPLOADED, "Document", document.getId(), Map.of("title", document.getTitle(),
+                u.unitId(), user.idUsuario(), user.nome()));
+        auditService.registrar(AcaoAuditoria.DOCUMENT_UPLOADED, "Document", document.getId(), Map.of("title", document.getTitle(),
                 "file", document.getFileName(), "visibility", document.getVisibility().name()));
         return DocumentResponse.from(document);
     }
 
     @Transactional
     public FileContent download(UUID condominiumId, UUID id) {
-        Document d = repository.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.notFound("Documento"));
+        Document d = repository.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Documento"));
         requireView(condominiumId, d.getEntityType());
-        auditService.record(AuditAction.DOCUMENT_DOWNLOADED, "Document", id, Map.of("file", d.getFileName()));
-        return new FileContent(d.getFileName(), d.getContentType(), storage.read(d.getStorageKey()));
+        auditService.registrar(AcaoAuditoria.DOCUMENT_DOWNLOADED, "Document", id, Map.of("file", d.getFileName()));
+        return new FileContent(d.getFileName(), d.getContentType(), storage.ler(d.getStorageKey()));
     }
 
     /** Entrega para o portal do morador (permissão verificada pelo serviço do portal). */
     public FileContent read(Document d) {
-        return new FileContent(d.getFileName(), d.getContentType(), storage.read(d.getStorageKey()));
+        return new FileContent(d.getFileName(), d.getContentType(), storage.ler(d.getStorageKey()));
     }
 
     @Transactional
     public DocumentResponse archive(UUID condominiumId, UUID id) {
-        Document d = repository.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.notFound("Documento"));
+        Document d = repository.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Documento"));
         access.require(condominiumId, editPermission(d.getEntityType()));
-        d.archive(access.user().userId(), Instant.now(clock));
-        auditService.record(AuditAction.DOCUMENT_ARCHIVED, "Document", id, Map.of("title", d.getTitle()));
+        d.archive(access.user().idUsuario(), Instant.now(clock));
+        auditService.registrar(AcaoAuditoria.DOCUMENT_ARCHIVED, "Document", id, Map.of("title", d.getTitle()));
         return DocumentResponse.from(d);
     }
 
@@ -150,48 +150,48 @@ public class DocumentService {
 
     private void requireView(UUID condominiumId, String entityType) {
         if (entityType == null) {
-            access.require(condominiumId, Permission.DOCUMENT_VIEW);
+            access.require(condominiumId, Permissao.DOCUMENT_VIEW);
             return;
         }
-        Permission[] perms = ENTITY_PERMISSIONS.get(entityType);
+        Permissao[] perms = ENTITY_PERMISSIONS.get(entityType);
         if (perms == null) {
-            throw ApiException.badRequest("INVALID_ENTITY_TYPE", "Tipo de vínculo inválido.");
+            throw ApiException.requisicaoInvalida("INVALID_ENTITY_TYPE", "Tipo de vínculo inválido.");
         }
-        access.require(condominiumId, accessService.currentGrants().has(Permission.DOCUMENT_VIEW, condominiumId)
-                ? Permission.DOCUMENT_VIEW : perms[0]);
+        access.require(condominiumId, accessService.concessoesAtuais().tem(Permissao.DOCUMENT_VIEW, condominiumId)
+                ? Permissao.DOCUMENT_VIEW : perms[0]);
     }
 
-    private Permission editPermission(String entityType) {
+    private Permissao editPermission(String entityType) {
         if (entityType == null) {
-            return Permission.DOCUMENT_EDIT;
+            return Permissao.DOCUMENT_EDIT;
         }
-        Permission[] perms = ENTITY_PERMISSIONS.get(entityType);
+        Permissao[] perms = ENTITY_PERMISSIONS.get(entityType);
         if (perms == null) {
-            throw ApiException.badRequest("INVALID_ENTITY_TYPE", "Tipo de vínculo inválido.");
+            throw ApiException.requisicaoInvalida("INVALID_ENTITY_TYPE", "Tipo de vínculo inválido.");
         }
         return perms[1];
     }
 
     private void validate(Upload u) {
         if (u.content() == null || u.content().length == 0) {
-            throw ApiException.badRequest("EMPTY_FILE", "Arquivo vazio.");
+            throw ApiException.requisicaoInvalida("EMPTY_FILE", "Arquivo vazio.");
         }
         if (u.content().length > props.storage().maxFileBytes()) {
             throw new ApiException(org.springframework.http.HttpStatus.PAYLOAD_TOO_LARGE, "FILE_TOO_LARGE",
                     "Arquivo maior que " + (props.storage().maxFileBytes() / (1024 * 1024)) + " MB.");
         }
         if (u.title() == null || u.title().isBlank() || u.title().length() > 200) {
-            throw ApiException.badRequest("TITLE_REQUIRED", "Informe o título (até 200 caracteres).");
+            throw ApiException.requisicaoInvalida("TITLE_REQUIRED", "Informe o título (até 200 caracteres).");
         }
         String ext = extension(u.originalName());
         if (!ALLOWED.containsKey(ext)) {
-            throw ApiException.badRequest("FILE_TYPE_NOT_ALLOWED", "Tipo de arquivo não permitido. Use PDF, imagem (PNG/JPG), DOCX, XLSX, CSV ou TXT.");
+            throw ApiException.requisicaoInvalida("FILE_TYPE_NOT_ALLOWED", "Tipo de arquivo não permitido. Use PDF, imagem (PNG/JPG), DOCX, XLSX, CSV ou TXT.");
         }
         if (!signatureMatches(ext, u.content())) {
-            throw ApiException.badRequest("FILE_CONTENT_MISMATCH", "O conteúdo do arquivo não corresponde à extensão informada.");
+            throw ApiException.requisicaoInvalida("FILE_CONTENT_MISMATCH", "O conteúdo do arquivo não corresponde à extensão informada.");
         }
         if ((u.entityType() == null) != (u.entityId() == null)) {
-            throw ApiException.badRequest("INVALID_ENTITY", "Informe tipo e identificador do vínculo, ou nenhum dos dois.");
+            throw ApiException.requisicaoInvalida("INVALID_ENTITY", "Informe tipo e identificador do vínculo, ou nenhum dos dois.");
         }
     }
 

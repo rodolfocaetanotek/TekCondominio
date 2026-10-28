@@ -15,8 +15,8 @@ export function openEntryForm(dialog: MatDialog, api: FinanceApi, structure: Str
   return forkJoin({
     accounts: api.chartAccounts(),
     centers: api.costCenters(condominiumId),
-    suppliers: kind === 'EXPENSE' ? api.suppliers('', 0, 100).pipe(map((p) => p.content)) : of([]),
-    units: kind === 'INCOME' ? structure.units(condominiumId, { page: 0, size: 100, active: 'true' }).pipe(map((p) => p.content)) : of([]),
+    suppliers: kind === 'EXPENSE' ? api.suppliers('', 0, 100).pipe(map((p) => p.conteudo)) : of([]),
+    units: kind === 'INCOME' ? structure.units(condominiumId, { page: 0, size: 100, active: 'true' }).pipe(map((p) => p.conteudo)) : of([]),
   }).pipe(
     switchMap(({ accounts, centers, suppliers, units }) => {
       const s = existing?.summary;

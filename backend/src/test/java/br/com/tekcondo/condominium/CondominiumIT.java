@@ -3,8 +3,8 @@ package br.com.tekcondo.condominium;
 import java.util.HashMap;
 import java.util.Map;
 
-import br.com.tekcondo.identity.entity.User;
-import br.com.tekcondo.organization.entity.Organization;
+import br.com.tekcondo.acesso.entity.Usuario;
+import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
 import br.com.tekcondo.support.TestData;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -36,8 +36,8 @@ class CondominiumIT extends IntegrationTest {
 
     @BeforeEach
     void setUp() {
-        Organization org = data.organization();
-        User admin = data.orgAdmin(org);
+        Administradora org = data.administradora();
+        Usuario admin = data.adminAdministradora(org);
         token = TestData.bearer(data.login(admin));
     }
 
@@ -97,13 +97,13 @@ class CondominiumIT extends IntegrationTest {
         mvc.perform(post("/api/v1/condominiums").header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(data.json(body)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.errors[*].field", hasItem("name")))
-                .andExpect(jsonPath("$.errors[*].field", hasItem("cnpj")))
-                .andExpect(jsonPath("$.errors[*].field", hasItem("type")))
-                .andExpect(jsonPath("$.errors[*].field", hasItem("address.zipCode")))
-                .andExpect(jsonPath("$.errors[*].field", hasItem("address.state")))
-                .andExpect(jsonPath("$.errors[*].message", hasItem("CNPJ inválido.")));
+                .andExpect(jsonPath("$.codigo").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.erros[*].campo", hasItem("name")))
+                .andExpect(jsonPath("$.erros[*].campo", hasItem("cnpj")))
+                .andExpect(jsonPath("$.erros[*].campo", hasItem("type")))
+                .andExpect(jsonPath("$.erros[*].campo", hasItem("address.zipCode")))
+                .andExpect(jsonPath("$.erros[*].campo", hasItem("address.state")))
+                .andExpect(jsonPath("$.erros[*].mensagem", hasItem("CNPJ inválido.")));
     }
 
     @Test
@@ -113,7 +113,7 @@ class CondominiumIT extends IntegrationTest {
         mvc.perform(post("/api/v1/condominiums").header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(data.json(validBody())))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("CONDOMINIUM_CNPJ_TAKEN"));
+                .andExpect(jsonPath("$.codigo").value("CONDOMINIUM_CNPJ_TAKEN"));
     }
 
     @Test
@@ -134,7 +134,7 @@ class CondominiumIT extends IntegrationTest {
         mvc.perform(put("/api/v1/condominiums/" + id).header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(data.json(update)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("STALE_VERSION"));
+                .andExpect(jsonPath("$.codigo").value("STALE_VERSION"));
 
         String details = jdbc.queryForObject(
                 "select details::text from audit_log where entity_id = ? and action = 'CONDOMINIUM_UPDATED'", String.class, id);
@@ -160,7 +160,7 @@ class CondominiumIT extends IntegrationTest {
         mvc.perform(put("/api/v1/condominiums/" + id).header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(data.json(update)))
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.code").value("CONDOMINIUM_INACTIVE"));
+                .andExpect(jsonPath("$.codigo").value("CONDOMINIUM_INACTIVE"));
 
         mvc.perform(post("/api/v1/condominiums/" + id + "/activate").header("Authorization", token))
                 .andExpect(status().isOk())
@@ -178,20 +178,20 @@ class CondominiumIT extends IntegrationTest {
         }
 
         mvc.perform(get("/api/v1/condominiums").header("Authorization", token)
-                        .param("search", "edifício").param("sort", "name,asc").param("size", "1"))
+                        .param("search", "edifício").param("ordem", "name,asc").param("tamanho", "1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content", hasSize(1)))
-                .andExpect(jsonPath("$.content[0].name").value("Edifício Alfa"))
-                .andExpect(jsonPath("$.totalElements").value(2))
-                .andExpect(jsonPath("$.totalPages").value(2));
+                .andExpect(jsonPath("$.conteudo", hasSize(1)))
+                .andExpect(jsonPath("$.conteudo[0].name").value("Edifício Alfa"))
+                .andExpect(jsonPath("$.totalElementos").value(2))
+                .andExpect(jsonPath("$.totalPaginas").value(2));
 
         mvc.perform(get("/api/v1/condominiums").header("Authorization", token).param("status", "INACTIVE"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(0));
+                .andExpect(jsonPath("$.totalElementos").value(0));
 
-        mvc.perform(get("/api/v1/condominiums").header("Authorization", token).param("sort", "password,asc"))
+        mvc.perform(get("/api/v1/condominiums").header("Authorization", token).param("ordem", "password,asc"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_SORT"));
+                .andExpect(jsonPath("$.codigo").value("INVALID_SORT"));
     }
 
     @Test
@@ -200,6 +200,6 @@ class CondominiumIT extends IntegrationTest {
 
         mvc.perform(get("/api/v1/condominiums").header("Authorization", token).param("search", "12.abc.345"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.totalElementos").value(1));
     }
 }

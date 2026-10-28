@@ -5,11 +5,11 @@ import java.util.UUID;
 import br.com.tekcondo.condominium.entity.Condominium;
 import br.com.tekcondo.condominium.entity.CondominiumStatus;
 import br.com.tekcondo.condominium.repository.CondominiumRepository;
-import br.com.tekcondo.identity.access.AccessService;
-import br.com.tekcondo.identity.access.Permission;
-import br.com.tekcondo.shared.exception.ApiException;
-import br.com.tekcondo.shared.security.CurrentUser;
-import br.com.tekcondo.shared.security.CurrentUserProvider;
+import br.com.tekcondo.acesso.autorizacao.AcessoService;
+import br.com.tekcondo.acesso.autorizacao.Permissao;
+import br.com.tekcondo.comum.exception.ApiException;
+import br.com.tekcondo.comum.security.UsuarioAtual;
+import br.com.tekcondo.comum.security.UsuarioAtualProvider;
 import org.springframework.stereotype.Service;
 
 /**
@@ -21,39 +21,39 @@ import org.springframework.stereotype.Service;
 public class CondominiumAccess {
 
     private final CondominiumRepository repository;
-    private final AccessService accessService;
-    private final CurrentUserProvider currentUserProvider;
+    private final AcessoService accessService;
+    private final UsuarioAtualProvider currentUserProvider;
 
-    public CondominiumAccess(CondominiumRepository repository, AccessService accessService,
-                             CurrentUserProvider currentUserProvider) {
+    public CondominiumAccess(CondominiumRepository repository, AcessoService accessService,
+                             UsuarioAtualProvider currentUserProvider) {
         this.repository = repository;
         this.accessService = accessService;
         this.currentUserProvider = currentUserProvider;
     }
 
-    public Condominium require(UUID condominiumId, Permission permission) {
-        CurrentUser user = currentUserProvider.requireOrganizationMember();
-        Condominium condominium = repository.findByIdAndOrganizationId(condominiumId, user.organizationId())
-                .orElseThrow(() -> ApiException.notFound("Condomínio"));
-        accessService.require(permission, condominiumId);
+    public Condominium require(UUID condominiumId, Permissao permission) {
+        UsuarioAtual user = currentUserProvider.exigirMembroAdministradora();
+        Condominium condominium = repository.findByIdAndOrganizationId(condominiumId, user.idAdministradora())
+                .orElseThrow(() -> ApiException.naoEncontrado("Condomínio"));
+        accessService.exigir(permission, condominiumId);
         return condominium;
     }
 
     /** Para operações de escrita que não podem ocorrer em condomínio inativo (premissa P07). */
-    public Condominium requireActive(UUID condominiumId, Permission permission) {
+    public Condominium requireActive(UUID condominiumId, Permissao permission) {
         Condominium condominium = require(condominiumId, permission);
         if (condominium.getStatus() != CondominiumStatus.ACTIVE) {
-            throw ApiException.businessRule("CONDOMINIUM_INACTIVE",
+            throw ApiException.regraNegocio("CONDOMINIUM_INACTIVE",
                     "O condomínio está inativo. Reative-o para registrar novas operações.");
         }
         return condominium;
     }
 
-    public CurrentUser user() {
-        return currentUserProvider.requireOrganizationMember();
+    public UsuarioAtual user() {
+        return currentUserProvider.exigirMembroAdministradora();
     }
 
     public UUID organizationId() {
-        return currentUserProvider.requireOrganizationMember().organizationId();
+        return currentUserProvider.exigirMembroAdministradora().idAdministradora();
     }
 }

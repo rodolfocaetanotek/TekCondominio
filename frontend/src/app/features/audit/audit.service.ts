@@ -1,8 +1,8 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { PageResponse } from '../../core/api/api.models';
-import { AuditEntry } from './audit.models';
+import { PaginaResponse } from '../../core/api/api.models';
+import { RegistroAuditoria } from './audit.models';
 
 export interface AuditQuery {
   action?: string;
@@ -14,9 +14,9 @@ export interface AuditQuery {
 export class AuditService {
   private readonly http = inject(HttpClient);
 
-  list(query: AuditQuery): Observable<PageResponse<AuditEntry>> {
-    let params = new HttpParams().set('page', query.page).set('size', query.size);
-    if (query.action) params = params.set('action', query.action);
-    return this.http.get<PageResponse<AuditEntry>>('/api/v1/audit', { params });
+  list(query: AuditQuery): Observable<PaginaResponse<RegistroAuditoria>> {
+    let params = new HttpParams().set('pagina', query.page).set('tamanho', query.size);
+    if (query.action) params = params.set('acao', query.action);
+    return this.http.get<PaginaResponse<RegistroAuditoria>>('/api/v1/auditoria', { params });
   }
 }

@@ -104,12 +104,12 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
           @if (error(); as message) {
             <tc-empty-state icon="cloud_off" title="Não foi possível carregar" [description]="message" />
           } @else if (data(); as d) {
-            @if (d.page.totalElements === 0) {
+            @if (d.page.totalElementos === 0) {
               <tc-empty-state icon="door_front" title="Nenhuma unidade"
                 description="Cadastre as unidades uma a uma ou importe uma planilha com unidades e proprietários." />
             } @else {
               <div class="table-scroll">
-                <table mat-table [dataSource]="d.page.content">
+                <table mat-table [dataSource]="d.page.conteudo">
                   <caption class="sr-only">Unidades</caption>
                   <ng-container matColumnDef="label">
                     <th mat-header-cell *matHeaderCellDef>Unidade</th>
@@ -140,7 +140,7 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
                     [attr.aria-label]="'Abrir unidade ' + row.label" (click)="open(row)" (keydown.enter)="open(row)"></tr>
                 </table>
               </div>
-              <mat-paginator [length]="d.page.totalElements" [pageIndex]="d.page.page" [pageSize]="d.page.size"
+              <mat-paginator [length]="d.page.totalElementos" [pageIndex]="d.page.pagina" [pageSize]="d.page.tamanho"
                 [pageSizeOptions]="[25, 50, 100]" (page)="onPage($event)" aria-label="Paginação de unidades" />
             }
           }

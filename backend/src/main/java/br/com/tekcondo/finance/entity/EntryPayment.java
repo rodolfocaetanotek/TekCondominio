@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -107,7 +107,7 @@ public class EntryPayment {
         this.discount = discount;
         this.total = principal.add(fine).add(interest).subtract(discount);
         if (total.signum() < 0) {
-            throw ApiException.businessRule("INVALID_DISCOUNT", "O desconto não pode ser maior que o valor pago.");
+            throw ApiException.regraNegocio("INVALID_DISCOUNT", "O desconto não pode ser maior que o valor pago.");
         }
         this.method = method;
         this.notes = notes;
@@ -125,10 +125,10 @@ public class EntryPayment {
 
     public void reverse(String reason, UUID by, Instant now) {
         if (reversedAt != null) {
-            throw ApiException.businessRule("PAYMENT_ALREADY_REVERSED", "Esta baixa já foi estornada.");
+            throw ApiException.regraNegocio("PAYMENT_ALREADY_REVERSED", "Esta baixa já foi estornada.");
         }
         if (reconciledAt != null) {
-            throw ApiException.businessRule("PAYMENT_RECONCILED",
+            throw ApiException.regraNegocio("PAYMENT_RECONCILED",
                     "A baixa está conciliada com o extrato. Desfaça a conciliação antes de estornar.");
         }
         reversedAt = now;
@@ -138,7 +138,7 @@ public class EntryPayment {
 
     public void reconcile(boolean reconciled, UUID by, Instant now) {
         if (reversedAt != null) {
-            throw ApiException.businessRule("PAYMENT_REVERSED", "Baixa estornada não pode ser conciliada.");
+            throw ApiException.regraNegocio("PAYMENT_REVERSED", "Baixa estornada não pode ser conciliada.");
         }
         reconciledAt = reconciled ? now : null;
         reconciledBy = reconciled ? by : null;

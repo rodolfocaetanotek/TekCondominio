@@ -5,7 +5,7 @@ import java.util.UUID;
 
 import br.com.tekcondo.condominium.entity.Condominium;
 import br.com.tekcondo.condominium.entity.CondominiumStatus;
-import br.com.tekcondo.identity.access.AccessScope;
+import br.com.tekcondo.acesso.autorizacao.EscopoAcesso;
 import org.springframework.data.jpa.domain.Specification;
 
 public final class CondominiumSpecifications {
@@ -13,16 +13,16 @@ public final class CondominiumSpecifications {
     private CondominiumSpecifications() {
     }
 
-    public static Specification<Condominium> inOrganization(UUID organizationId) {
+    public static Specification<Condominium> naAdministradora(UUID organizationId) {
         return (root, query, cb) -> cb.equal(root.get("organizationId"), organizationId);
     }
 
     /** Restringe aos condomínios que o usuário pode ver (quando não tem acesso à organização inteira). */
-    public static Specification<Condominium> withinScope(AccessScope scope) {
-        if (scope.organizationWide()) {
+    public static Specification<Condominium> withinScope(EscopoAcesso scope) {
+        if (scope.administradoraInteira()) {
             return (root, query, cb) -> cb.conjunction();
         }
-        return (root, query, cb) -> root.get("id").in(scope.condominiumIds());
+        return (root, query, cb) -> root.get("id").in(scope.idsCondominio());
     }
 
     /** Busca por nome, razão social ou CNPJ (com ou sem máscara). */

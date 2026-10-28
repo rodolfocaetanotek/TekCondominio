@@ -1,4 +1,4 @@
-export type Permission =
+export type Permissao =
   | 'CONDOMINIUM_VIEW'
   | 'CONDOMINIUM_CREATE'
   | 'CONDOMINIUM_EDIT'
@@ -38,17 +38,17 @@ export type Permission =
 export interface TokenResponse {
   accessToken: string;
   tokenType: string;
-  expiresAt: string;
+  expiraEm: string;
 }
 
 /** Perfil do usuário. As permissões orientam apenas a interface — o backend sempre revalida. */
-export interface Me {
+export interface Perfil {
   id: string;
-  name: string;
+  nome: string;
   email: string;
-  platformAdmin: boolean;
-  organizationId?: string;
-  organizationName?: string;
-  organizationPermissions: Permission[];
-  condominiumPermissions: Record<string, Permission[]>;
+  administradorPlataforma: boolean;
+  idAdministradora?: string;
+  nomeAdministradora?: string;
+  permissoesAdministradora: Permissao[];
+  permissoesCondominio: Record<string, Permissao[]>;
 }

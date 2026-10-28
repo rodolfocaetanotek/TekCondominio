@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.comum.exception.ApiException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -73,7 +73,7 @@ public class BankTransfer {
     public BankTransfer(UUID organizationId, UUID condominiumId, BankAccount from, BankAccount to, BigDecimal amount,
                         LocalDate date, String description, UUID createdBy) {
         if (from.getId().equals(to.getId())) {
-            throw ApiException.businessRule("SAME_ACCOUNT", "As contas de origem e destino devem ser diferentes.");
+            throw ApiException.regraNegocio("SAME_ACCOUNT", "As contas de origem e destino devem ser diferentes.");
         }
         this.organizationId = organizationId;
         this.condominiumId = condominiumId;
@@ -92,10 +92,10 @@ public class BankTransfer {
 
     public void reverse(String reason, UUID by, Instant now) {
         if (reversedAt != null) {
-            throw ApiException.businessRule("TRANSFER_ALREADY_REVERSED", "Esta transferência já foi estornada.");
+            throw ApiException.regraNegocio("TRANSFER_ALREADY_REVERSED", "Esta transferência já foi estornada.");
         }
         if (reconciledAt != null) {
-            throw ApiException.businessRule("TRANSFER_RECONCILED", "Desfaça a conciliação antes de estornar.");
+            throw ApiException.regraNegocio("TRANSFER_RECONCILED", "Desfaça a conciliação antes de estornar.");
         }
         reversedAt = now;
         reversedBy = by;
@@ -104,7 +104,7 @@ public class BankTransfer {
 
     public void reconcile(boolean reconciled, UUID by, Instant now) {
         if (reversedAt != null) {
-            throw ApiException.businessRule("TRANSFER_REVERSED", "Transferência estornada não pode ser conciliada.");
+            throw ApiException.regraNegocio("TRANSFER_REVERSED", "Transferência estornada não pode ser conciliada.");
         }
         reconciledAt = reconciled ? now : null;
         reconciledBy = reconciled ? by : null;

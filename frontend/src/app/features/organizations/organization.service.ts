@@ -1,62 +1,64 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { PageResponse } from '../../core/api/api.models';
+import { PaginaResponse } from '../../core/api/api.models';
 
-export interface Organization {
+export interface Administradora {
   id: string;
-  name: string;
+  nome: string;
   cnpj: string;
   email?: string;
-  phone?: string;
-  active: boolean;
-  createdAt: string;
+  telefone?: string;
+  ativo: boolean;
+  criadoEm: string;
 }
 
-export interface OrganizationUser {
+export interface UsuarioAdministradora {
   id: string;
-  name: string;
+  nome: string;
   email: string;
-  active: boolean;
-  pendingInvite: boolean;
-  lastLoginAt?: string;
-  roles: string[];
+  ativo: boolean;
+  convitePendente: boolean;
+  ultimoLoginEm?: string;
+  papeis: string[];
 }
 
-export interface OrganizationRequest {
-  name: string;
+export interface AdministradoraRequest {
+  nome: string;
   cnpj: string;
   email: string | null;
-  phone: string | null;
-  admin: { name: string; email: string; password: string };
+  telefone: string | null;
+  administrador: { nome: string; email: string; senha: string };
 }
+
+const BASE = '/api/v1/administradoras';
 
 @Injectable({ providedIn: 'root' })
 export class OrganizationService {
   private readonly http = inject(HttpClient);
 
-  list(page: number, size: number): Observable<PageResponse<Organization>> {
-    const params = new HttpParams().set('page', page).set('size', size).set('sort', 'name,asc');
-    return this.http.get<PageResponse<Organization>>('/api/v1/organizations', { params });
+  list(page: number, size: number): Observable<PaginaResponse<Administradora>> {
+    const params = new HttpParams().set('pagina', page).set('tamanho', size).set('ordem', 'nome,asc');
+    return this.http.get<PaginaResponse<Administradora>>(BASE, { params });
   }
 
-  create(body: OrganizationRequest): Observable<Organization> {
-    return this.http.post<Organization>('/api/v1/organizations', body);
+  create(body: AdministradoraRequest): Observable<Administradora> {
+    return this.http.post<Administradora>(BASE, body);
   }
 
-  get(id: string): Observable<Organization> {
-    return this.http.get<Organization>(`/api/v1/organizations/${id}`);
+  get(id: string): Observable<Administradora> {
+    return this.http.get<Administradora>(`${BASE}/${id}`);
   }
 
-  users(id: string): Observable<OrganizationUser[]> {
-    return this.http.get<OrganizationUser[]>(`/api/v1/organizations/${id}/users`);
+  users(id: string): Observable<UsuarioAdministradora[]> {
+    return this.http.get<UsuarioAdministradora[]>(`${BASE}/${id}/usuarios`);
   }
 
-  inviteAdmin(id: string, name: string, email: string): Observable<OrganizationUser> {
-    return this.http.post<OrganizationUser>(`/api/v1/organizations/${id}/admins`, { name, email });
+  inviteAdmin(id: string, nome: string, email: string): Observable<UsuarioAdministradora> {
+    return this.http.post<UsuarioAdministradora>(`${BASE}/${id}/administradores`, { nome, email });
   }
 
-  setActive(id: string, active: boolean): Observable<Organization> {
-    return this.http.post<Organization>(`/api/v1/organizations/${id}/${active ? 'activate' : 'deactivate'}`, null);
+  setActive(id: string, active: boolean): Observable<Administradora> {
+    return this.http.post<Administradora>(`${BASE}/${id}/${active ? 'ativar' : 'desativar'}`, null);
   }
 }

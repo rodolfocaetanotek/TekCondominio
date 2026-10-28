@@ -5,8 +5,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import br.com.tekcondo.integration.bank.Cnab240ReturnParser;
-import br.com.tekcondo.shared.exception.ApiException;
+import br.com.tekcondo.integracao.banco.RetornoCnab240Parser;
+import br.com.tekcondo.comum.exception.ApiException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -101,24 +101,24 @@ public class BankReturnItem {
     protected BankReturnItem() {
     }
 
-    public BankReturnItem(UUID organizationId, UUID condominiumId, UUID bankAccountId, UUID fileId, Cnab240ReturnParser.Item i) {
+    public BankReturnItem(UUID organizationId, UUID condominiumId, UUID bankAccountId, UUID fileId, RetornoCnab240Parser.Item i) {
         this.organizationId = organizationId;
         this.condominiumId = condominiumId;
         this.bankAccountId = bankAccountId;
         this.fileId = fileId;
-        this.sequence = i.sequence();
-        this.movementCode = i.movementCode();
-        this.ourNumber = i.ourNumber();
-        this.yourNumber = i.yourNumber();
-        this.dueDate = i.dueDate();
-        this.faceValue = i.faceValue();
-        this.fees = i.feesAndCharges();
-        this.discount = i.discount();
-        this.paidAmount = i.paidAmount();
-        this.bankFee = i.bankFee();
-        this.occurrenceDate = i.occurrenceDate();
-        this.creditDate = i.creditDate();
-        this.status = i.isSettlement() ? Status.PENDING : Status.INFO;
+        this.sequence = i.sequencia();
+        this.movementCode = i.codigoMovimento();
+        this.ourNumber = i.nossoNumero();
+        this.yourNumber = i.seuNumero();
+        this.dueDate = i.dataVencimento();
+        this.faceValue = i.valorTitulo();
+        this.fees = i.encargos();
+        this.discount = i.desconto();
+        this.paidAmount = i.valorPago();
+        this.bankFee = i.tarifa();
+        this.occurrenceDate = i.dataOcorrencia();
+        this.creditDate = i.dataCredito();
+        this.status = i.isLiquidacao() ? Status.PENDING : Status.INFO;
     }
 
     public void settled(UUID entryId, UUID paymentId) {
@@ -140,7 +140,7 @@ public class BankReturnItem {
 
     public void ignore(String note, UUID by, Instant now) {
         if (status != Status.PENDING) {
-            throw ApiException.businessRule("RETURN_ITEM_NOT_PENDING", "Somente pendências podem ser descartadas.");
+            throw ApiException.regraNegocio("RETURN_ITEM_NOT_PENDING", "Somente pendências podem ser descartadas.");
         }
         status = Status.IGNORED;
         message = note;
