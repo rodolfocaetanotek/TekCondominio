@@ -112,6 +112,11 @@
           <mat-form-field class="span-3">
             <mat-label>CEP</mat-label>
             <input matInput formControlName="zipCode" tcMask="cep" inputmode="numeric" placeholder="00000-000" />
+            @if (searchingZipCode()) {
+              <mat-hint>Buscando endereço…</mat-hint>
+            } @else if (zipCodeNotFound()) {
+              <mat-hint>CEP não encontrado</mat-hint>
+            }
             <mat-error><tc-field-error [control]="form.controls.address.controls.zipCode" /></mat-error>
           </mat-form-field>
           <mat-form-field class="span-9">
