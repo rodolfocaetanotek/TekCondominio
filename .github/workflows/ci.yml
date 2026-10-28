@@ -1,0 +1,100 @@
+# Integração contínua do Tek Condomínio.
+# - backend: testes unitários + integração contra PostgreSQL 16 real (embarcado), e empacotamento do jar
+# - frontend: testes (Vitest), build de produção e npm audit (falha com vulnerabilidade alta ou crítica)
+# - dependências Java: OWASP Dependency-Check semanal/manual (requer o segredo NVD_API_KEY)
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 9 * * 1' # segundas, 06h (horário de Brasília)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Java 21 + PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Testes
+        run: mvn -B -ntp test
+      - name: Empacota
+        run: mvn -B -ntp -DskipTests package
+      - name: Relatórios de teste
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: backend/target/surefire-reports/
+
+  frontend:
+    name: Frontend (Angular)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Testes
+        run: npx ng test --watch=false
+      - name: Build de produção
+        run: npx ng build
+      - name: Auditoria de dependências (npm)
+        run: npm audit --audit-level=high
+
+  dependency-check:
+    name: OWASP Dependency-Check (backend)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Verifica vulnerabilidades conhecidas (falha com CVSS >= 7)
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: |
+          if [ -z "$NVD_API_KEY" ]; then
+            echo "::warning::Segredo NVD_API_KEY não configurado; verificação ignorada."
+            exit 0
+          fi
+          mvn -B -ntp org.owasp:dependency-check-maven:12.1.0:check \
+            -DnvdApiKey="$NVD_API_KEY" -DfailBuildOnCVSS=7 -Dformats=HTML,JSON
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-check-report
+          path: backend/target/dependency-check-report.*
+          if-no-files-found: ignore

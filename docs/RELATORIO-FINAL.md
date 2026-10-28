@@ -75,20 +75,18 @@ Novos testes:
 - **Integração bancária não homologada.** O CNAB 240 segue o padrão FEBRABAN e precisa ser homologado banco a
   banco. Registro de boleto e PIX via API, remessa e CNAB 400 não foram implementados. Os detalhes estão em
   [INTEGRACOES.md](INTEGRACOES.md).
-- **Datas em UTC nos módulos antigos (R3):** entre 21h e 0h, "hoje" vira o dia seguinte. Os módulos novos já
-  usam America/Sao_Paulo.
 - Votação online pelo morador: não implementada. Depende também de avaliação jurídica.
 - Portaria sem integração com hardware (facial, placas, catracas).
 - Assistente de IA: avaliado e não implementado (motivos em MATRIZ-COMPARATIVA.md §4).
-- Projeto sem git e sem CI. Recomendo versionar antes de qualquer nova mudança.
+- Git e CI configurados. Falta criar o repositório remoto para o pipeline rodar no GitHub Actions.
 - Uma instância antiga da API (iniciada em 27/10, porta 8080) continua rodando com o código anterior. Ela não
   foi encerrada. Ao reiniciá-la, as migrações V7–V11 serão aplicadas ao banco `.local-dev`. Todas só
   acrescentam estruturas; nenhuma apaga dados.
 
 ## 5. Próximas prioridades
 
-1. Versionamento (git) e CI com testes, `npm audit` e OWASP Dependency-Check (B15).
-2. Datas de negócio no fuso do condomínio (B9).
+1. ✅ Versionamento (git) e CI com testes, `npm audit` e OWASP Dependency-Check (B15).
+2. ✅ Datas de negócio no fuso do condomínio (B9).
 3. Homologar o retorno CNAB com o primeiro banco de um cliente real e implementar registro de boleto e PIX via API desse banco (B8).
 4. Régua de cobrança automática (B12) e votação online (B10).
 5. PWA do portal (B13) e exportação contábil (B14).

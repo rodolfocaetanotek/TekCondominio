@@ -72,4 +72,4 @@ Legenda: ✅ implementado e testado · 🟡 implementado parcialmente · ⬜ pen
 - ✅ Segredos apenas por variáveis de ambiente (`.env.example` sem valores reais; `.env` no `.gitignore`)
 - ✅ Container da API roda com usuário sem privilégios; healthcheck de readiness
 - 🟡 Scripts `scripts/backup.sh` (banco + arquivos, soma SHA-256, retenção de 14) e `scripts/restore.sh` — agendar no servidor e testar restauração periodicamente
-- ⬜ Varredura de dependências (OWASP Dependency-Check / `npm audit`) no CI
+- ✅ CI (`.github/workflows/ci.yml`): testes, `npm audit --audit-level=high` a cada push; OWASP Dependency-Check semanal (requer `NVD_API_KEY`)

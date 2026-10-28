@@ -82,13 +82,13 @@ Complexidade: B = baixa, M = média, A = alta.
 | B6 | ✅ Indicadores | Decisão sem visão de futuro | Projeção pelos vencimentos (vencidos à parte); outlier só com histórico ≥ 3 meses | P5 | — | `insight/*`, `insights-tab.ts` | `InsightCalculatorTest`, `InsightIT` |
 | B7 | ✅ Limite por IP na autenticação | Força bruta distribuída | 429 + Retry-After após N tentativas por IP e janela | P1 | — | `AuthRateLimitFilter` | `AuthRateLimitFilterTest` |
 | B8 | Registro de boleto/PIX via API bancária | Boleto emitido fora do sistema | Porta `CollectionProvider`; adaptador por banco; webhook de liquidação idempotente; sandbox do banco | **P1** | Contrato e credenciais de banco/PSP | `integration/bank`, `billing` | Contrato contra sandbox |
-| B9 | Datas de negócio no fuso do condomínio | "Hoje" errado entre 21h e 0h | Trocar `LocalDate.now(clock)` por um relógio com zona; revisar cada uso | P1 | — | `ClockConfig` e todos os serviços | Teste com relógio fixo às 22h BRT |
+| B9 | ✅ Datas de negócio no fuso do condomínio | "Hoje" errado entre 21h e 0h | Trocar `LocalDate.now(clock)` por um relógio com zona; revisar cada uso | P1 | — | `ClockConfig` e todos os serviços | Teste com relógio fixo às 22h BRT |
 | B10 | Votação online em assembleia | Assembleia virtual | Voto do morador autenticado, 1 por unidade e item, janela de votação, trilha; aviso de validade jurídica | P2 | Validação jurídica da convenção | `assembly`, portal | IT de votação, peso por fração |
 | B11 | Remessa CNAB 240/400 | Registrar boletos por arquivo | Gerar remessa por banco homologado | P2 | Layout do banco | `integration/bank` | Testes de layout |
 | B12 | Régua de cobrança | Inadimplência | Lembretes D-3, D+1, D+15 por e-mail e notificação; registro no histórico de cobrança | P2 | E-mail SMTP | `jobs`, `billing` | IT com relógio fixo |
 | B13 | PWA do portal | App do morador | Manifest + service worker; instalável | P2 | — | `frontend` | Lighthouse |
 | B14 | Exportação contábil | Integração com escritório contábil | Exportar lançamentos no layout do sistema contábil-alvo | P2 | Escolha do sistema contábil | `report` | Teste de layout |
-| B15 | Git + CI (testes, `npm audit`, OWASP DC) | Processo | Pipeline verde a cada mudança | P1 | Repositório remoto | raiz | — |
+| B15 | ✅ Git + CI (testes, `npm audit`, OWASP DC) | Processo | Pipeline verde a cada mudança | P1 | Repositório remoto | raiz | — |
 | B16 | Row-Level Security | Defesa em profundidade | Políticas por `organization_id` com `SET app.org` | P3 | — | migração + `DataSource` | `TenantIsolationIT` |
 | B17 | Assistente de IA (consulta) | Dúvidas operacionais | Somente leitura, ferramentas com escopo do usuário, cita a fonte, sem executar operações | P3 | Contrato com provedor de IA, DPA/LGPD | novo módulo | Avaliação de respostas |
 

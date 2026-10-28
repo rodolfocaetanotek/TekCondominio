@@ -79,6 +79,8 @@ tekcondo:
       max-requests: ${TEKCONDO_AUTH_RATE_LIMIT:20}
       window: ${TEKCONDO_AUTH_RATE_WINDOW:PT5M}
   app:
+    # Fuso das datas de negócio (vencimento, atraso, "hoje"). Instantes continuam gravados em UTC.
+    time-zone: ${TEKCONDO_TIME_ZONE:America/Sao_Paulo}
     public-url: ${TEKCONDO_PUBLIC_URL:http://localhost:4200}
   jobs:
     reminders-cron: ${TEKCONDO_JOBS_REMINDERS_CRON:0 0 7 * * *}

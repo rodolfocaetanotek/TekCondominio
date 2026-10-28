@@ -62,13 +62,13 @@ desta etapa estão listadas no [RELATORIO-FINAL.md](RELATORIO-FINAL.md).
 |---|---|---|---|
 | R1 | **Sem fechamento de período**: estornos e lançamentos retroativos podem alterar uma prestação de contas já entregue ao conselho. | Alta | **Corrigido** (V7, `PeriodLock`) |
 | R2 | **Baixa manual de todas as cobranças**: em volume, gera erro operacional e atraso, além de não haver conciliação com o extrato. | Alta | **Mitigado**: retorno CNAB 240 (V9) e OFX (V8). Falta registro do boleto e PIX via API (depende de banco). |
-| R3 | **Datas de negócio calculadas em UTC** (`Clock.systemUTC()` + `LocalDate.now(clock)`). Entre 21h e 0h no horário de Brasília, "hoje" já é o dia seguinte: afeta o cálculo de atraso, a "data futura" e o painel. | Média | Os módulos novos usam `America/Sao_Paulo` explicitamente. **Pendente nos módulos antigos**: trocar para um `Clock` com a zona do condomínio, revisando cada uso (mudança transversal, fica para a próxima etapa). |
+| R3 | **Datas de negócio calculadas em UTC** (`Clock.systemUTC()` + `LocalDate.now(clock)`). Entre 21h e 0h no horário de Brasília, "hoje" já é o dia seguinte: afeta o cálculo de atraso, a "data futura" e o painel. | Média | **Corrigido**: o `Clock` da aplicação usa `America/Sao_Paulo` (`TEKCONDO_TIME_ZONE`) e os testes rodam no mesmo fuso (`ClockConfigTest`). |
 | R4 | `hibernate.jdbc.time_zone=UTC` desloca valores `LocalTime`. Foi detectado ao gravar horários de reserva. | Média | Contornado nos módulos novos (minutos do dia + `MinuteOfDay`). Nenhum módulo antigo usa `LocalTime`. |
 | R5 | Força bruta distribuída entre contas (sem limite por IP). | Média | **Corrigido**: `AuthRateLimitFilter` (em memória, por instância). |
 | R6 | Isolamento depende só da aplicação + FKs, sem Row-Level Security. | Baixa | Continua pendente (testado por `TenantIsolationIT`). |
-| R7 | Sem varredura de dependências no CI (OWASP / `npm audit`). Não há pipeline de CI. | Média | Pendente |
+| R7 | Sem varredura de dependências no CI (OWASP / `npm audit`). Não há pipeline de CI. | Média | **Corrigido**: `.github/workflows/ci.yml`. Vulnerabilidade alta do Vite (só desenvolvimento) corrigida. OWASP precisa do segredo `NVD_API_KEY`. |
 | R8 | Docker Compose e scripts de backup nunca executados neste ambiente. | Média | Pendente: precisa de uma máquina com Docker |
-| R9 | O projeto não está sob controle de versão (git). | Alta (processo) | Recomendação: `git init` e o primeiro commit antes da próxima etapa |
+| R9 | O projeto não está sob controle de versão (git). | Alta (processo) | **Corrigido**: repositório git com o estado anterior e o atual. Falta o remoto. |
 | R10 | Instância local de desenvolvimento antiga (iniciada em 27/10) ainda rodando na porta 8080 com o código anterior. | Informativo | Não foi encerrada. A validação desta etapa usou uma instância isolada na porta 8090. |
 
 ## 5. Pontos fortes a preservar

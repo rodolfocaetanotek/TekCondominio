@@ -51,7 +51,7 @@ _Atualizado em 28/10/2026._ Legenda: ✅ concluído e testado · 🟡 parcial ·
 
 ## Verificação final
 
-- `mvn test`: **140 testes, 0 falhas** (unitários + integração contra PostgreSQL 16 real).
+- `mvn test`: **141 testes, 0 falhas** (unitários + integração contra PostgreSQL 16 real).
 - `ng test`: **20 testes, 0 falhas**. `ng build` de produção sem erros.
 - `scripts/e2e_validation.py`: **19 verificações OK** contra a API em execução (instância isolada, 28/10/2026).
 - Percurso ponta a ponta pelo proxy do frontend contra o banco local (estrutura → financeiro → cobrança → operações → relatórios/PDF → painel).
@@ -63,7 +63,6 @@ _Atualizado em 28/10/2026._ Legenda: ✅ concluído e testado · 🟡 parcial ·
 |---|---|
 | Registro de boletos/PIX via API bancária e remessa CNAB | Exige banco e credenciais. A **baixa automática pelo retorno CNAB 240 já existe**; falta o registro (ver INTEGRACOES.md). CNAB 400 não implementado. |
 | Votação eletrônica pelos moradores | Votos são registrados pela mesa (presencial/híbrida). Depende também de análise jurídica da convenção. |
-| Datas de negócio no fuso do condomínio nos módulos antigos | Relógio em UTC (AUDITORIA.md, R3). Módulos novos já usam America/Sao_Paulo. |
 | Assistente de IA | Avaliado e não implementado (MATRIZ-COMPARATIVA.md §4). |
 | Direitos do titular (LGPD): exportação/anonimização automática e política de retenção executada por job | Processo documentado; execução manual. |
 | Row-Level Security no PostgreSQL e limite por IP fora da autenticação | Isolamento hoje é garantido pela aplicação + FKs compostas (testado). |

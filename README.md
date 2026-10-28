@@ -129,7 +129,7 @@ Agende o backup diário (cron), copie para fora do servidor e **teste a restaura
 ## Testes
 
 ```bash
-cd backend  && mvn test                    # 140 testes (unitários + integração com PostgreSQL real)
+cd backend  && mvn test                    # 141 testes (unitários + integração com PostgreSQL real)
 cd frontend && npx ng test --watch=false   # 20 testes (Vitest)
 ```
 
@@ -142,6 +142,21 @@ cd backend && mvn spring-boot:test-run -Dspring-boot.run.main-class=br.com.tekco
   "-Dspring-boot.run.jvmArguments=-Dtekcondo.localdev.dir=.local-dev-e2e -Dtekcondo.localdev.pg-port=54339 -Dserver.port=8090"
 python scripts/e2e_validation.py http://localhost:8090 backend/.local-dev-e2e     # 19 verificações
 ```
+
+## Versionamento e integração contínua
+
+O projeto está em git (branch `main`). O primeiro commit guarda o estado anterior à etapa de benchmarking, para
+comparação (`git diff HEAD~1 --stat`).
+
+O workflow `.github/workflows/ci.yml` roda no GitHub Actions a cada push ou pull request:
+
+| Job | O que verifica |
+|---|---|
+| `backend` | `mvn test` (unitários + integração com PostgreSQL 16 real embarcado) e `mvn package` |
+| `frontend` | `npm ci`, `ng test`, `ng build` de produção e `npm audit --audit-level=high` |
+| `dependency-check` | OWASP Dependency-Check nas dependências Java (semanal ou manual). Falha com CVSS ≥ 7. Requer o segredo `NVD_API_KEY` (chave gratuita em nvd.nist.gov); sem ele, o job é ignorado com aviso. |
+
+Para ativar: crie o repositório remoto, `git remote add origin <url>` e `git push -u origin main`.
 
 ## Build para produção
 

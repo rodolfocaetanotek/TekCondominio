@@ -125,6 +125,8 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <!-- Mesmo fuso da aplicação: os testes calculam "hoje" igual em qualquer máquina ou CI (UTC). -->
+                    <argLine>-Duser.timezone=America/Sao_Paulo</argLine>
                     <includes>
                         <include>**/*Test.java</include>
                         <include>**/*IT.java</include>
