@@ -38,19 +38,21 @@ import { StructureService } from './structure.service';
 
         <div class="layout">
           <section class="tc-table-card">
-            <h2 class="tc-section-title pad">Vínculos com unidades</h2>
+            <h2 class="tc-section-title tc-card-head is-divided">Vínculos com unidades</h2>
             @for (o of p.occupancies; track o.id) {
               <div class="occ" [class.ended]="!o.current">
                 <div class="who">
                   <strong>{{ o.unitLabel }}</strong>
                   <span class="tc-muted">{{ roleLabel(o) }} · {{ o.startDate | isoDate }}{{ o.current ? ' até hoje' : ' a ' + (o.endDate | isoDate) }}</span>
                 </div>
-                @if (o.financialResponsible) {
-                  <span class="tc-chip-soft">Resp. financeiro</span>
-                }
-                @if (o.condominiumId === context.id()) {
-                  <a mat-button [routerLink]="['/unidades', o.unitId]">Ver unidade</a>
-                }
+                <div class="occ-end">
+                  @if (o.financialResponsible) {
+                    <span class="tc-chip-soft">Resp. financeiro</span>
+                  }
+                  @if (o.condominiumId === context.id()) {
+                    <a mat-button [routerLink]="['/unidades', o.unitId]">Ver unidade</a>
+                  }
+                </div>
               </div>
             } @empty {
               <tc-empty-state icon="link_off" title="Sem vínculos" description="Vincule a pessoa a uma unidade pela ficha da unidade." />
@@ -60,10 +62,10 @@ import { StructureService } from './structure.service';
           <aside class="side">
             <section class="tc-card">
               <h2 class="tc-section-title">Contato</h2>
-              <dl>
-                <dt>E-mail</dt><dd>{{ p.email ?? '—' }}</dd>
-                <dt>Telefone</dt><dd>{{ p.phone ? (p.phone | doc: 'phone') : '—' }}</dd>
-                <dt>Alternativo</dt><dd>{{ p.secondaryPhone ? (p.secondaryPhone | doc: 'phone') : '—' }}</dd>
+              <dl class="tc-dl">
+                <div><dt>E-mail</dt><dd>{{ p.email ?? '—' }}</dd></div>
+                <div><dt>Telefone</dt><dd>{{ p.phone ? (p.phone | doc: 'phone') : '—' }}</dd></div>
+                <div><dt>Alternativo</dt><dd>{{ p.secondaryPhone ? (p.secondaryPhone | doc: 'phone') : '—' }}</dd></div>
               </dl>
               @if (p.notes) {
                 <p class="tc-muted small">{{ p.notes }}</p>
@@ -98,17 +100,16 @@ import { StructureService } from './structure.service';
     .layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 16px; align-items: start; }
     @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
     .side { display: grid; gap: 16px; }
-    .pad { padding: 16px 20px 4px; margin: 0; }
-    .occ { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--mat-sys-outline-variant); }
+    .occ { display: flex; align-items: center; gap: 8px 12px; padding: 12px 20px; flex-wrap: wrap; }
+    .occ + .occ { border-top: 1px solid var(--tc-border); }
     .occ.ended { opacity: .65; }
-    .who { flex: 1; display: grid; }
-    dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; }
-    dt { color: var(--mat-sys-on-surface-variant); }
-    dd { margin: 0; word-break: break-word; }
+    .who { flex: 1 1 200px; min-width: 0; display: grid; gap: 2px; }
+    .occ-end { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
     .small { font: var(--mat-sys-body-small); }
+    .small mat-icon { color: var(--tc-success); vertical-align: middle; }
     .toggle { margin-top: 8px; display: block; }
+    @media (max-width: 600px) { .occ { padding-inline: 16px; } }
     .tc-section-title { margin-top: 0; }
-    .tc-status.big { font: var(--mat-sys-label-large); padding: 4px 14px; align-self: center; }
   `,
 })
 export class PersonDetail {

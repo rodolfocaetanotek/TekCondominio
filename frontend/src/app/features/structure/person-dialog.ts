@@ -12,13 +12,14 @@ import { FieldError } from '../../shared/forms/field-error';
 import { applyServerErrors } from '../../shared/forms/server-errors';
 import { PersonDetail, PersonKind } from './structure.models';
 import { StructureService } from './structure.service';
+import { DialogClose } from '../../shared/ui/dialog-close';
 
 @Component({
   selector: 'tc-person-dialog',
-  imports: [ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule,
+  imports: [DialogClose, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule,
     MaskDirective, FieldError],
   template: `
-    <h2 mat-dialog-title>{{ data.person ? 'Editar pessoa' : 'Nova pessoa' }}</h2>
+    <h2 mat-dialog-title>{{ data.person ? 'Editar pessoa' : 'Nova pessoa' }} <tc-dialog-close /></h2>
     <form [formGroup]="form" (ngSubmit)="save()" novalidate>
       <mat-dialog-content>
         @if (error(); as message) {

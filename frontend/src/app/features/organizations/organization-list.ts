@@ -28,9 +28,7 @@ import { Organization, OrganizationService } from './organization.service';
       </tc-page-header>
 
       <section class="tc-table-card" [attr.aria-busy]="loading()">
-        @if (loading()) {
-          <mat-progress-bar mode="indeterminate" />
-        }
+        <mat-progress-bar [mode]="loading() ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="!loading()" />
         @if (error(); as message) {
           <tc-empty-state icon="cloud_off" title="Não foi possível carregar" [description]="message" />
         } @else if (result(); as page) {

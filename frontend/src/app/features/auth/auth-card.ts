@@ -16,11 +16,13 @@ import { Component, input } from '@angular/core';
     </main>
   `,
   styles: `
-    .wrap { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 20px; padding: 24px 16px; }
-    .brand { display: flex; align-items: center; gap: 10px; font: var(--mat-sys-title-large); color: var(--mat-sys-primary); font-weight: 700; }
-    .card { width: min(440px, calc(100vw - 32px)); background: var(--mat-sys-surface); border: 1px solid var(--mat-sys-outline-variant);
-      border-radius: var(--tc-radius); padding: 28px; }
-    h1 { font: var(--mat-sys-headline-small); margin: 0 0 8px; }
+    .wrap { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 24px; padding: 24px 16px;
+      background: radial-gradient(circle at 80% 0%, rgb(238 122 12 / 0.08), transparent 45%), var(--tc-bg); }
+    .brand { display: flex; align-items: center; gap: 10px; font-size: 20px; letter-spacing: -0.02em; color: var(--mat-sys-primary); font-weight: 700; }
+    .card { width: min(440px, calc(100vw - 32px)); background: var(--tc-surface); border: 1px solid var(--tc-border);
+      border-radius: 14px; box-shadow: var(--tc-shadow-lg); padding: 32px 28px; }
+    h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 8px; }
+    @media (max-width: 600px) { .card { padding: 24px 18px; box-shadow: var(--tc-shadow); } }
   `,
 })
 export class AuthCard {

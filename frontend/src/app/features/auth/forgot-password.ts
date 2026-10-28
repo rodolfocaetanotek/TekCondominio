@@ -25,7 +25,7 @@ import { PasswordService } from './password.service';
       } @else {
         <p class="tc-muted">Informe o e-mail cadastrado. Você receberá um link válido por tempo limitado.</p>
         @if (error(); as message) {
-          <p class="alert" role="alert">{{ message }}</p>
+          <p class="tc-alert" role="alert">{{ message }}</p>
         }
         <form (ngSubmit)="submit()" novalidate>
           <mat-form-field class="wide">
@@ -44,10 +44,10 @@ import { PasswordService } from './password.service';
     .wide { width: 100%; }
     button.wide, a.wide { height: 48px; }
     .back { margin-top: 8px; }
-    .done { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; }
-    .done mat-icon { color: var(--mat-sys-primary); flex: none; }
+    .done { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; padding: 12px 14px;
+      border-radius: var(--tc-radius-sm); background: var(--tc-success-container); }
+    .done mat-icon { color: var(--tc-success); flex: none; }
     .done p { margin: 0; }
-    .alert { padding: 10px 12px; border-radius: 10px; background: var(--mat-sys-error-container); color: var(--mat-sys-on-error-container); }
   `,
 })
 export class ForgotPassword {

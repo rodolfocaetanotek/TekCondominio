@@ -72,7 +72,7 @@ import { CostCenter, FinanceApi } from './finance-api';
         <div class="chart">
           @for (a of accounts() ?? []; track a.id) {
             <div class="acc" [class.group]="!a.analytic" [class.off]="!a.active">
-              <span class="code">{{ a.code }}</span><span>{{ a.name }}</span>
+              <span class="code mono">{{ a.code }}</span><span>{{ a.name }}</span>
               @if (!a.system) { <span class="tc-chip-soft">própria</span> }
             </div>
           }
@@ -81,18 +81,22 @@ import { CostCenter, FinanceApi } from './finance-api';
     </div>
   `,
   styles: `
-    .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-top: 16px; }
+    .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 16px; align-items: start; }
     .wide { grid-column: 1 / -1; }
-    .row { display: flex; justify-content: space-between; align-items: center; }
+    .tc-section-title { margin-top: 0; }
+    .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
     .row h3 { margin: 0; }
-    .item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--mat-sys-outline-variant); }
-    .item span { flex: 1; }
+    .item { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; padding: 6px 0; border-bottom: 1px solid var(--tc-border); }
+    .item:last-child { border-bottom: 0; }
+    .item span { flex: 1 1 140px; min-width: 0; }
     .off { opacity: .55; }
-    .small { font: var(--mat-sys-body-small); }
-    .chart { columns: 2 280px; margin-top: 8px; }
+    .small { font: var(--mat-sys-body-small); margin: 0; }
+    .chart { columns: 2 280px; column-gap: 32px; margin-top: 8px; }
     .acc { display: flex; gap: 8px; padding: 3px 0; break-inside: avoid; }
-    .acc.group { font-weight: 700; margin-top: 8px; }
-    .code { width: 44px; color: var(--mat-sys-on-surface-variant); font-variant-numeric: tabular-nums; }
+    .acc.group { margin-top: 12px; padding-bottom: 4px; border-bottom: 1px solid var(--tc-border); font-size: 11.5px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase; color: var(--tc-text-muted); }
+    .acc.group:first-child { margin-top: 0; }
+    .code { flex: 0 0 44px; color: var(--tc-text-muted); font-variant-numeric: tabular-nums; }
   `,
 })
 export class SettingsTab {

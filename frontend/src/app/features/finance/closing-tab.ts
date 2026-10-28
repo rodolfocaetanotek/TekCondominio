@@ -21,7 +21,7 @@ import { ClosingStatus, FinanceApi } from './finance-api';
     @if (status(); as s) {
       <section class="tc-card state">
         <div>
-          <span class="tc-muted">Período fechado até</span>
+          <span class="tc-section-label">Período fechado até</span>
           <strong>{{ s.closedUntil ? (s.closedUntil | isoDate) : 'Nenhum período fechado' }}</strong>
           <p class="tc-muted small">Após o fechamento, baixas, estornos, transferências, conciliações e lançamentos com data ou
             competência no período ficam bloqueados. A reabertura exige justificativa e fica registrada.</p>
@@ -37,13 +37,25 @@ import { ClosingStatus, FinanceApi } from './finance-api';
         <section class="tc-card">
           <h3 class="tc-section-title">Conferência para fechar até {{ s.suggestedUntil | isoDate }}</h3>
           @if (check(); as c) {
-            <div class="kpis">
-              <div><span class="tc-muted">Recebido no período</span><strong class="positive">{{ c.income | currency: 'BRL' }}</strong></div>
-              <div><span class="tc-muted">Pago no período</span><strong class="negative">{{ c.expense | currency: 'BRL' }}</strong></div>
-              <div><span class="tc-muted">Movimentações não conciliadas</span><strong [class.warn]="c.unreconciledMovements > 0">{{ c.unreconciledMovements }}</strong></div>
-              <div><span class="tc-muted">Pagamentos aguardando aprovação</span><strong [class.warn]="c.pendingApprovals > 0">{{ c.pendingApprovals }}</strong></div>
+            <div class="tc-kpis inset">
+              <div class="tc-kpi tc-card tone-success">
+                <span class="icon"><mat-icon aria-hidden="true">trending_up</mat-icon></span>
+                <span class="label">Recebido no período</span><span class="value">{{ c.income | currency: 'BRL' }}</span>
+              </div>
+              <div class="tc-kpi tc-card tone-warning">
+                <span class="icon"><mat-icon aria-hidden="true">trending_down</mat-icon></span>
+                <span class="label">Pago no período</span><span class="value">{{ c.expense | currency: 'BRL' }}</span>
+              </div>
+              <div class="tc-kpi tc-card" [class.tone-danger]="c.unreconciledMovements > 0" [class.tone-success]="c.unreconciledMovements === 0">
+                <span class="icon"><mat-icon aria-hidden="true">{{ c.unreconciledMovements > 0 ? 'rule' : 'fact_check' }}</mat-icon></span>
+                <span class="label">Movimentações não conciliadas</span><span class="value">{{ c.unreconciledMovements }}</span>
+              </div>
+              <div class="tc-kpi tc-card" [class.tone-danger]="c.pendingApprovals > 0" [class.tone-success]="c.pendingApprovals === 0">
+                <span class="icon"><mat-icon aria-hidden="true">pending_actions</mat-icon></span>
+                <span class="label">Pagamentos aguardando aprovação</span><span class="value">{{ c.pendingApprovals }}</span>
+              </div>
             </div>
-            <table class="lines">
+            <table class="lines tc-cards-mobile">
               <thead><tr><th>Conta</th><th class="money">Saldo em {{ c.until | isoDate }}</th><th class="money">Saldo conciliado</th></tr></thead>
               <tbody>
                 @for (b of c.balances; track b.id) {
@@ -56,7 +68,9 @@ import { ClosingStatus, FinanceApi } from './finance-api';
               <p class="tc-alert" role="status">Há pendências. O fechamento é permitido, mas recomenda-se conciliar o extrato antes.</p>
             }
             @if (canClose()) {
-              <button mat-flat-button (click)="close(s.suggestedUntil!)"><mat-icon>lock</mat-icon> Fechar até {{ s.suggestedUntil | isoDate }}</button>
+              <div class="tc-actions">
+                <button mat-flat-button (click)="close(s.suggestedUntil!)"><mat-icon>lock</mat-icon> Fechar até {{ s.suggestedUntil | isoDate }}</button>
+              </div>
             }
           }
         </section>
@@ -64,7 +78,7 @@ import { ClosingStatus, FinanceApi } from './finance-api';
 
       <section class="tc-card">
         <h3 class="tc-section-title">Histórico</h3>
-        <table class="lines">
+        <table class="lines tc-cards-mobile">
           <thead><tr><th>Quando</th><th>Ação</th><th>Período</th><th>Por</th><th>Observação</th></tr></thead>
           <tbody>
             @for (h of s.history; track h.id) {
@@ -84,16 +98,15 @@ import { ClosingStatus, FinanceApi } from './finance-api';
     }
   `,
   styles: `
-    :host { display: grid; gap: 16px; margin-top: 16px; }
+    :host { display: grid; gap: 16px; }
     .state { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-    .state strong { display: block; font: var(--mat-sys-headline-small); }
+    .state .tc-section-label { display: block; margin-bottom: 4px; }
+    .state strong { display: block; font: var(--mat-sys-headline-small); font-weight: 650; }
     .small { font: var(--mat-sys-body-small); max-width: 70ch; }
-    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px; }
-    .kpis div { display: grid; } .kpis strong { font: var(--mat-sys-title-large); }
-    .warn { color: var(--mat-sys-error); }
-    .lines { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-    .lines th, .lines td { padding: 6px 8px; border-bottom: 1px solid var(--mat-sys-outline-variant); text-align: left; }
-    .lines .money { text-align: right; }
+    .tc-section-title { margin-top: 0; }
+    .warn { color: var(--tc-danger); font-weight: 600; }
+    .lines { margin-bottom: 12px; }
+    .tc-alert { margin: 0 0 12px; }
     section { overflow-x: auto; }
   `,
 })

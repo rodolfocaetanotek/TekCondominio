@@ -22,28 +22,38 @@ import { VisitorApi, VisitorPass } from './visitor-api';
       <div class="head">
         <p class="tc-muted small">Autorize a entrada com antecedência. Informe o <strong>código</strong> ao visitante: a portaria libera a entrada com ele
           e você recebe um aviso quando ele chegar.</p>
-        <button mat-flat-button (click)="authorize()"><mat-icon>person_add</mat-icon> Autorizar entrada</button>
+        <button mat-flat-button class="primary" (click)="authorize()"><mat-icon>person_add</mat-icon> Autorizar entrada</button>
       </div>
       @for (v of list() ?? []; track v.id) {
         <div class="row">
-          <div><strong>{{ v.name }}</strong> · {{ v.kind | label: 'visitorKind' }} · unid. {{ v.unitLabel }}<br />
-            <span class="tc-muted small">{{ v.validFrom | isoDate }}{{ v.validUntil !== v.validFrom ? ' a ' + (v.validUntil | isoDate) : '' }}
-              · {{ v.status | label: 'visitorStatus' }}</span></div>
+          <div class="who"><strong>{{ v.name }}</strong> · {{ v.kind | label: 'visitorKind' }} · unid. {{ v.unitLabel }}<br />
+            <span class="tc-muted small">{{ v.validFrom | isoDate }}{{ v.validUntil !== v.validFrom ? ' a ' + (v.validUntil | isoDate) : '' }}</span>
+            <span class="tc-status" [class.is-pending]="v.status === 'EXPECTED'" [class.is-success]="v.status === 'INSIDE'"
+              [class.is-inactive]="v.status === 'LEFT' || v.status === 'CANCELLED'">{{ v.status | label: 'visitorStatus' }}</span></div>
           <div class="right">
             @if (v.accessCode) { <span class="code" aria-label="Código de acesso">{{ v.accessCode }}</span> }
-            @if (v.status === 'EXPECTED') { <button mat-button (click)="cancel(v)">Cancelar</button> }
+            @if (v.status === 'EXPECTED') { <button mat-stroked-button (click)="cancel(v)">Cancelar</button> }
           </div>
         </div>
       } @empty { <p class="tc-muted">Nenhuma autorização.</p> }
     </section>
   `,
   styles: `
-    .mt { margin-top: 16px; } .small { font: var(--mat-sys-body-small); }
-    .head { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
-    .head p { margin: 0; max-width: 60ch; }
-    .row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--mat-sys-outline-variant); flex-wrap: wrap; }
-    .right { display: flex; align-items: center; gap: 8px; }
-    .code { font: var(--mat-sys-title-large); letter-spacing: .2em; font-variant-numeric: tabular-nums; }
+    .mt { display: block; margin-top: 16px; } .small { font: var(--mat-sys-body-small); }
+    .head { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; padding-bottom: 14px; margin-bottom: 4px; border-bottom: 1px solid var(--tc-border); }
+    .head p { margin: 0; flex: 1 1 280px; max-width: 60ch; line-height: 1.5; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 10px 12px; padding: 12px 0; border-bottom: 1px solid var(--tc-border); flex-wrap: wrap; }
+    .row:last-of-type { border-bottom: 0; }
+    .who { flex: 1 1 220px; min-width: 0; line-height: 1.5; overflow-wrap: anywhere; }
+    .who .tc-status { margin-left: 8px; vertical-align: middle; }
+    .right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .code { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 22px; font-weight: 650; letter-spacing: .2em; font-variant-numeric: tabular-nums;
+      padding: 4px 6px 4px 12px; border-radius: var(--tc-radius-sm); color: var(--mat-sys-primary);
+      background: color-mix(in srgb, var(--mat-sys-primary) 8%, var(--tc-surface)); border: 1px dashed color-mix(in srgb, var(--mat-sys-primary) 40%, var(--tc-border)); }
+    @media (max-width: 600px) {
+      .head .primary { flex: 1 1 100%; }
+      .right { flex: 1 1 100%; justify-content: space-between; }
+    }
   `,
 })
 export class PortalVisitors {

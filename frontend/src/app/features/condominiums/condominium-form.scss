@@ -13,55 +13,43 @@ form {
 
 .tc-card .tc-section-title {
   margin-top: 0;
-}
-
-.tc-status.big {
-  font: var(--mat-sys-label-large);
-  padding: 4px 14px;
-}
-
-.banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: var(--tc-radius);
+  padding-bottom: 12px;
   margin-bottom: 16px;
-
-  > div {
-    flex: 1;
-    display: grid;
-    gap: 2px;
-  }
-
-  &.warn {
-    background: var(--mat-sys-tertiary-container);
-    color: var(--mat-sys-on-tertiary-container);
-  }
-
-  &.error {
-    background: var(--mat-sys-error-container);
-    color: var(--mat-sys-on-error-container);
-  }
+  border-bottom: 1px solid var(--tc-border);
 }
 
 .footer {
   position: sticky;
   bottom: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  padding: 12px 0;
-  background: var(--mat-sys-surface-container-lowest);
-  border-top: 1px solid var(--mat-sys-outline-variant);
+  padding: 12px 16px;
+  background: var(--tc-surface);
+  border: 1px solid var(--tc-border);
+  border-radius: var(--tc-radius);
+  box-shadow: 0 -4px 16px rgb(16 24 40 / 0.06), var(--tc-shadow);
 
   .meta {
     font: var(--mat-sys-body-small);
     margin-right: 8px;
   }
+
+  @media (max-width: 600px) {
+    .tc-spacer {
+      flex-basis: 100%;
+      height: 0;
+    }
+
+    .meta {
+      flex-basis: 100%;
+      margin: 0;
+    }
+  }
 }
 
 .danger-text {
-  --mat-button-text-label-text-color: var(--mat-sys-error);
+  --mat-button-text-label-text-color: var(--tc-danger);
 }

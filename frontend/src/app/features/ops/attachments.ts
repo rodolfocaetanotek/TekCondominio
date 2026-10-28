@@ -17,7 +17,7 @@ import { Doc, OpsApi } from './ops-api';
       <div class="row">
         <h3 class="tc-section-title">Anexos</h3>
         @if (canEdit()) {
-          <label class="upload" mat-button>
+          <label class="tc-file-button is-text" mat-button>
             <input type="file" accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.csv,.txt" (change)="upload($event)" />
             <mat-icon>attach_file</mat-icon> Anexar
           </label>
@@ -26,7 +26,7 @@ import { Doc, OpsApi } from './ops-api';
       @if (busy()) { <mat-progress-bar mode="indeterminate" /> }
       @for (d of docs(); track d.id) {
         <div class="doc">
-          <mat-icon aria-hidden="true">{{ d.contentType.includes('pdf') ? 'picture_as_pdf' : d.contentType.startsWith('image') ? 'image' : 'description' }}</mat-icon>
+          <mat-icon class="ftype" aria-hidden="true">{{ d.contentType.includes('pdf') ? 'picture_as_pdf' : d.contentType.startsWith('image') ? 'image' : 'description' }}</mat-icon>
           <span class="name">{{ d.title }} <small class="tc-muted">({{ size(d) }})</small></span>
           <button mat-icon-button (click)="download(d)" [attr.aria-label]="'Baixar ' + d.title"><mat-icon>download</mat-icon></button>
         </div>
@@ -36,14 +36,13 @@ import { Doc, OpsApi } from './ops-api';
     </section>
   `,
   styles: `
-    .row { display: flex; justify-content: space-between; align-items: center; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
     .row h3 { margin: 0; }
-    .upload { cursor: pointer; display: inline-flex; align-items: center; gap: 4px; color: var(--mat-sys-primary); font: var(--mat-sys-label-large); padding: 8px; border-radius: 20px; }
-    .upload:focus-within { outline: 2px solid var(--mat-sys-primary); }
-    .upload input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-    .doc { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
-    .name { flex: 1; word-break: break-word; }
-    .small { font: var(--mat-sys-body-small); }
+    .doc { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--tc-border); }
+    .doc:last-of-type { border-bottom: 0; }
+    .ftype { color: var(--mat-sys-primary); flex: 0 0 auto; }
+    .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .small { font: var(--mat-sys-body-small); margin: 4px 0 0; }
   `,
 })
 export class Attachments {

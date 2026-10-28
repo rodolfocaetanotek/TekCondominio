@@ -10,6 +10,7 @@ import { FieldError } from '../../shared/forms/field-error';
 import { applyServerErrors } from '../../shared/forms/server-errors';
 import { Building, Unit, UNIT_TYPE_LABELS, UnitType } from './structure.models';
 import { StructureService } from './structure.service';
+import { DialogClose } from '../../shared/ui/dialog-close';
 
 export interface UnitDialogData {
   condominiumId: string;
@@ -19,9 +20,9 @@ export interface UnitDialogData {
 
 @Component({
   selector: 'tc-unit-dialog',
-  imports: [ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, FieldError],
+  imports: [DialogClose, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, FieldError],
   template: `
-    <h2 mat-dialog-title>{{ data.unit ? 'Editar unidade' : 'Nova unidade' }}</h2>
+    <h2 mat-dialog-title>{{ data.unit ? 'Editar unidade' : 'Nova unidade' }} <tc-dialog-close /></h2>
     <form [formGroup]="form" (ngSubmit)="save()" novalidate>
       <mat-dialog-content>
         @if (error(); as message) {

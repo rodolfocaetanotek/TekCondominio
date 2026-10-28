@@ -21,7 +21,7 @@
       <mat-progress-bar mode="indeterminate" class="bar" />
     }
     @if (actionError(); as message) {
-      <div class="banner" role="alert"><mat-icon>error</mat-icon><span>{{ message }}</span></div>
+      <div class="tc-banner is-danger" role="alert"><mat-icon>error</mat-icon><span>{{ message }}</span></div>
     }
 
     <div class="layout">
@@ -33,7 +33,7 @@
           <ul class="assignments">
             @for (a of u.assignments; track a.id) {
               <li>
-                <mat-icon aria-hidden="true">{{ a.scope === 'ORGANIZATION' ? 'domain' : 'apartment' }}</mat-icon>
+                <mat-icon class="tc-ico" aria-hidden="true">{{ a.scope === 'ORGANIZATION' ? 'domain' : 'apartment' }}</mat-icon>
                 <div class="what">
                   <strong>{{ a.roleName }}</strong>
                   <span class="tc-muted">{{ a.scope === 'ORGANIZATION' ? 'Toda a administradora' : a.condominiumName }}</span>
@@ -50,7 +50,7 @@
         }
 
         @if (canManage()) {
-          <h3 class="tc-section-title add-title">Atribuir papel</h3>
+          <h3 class="tc-section-label add-title">Atribuir papel</h3>
           <tc-role-fields [roleCode]="roleCode" [condominiumId]="condominiumId" />
           <div class="tc-actions">
             <button mat-stroked-button (click)="addAssignment()" [disabled]="busy()"><mat-icon>add</mat-icon> Atribuir</button>
@@ -71,11 +71,15 @@
               <button mat-stroked-button (click)="saveName()" [disabled]="busy() || name.pristine">Salvar nome</button>
             </div>
           }
-          <dl>
-            <dt>Cadastro</dt>
-            <dd>{{ u.createdAt | date: 'dd/MM/yyyy HH:mm' }}</dd>
-            <dt>Último acesso</dt>
-            <dd>{{ u.lastLoginAt ? (u.lastLoginAt | date: 'dd/MM/yyyy HH:mm') : 'Nunca acessou' }}</dd>
+          <dl class="tc-dl cols">
+            <div>
+              <dt>Cadastro</dt>
+              <dd>{{ u.createdAt | date: 'dd/MM/yyyy HH:mm' }}</dd>
+            </div>
+            <div>
+              <dt>Último acesso</dt>
+              <dd>{{ u.lastLoginAt ? (u.lastLoginAt | date: 'dd/MM/yyyy HH:mm') : 'Nunca acessou' }}</dd>
+            </div>
           </dl>
         </section>
 

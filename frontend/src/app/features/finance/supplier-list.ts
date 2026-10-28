@@ -6,6 +6,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { catchError, combineLatest, debounceTime, filter, of, switchMap } from 'rxjs';
 import { CondominiumContext } from '../../core/context/condominium-context';
@@ -19,16 +20,20 @@ import { FinanceApi, Supplier } from './finance-api';
 
 @Component({
   selector: 'tc-supplier-list',
-  imports: [ReactiveFormsModule, MatTableModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, PageHeader, EmptyState, DocPipe],
+  imports: [ReactiveFormsModule, MatTableModule, MatProgressBarModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, PageHeader, EmptyState, DocPipe],
   template: `
     <div class="tc-page">
       <tc-page-header eyebrow="Cadastros" title="Fornecedores" subtitle="Prestadores de serviço da administradora, usados em despesas e contratos.">
         @if (canEdit()) { <button mat-flat-button (click)="edit()"><mat-icon>add_business</mat-icon> Novo fornecedor</button> }
       </tc-page-header>
-      <mat-form-field class="search"><mat-label>Buscar</mat-label><mat-icon matPrefix>search</mat-icon>
-        <input matInput [formControl]="search" placeholder="Nome, categoria ou CNPJ" /></mat-form-field>
-      <section class="tc-table-card">
-        @if ((page()?.content ?? []).length === 0) {
+      <div class="filters">
+        <mat-form-field class="search"><mat-label>Buscar</mat-label><mat-icon matPrefix>search</mat-icon>
+          <input matInput [formControl]="search" placeholder="Nome, categoria ou CNPJ" /></mat-form-field>
+      </div>
+      <section class="tc-table-card" aria-live="polite">
+        @if (page() === undefined) {
+          <mat-progress-bar mode="indeterminate" />
+        } @else if ((page()?.content ?? []).length === 0) {
           <tc-empty-state icon="storefront" title="Nenhum fornecedor" />
         } @else {
           <div class="table-scroll">
@@ -41,14 +46,14 @@ import { FinanceApi, Supplier } from './finance-api';
               <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Situação</th>
                 <td mat-cell *matCellDef="let s"><span class="tc-status" [class.is-active]="s.active" [class.is-inactive]="!s.active">{{ s.active ? 'Ativo' : 'Inativo' }}</span></td></ng-container>
               <tr mat-header-row *matHeaderRowDef="columns"></tr>
-              <tr mat-row *matRowDef="let row; columns: columns" [class.is-clickable]="canEdit()" (click)="canEdit() && edit(row)"></tr>
+              <tr mat-row *matRowDef="let row; columns: columns" [class.is-clickable]="canEdit()" (click)="canEdit() && edit(row)"
+                [attr.tabindex]="canEdit() ? 0 : null" (keydown.enter)="canEdit() && edit(row)"></tr>
             </table>
           </div>
         }
       </section>
     </div>
   `,
-  styles: `.search { width: min(420px, 100%); }`,
 })
 export class SupplierList {
   private readonly context = inject(CondominiumContext);

@@ -5,7 +5,7 @@
         <img src="favicon.svg" alt="" width="44" height="44" />
         <span>Tek Condomínio</span>
       </div>
-      <h2>Administração condominial clara, segura e em um só lugar.</h2>
+      <h2>Gestão de condomínios simples e transparente.</h2>
       <ul>
         <li><mat-icon>apartment</mat-icon> Condomínios, unidades e moradores</li>
         <li><mat-icon>account_balance</mat-icon> Financeiro e cobrança com rastreabilidade</li>
@@ -19,7 +19,11 @@
       @if (loading()) {
         <mat-progress-bar mode="indeterminate" class="bar" aria-label="Entrando" />
       }
-      <h1>Entrar</h1>
+      <div class="mobile-brand" aria-hidden="true">
+        <img src="favicon.svg" alt="" width="36" height="36" />
+        <span>Tek Condomínio</span>
+      </div>
+      <h1>Bem-vindo(a)</h1>
       <p class="tc-muted">Acesse com o e-mail e a senha cadastrados pela sua administradora.</p>
 
       @if (expirada()) {

@@ -31,20 +31,20 @@ import { PortalApi } from './portal-api';
   imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, MatTabsModule, MatButtonModule, MatIconModule, MatSelectModule, MatFormFieldModule,
     MatInputModule, MatExpansionModule, MatProgressBarModule, PageHeader, EmptyState, IsoDatePipe, LabelPipe, PortalReservations, PortalVisitors],
   template: `
-    <div class="tc-page narrow">
+    <div class="tc-page narrow tc-comfortable">
       @if (error(); as message) {
         <section class="tc-card"><tc-empty-state icon="home" title="Portal indisponível" [description]="message" /></section>
       } @else if (me(); as m) {
         <tc-page-header eyebrow="Portal do morador" [title]="'Olá, ' + m.name.split(' ')[0]" [subtitle]="condo()?.name">
           @if (m.condominiums.length > 1) {
-            <mat-form-field><mat-label>Condomínio</mat-label>
+            <mat-form-field class="condo" subscriptSizing="dynamic"><mat-label>Condomínio</mat-label>
               <mat-select [value]="condoId()" (valueChange)="condoId.set($event)">
                 @for (c of m.condominiums; track c.id) { <mat-option [value]="c.id">{{ c.name }}</mat-option> }</mat-select></mat-form-field>
           }
         </tc-page-header>
         <section class="units">
           @for (u of condo()?.units ?? []; track u.unitId) {
-            <div class="tc-card unit"><mat-icon aria-hidden="true">home</mat-icon><div><strong>Unidade {{ u.label }}</strong>
+            <div class="tc-card unit"><span class="tc-ico lg" aria-hidden="true"><mat-icon>home</mat-icon></span><div><strong>Unidade {{ u.label }}</strong>
               <span class="tc-muted">{{ u.role === 'OWNER' ? 'Proprietário(a)' : u.role === 'TENANT' ? 'Inquilino(a)' : 'Morador(a)' }}{{ u.financialResponsible ? ' · responsável financeiro' : '' }}</span></div></div>
           }
         </section>
@@ -52,7 +52,7 @@ import { PortalApi } from './portal-api';
           <mat-tab label="Agenda">
             <section class="tc-card mt">
               @for (e of calendar() ?? []; track $index) {
-                <div class="ev"><span class="date">{{ e.date | isoDate }}</span><mat-icon aria-hidden="true">{{ e.type === 'ASSEMBLY' ? 'groups' : 'receipt' }}</mat-icon><span>{{ e.title }}</span></div>
+                <div class="ev"><span class="date">{{ e.date | isoDate }}</span><mat-icon class="ev-ico" aria-hidden="true">{{ e.type === 'ASSEMBLY' ? 'groups' : 'receipt' }}</mat-icon><span class="ev-title">{{ e.title }}</span></div>
               } @empty { <p class="tc-muted">Nenhum evento próximo.</p> }
             </section>
           </mat-tab>
@@ -60,15 +60,17 @@ import { PortalApi } from './portal-api';
             <ng-template matTabContent>
               @for (u of charges() ?? []; track u.unitId) {
                 <section class="tc-card mt">
-                  <h3 class="tc-section-title">Unidade {{ u.unitLabel }} · em aberto {{ u.openTotal | currency: 'BRL' }}</h3>
+                  <h3 class="tc-section-title first">Unidade {{ u.unitLabel }} · em aberto <span class="money" [class.negative]="u.openTotal > 0">{{ u.openTotal | currency: 'BRL' }}</span></h3>
                   @for (l of u.lines; track l.entryId) {
                     <div class="charge">
-                      <div><strong>{{ l.description }}</strong><br /><small class="tc-muted">vencimento {{ l.dueDate | isoDate }}{{ l.daysLate > 0 ? ' · ' + l.daysLate + ' dias em atraso' : '' }}</small></div>
+                      <div class="who"><strong>{{ l.description }}</strong><br /><small class="tc-muted">vencimento {{ l.dueDate | isoDate }}{{ l.daysLate > 0 ? ' · ' + l.daysLate + ' dias em atraso' : '' }}</small></div>
                       <div class="right"><span class="money">{{ (l.remaining > 0 ? l.updatedTotal : l.amount) | currency: 'BRL' }}</span>
-                        <span class="tc-status" [class.is-active]="l.status === 'PAID'" [class.is-pending]="l.remaining > 0">{{ l.status | label: 'entryStatus' }}</span></div>
+                        <span class="tc-status" [class.is-success]="l.status === 'PAID'"
+                          [class.is-danger]="l.remaining > 0 && l.daysLate > 0" [class.is-pending]="l.remaining > 0 && l.daysLate <= 0"
+                          [class.is-inactive]="l.status === 'CANCELLED' || l.status === 'RENEGOTIATED'">{{ l.status | label: 'entryStatus' }}</span></div>
                     </div>
                   }
-                  <p class="tc-muted small">Valores em atraso incluem multa e juros calculados até hoje. Para 2ª via ou negociação, fale com a administradora.</p>
+                  <p class="tc-muted small note">Valores em atraso incluem multa e juros calculados até hoje. Para 2ª via ou negociação, fale com a administradora.</p>
                 </section>
               } @empty {
                 <section class="tc-card mt"><tc-empty-state icon="receipt_long" title="Sem cobranças para exibir"
@@ -79,8 +81,8 @@ import { PortalApi } from './portal-api';
           <mat-tab label="Comunicados">
             <ng-template matTabContent>
               @for (a of announcements() ?? []; track a.id) {
-                <article class="tc-card mt" [class.unread]="!a.read" (click)="read(a)">
-                  <h3 class="tc-section-title">@if (a.pinned) { <mat-icon inline>push_pin</mat-icon> } {{ a.title }}</h3>
+                <article class="tc-card mt ann" [class.unread]="!a.read" (click)="read(a)">
+                  <h3 class="tc-section-title first">@if (a.pinned) { <mat-icon inline class="pin">push_pin</mat-icon> } {{ a.title }}</h3>
                   <p class="pre">{{ a.body }}</p><small class="tc-muted">{{ a.publishedAt | date: 'dd/MM/yyyy HH:mm' }}</small>
                 </article>
               } @empty { <section class="tc-card mt"><tc-empty-state icon="campaign" title="Nenhum comunicado" /></section> }
@@ -90,7 +92,7 @@ import { PortalApi } from './portal-api';
             <ng-template matTabContent>
               <section class="tc-card mt">
                 @for (d of documents() ?? []; track d.id) {
-                  <div class="doc"><mat-icon aria-hidden="true">description</mat-icon><span>{{ d.title }} <small class="tc-muted">({{ d.category | label: 'docCategory' }})</small></span>
+                  <div class="doc"><span class="tc-ico sm" aria-hidden="true"><mat-icon>description</mat-icon></span><span class="doc-name">{{ d.title }} <small class="tc-muted">({{ d.category | label: 'docCategory' }})</small></span>
                     <button mat-icon-button (click)="download(d.id)" [attr.aria-label]="'Baixar ' + d.title"><mat-icon>download</mat-icon></button></div>
                 } @empty { <p class="tc-muted">Nenhum documento disponível.</p> }
               </section>
@@ -98,20 +100,22 @@ import { PortalApi } from './portal-api';
           </mat-tab>
           <mat-tab label="Ocorrências">
             <ng-template matTabContent>
-              <div class="tc-actions mt"><button mat-flat-button (click)="newOccurrence()"><mat-icon>add</mat-icon> Abrir solicitação</button></div>
-              <mat-accordion>
+              <div class="tc-actions mt"><button mat-flat-button class="primary" (click)="newOccurrence()"><mat-icon>add</mat-icon> Abrir solicitação</button></div>
+              <mat-accordion class="tc-accordion-cards mt">
                 @for (o of occurrences() ?? []; track o.id) {
                   <mat-expansion-panel (opened)="openOccurrence(o.id)">
                     <mat-expansion-panel-header><mat-panel-title>Nº {{ o.number }} · {{ o.title }}</mat-panel-title>
-                      <mat-panel-description>{{ o.status | label: 'occurrenceStatus' }}</mat-panel-description></mat-expansion-panel-header>
+                      <mat-panel-description><span class="tc-status" [class.is-success]="o.status === 'RESOLVED'"
+                        [class.is-pending]="o.status === 'OPEN' || o.status === 'WAITING'" [class.is-info]="o.status === 'IN_PROGRESS'"
+                        [class.is-inactive]="o.status === 'CANCELLED'">{{ o.status | label: 'occurrenceStatus' }}</span></mat-panel-description></mat-expansion-panel-header>
                     @if (detail()?.summary?.id === o.id) {
                       @let d = detail()!;
                       <p class="pre">{{ d.description }}</p>
-                      @if (d.resolution) { <p><strong>Solução:</strong> {{ d.resolution }}</p> }
+                      @if (d.resolution) { <p class="resolution"><strong>Solução:</strong> {{ d.resolution }}</p> }
                       @for (i of d.interactions; track i.id) { <p class="msg"><strong>{{ i.authorName }}</strong> <small class="tc-muted">{{ i.createdAt | date: 'dd/MM HH:mm' }}</small><br />{{ i.message }}</p> }
                       @if (o.status !== 'RESOLVED' && o.status !== 'CANCELLED') {
                         <mat-form-field class="full"><mat-label>Mensagem</mat-label><textarea matInput rows="2" [formControl]="message" maxlength="2000"></textarea></mat-form-field>
-                        <button mat-stroked-button (click)="comment(o.id)" [disabled]="message.invalid">Enviar</button>
+                        <div class="tc-actions"><button mat-flat-button class="primary" (click)="comment(o.id)" [disabled]="message.invalid">Enviar</button></div>
                       }
                     } @else { <mat-progress-bar mode="indeterminate" /> }
                   </mat-expansion-panel>
@@ -131,13 +135,15 @@ import { PortalApi } from './portal-api';
           </mat-tab>
           <mat-tab label="Assembleias">
             <ng-template matTabContent>
-              <mat-accordion class="mt">
+              <mat-accordion class="tc-accordion-cards mt">
                 @for (a of assemblies() ?? []; track a.id) {
                   <mat-expansion-panel>
                     <mat-expansion-panel-header><mat-panel-title>{{ a.title }}</mat-panel-title>
-                      <mat-panel-description>{{ a.scheduledAt | date: 'dd/MM/yyyy HH:mm' }} · {{ a.status | label: 'assemblyStatus' }}</mat-panel-description></mat-expansion-panel-header>
+                      <mat-panel-description><span>{{ a.scheduledAt | date: 'dd/MM/yyyy HH:mm' }}</span><span class="tc-status" [class.is-success]="a.status === 'CLOSED'"
+                        [class.is-pending]="a.status === 'CALLED'" [class.is-info]="a.status === 'IN_PROGRESS'"
+                        [class.is-inactive]="a.status === 'CANCELLED' || a.status === 'DRAFT'">{{ a.status | label: 'assemblyStatus' }}</span></mat-panel-description></mat-expansion-panel-header>
                     <p>Local: {{ a.location }}</p>
-                    @if (a.minutes) { <h4>Ata</h4><p class="pre">{{ a.minutes }}</p> } @else { <p class="tc-muted">A ata será publicada após o encerramento.</p> }
+                    @if (a.minutes) { <h4 class="tc-section-label">Ata</h4><p class="pre">{{ a.minutes }}</p> } @else { <p class="tc-muted">A ata será publicada após o encerramento.</p> }
                   </mat-expansion-panel>
                 } @empty { <section class="tc-card"><tc-empty-state icon="groups" title="Nenhuma assembleia" /></section> }
               </mat-accordion>
@@ -151,19 +157,42 @@ import { PortalApi } from './portal-api';
   `,
   styles: `
     .narrow { max-width: 900px; }
-    .mt { margin-top: 16px; }
-    .units { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-    .unit { display: flex; gap: 12px; align-items: center; padding: 12px 16px; } .unit div { display: grid; } .unit mat-icon { color: var(--mat-sys-primary); }
-    .ev { display: flex; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--mat-sys-outline-variant); }
-    .date { width: 92px; font-variant-numeric: tabular-nums; font-weight: 600; }
-    .charge { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--mat-sys-outline-variant); }
-    .right { display: grid; justify-items: end; gap: 4px; }
+    .mt { display: block; margin-top: 16px; }
+    .condo { min-width: 240px; }
+    .units { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .unit { display: flex; gap: 12px; align-items: center; padding: 14px 16px; flex: 1 1 240px; min-width: 0; }
+    .unit div { display: grid; gap: 2px; min-width: 0; }
+    .unit .tc-muted { font: var(--mat-sys-body-small); }
+    .tc-section-title.first { margin-top: 0; }
+    .ev { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--tc-border); }
+    .ev:last-child { border-bottom: 0; }
+    .date { flex: 0 0 92px; font-variant-numeric: tabular-nums; font-weight: 600; }
+    .ev-ico { color: var(--mat-sys-primary); flex: 0 0 auto; }
+    .ev-title { min-width: 0; overflow-wrap: anywhere; }
+    .charge { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--tc-border); }
+    .who { min-width: 0; line-height: 1.5; overflow-wrap: anywhere; }
+    .right { display: grid; justify-items: end; gap: 4px; flex: 0 0 auto; }
+    .right .money { font-weight: 650; font-size: 15px; }
+    .note { margin: 12px 0 0; }
     .small { font: var(--mat-sys-body-small); }
+    .ann { display: grid; gap: 4px; }
+    .ann p { margin: 0 0 4px; }
     .unread { border-left: 4px solid var(--mat-sys-primary); }
-    .pre { white-space: pre-wrap; }
-    .doc { display: flex; align-items: center; gap: 10px; padding: 4px 0; } .doc span { flex: 1; }
-    .msg { border-left: 3px solid var(--mat-sys-primary); padding-left: 10px; white-space: pre-wrap; }
-    .full { width: 100%; }
+    .pin { color: var(--tc-accent); vertical-align: -2px; }
+    .pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+    .doc { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--tc-border); }
+    .doc:last-child { border-bottom: 0; }
+    .doc-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    h4.tc-section-label { margin: 16px 0 6px; }
+    .resolution { background: var(--tc-success-container); border-left: 3px solid var(--tc-success); padding: 10px 12px; border-radius: var(--tc-radius-sm); white-space: pre-wrap; }
+    .msg { border-left: 3px solid var(--mat-sys-primary); padding: 4px 0 4px 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .full { width: 100%; margin-top: 8px; }
+    @media (max-width: 600px) {
+      .condo { min-width: 0; width: 100%; }
+      .unit { flex-basis: 100%; }
+      .date { flex-basis: 84px; }
+      .tc-actions .primary { flex: 1 1 100%; min-height: 48px; }
+    }
   `,
 })
 export class PortalPage {

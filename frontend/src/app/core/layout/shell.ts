@@ -1,25 +1,26 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { map } from 'rxjs';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { ChangePasswordDialog } from '../../features/auth/change-password-dialog';
 import { Permission } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
 import { CondominiumContext } from '../context/condominium-context';
 import { NotificationBell } from '../notify/notification-bell';
 import { NotificationService } from '../notify/notification.service';
+import { ResponsiveTables } from './responsive-tables';
+import { ThemeMode, ThemeService } from './theme.service';
 
 interface NavItem {
   label: string;
@@ -31,8 +32,12 @@ interface NavItem {
 
 interface NavGroup {
   title: string;
+  icon: string;
   items: NavItem[];
 }
+
+const OPEN_KEY = 'tc-nav-open';
+const COLLAPSED_KEY = 'tc-nav-collapsed';
 
 @Component({
   selector: 'tc-shell',
@@ -42,7 +47,6 @@ interface NavGroup {
     RouterLinkActive,
     MatSidenavModule,
     MatToolbarModule,
-    MatListModule,
     MatIconModule,
     MatButtonModule,
     MatMenuModule,
@@ -51,6 +55,7 @@ interface NavGroup {
     MatSelectModule,
     MatFormFieldModule,
     NotificationBell,
+    ResponsiveTables,
   ],
   templateUrl: './shell.html',
   styleUrl: './shell.scss',
@@ -58,12 +63,29 @@ interface NavGroup {
 export class Shell {
   protected readonly auth = inject(AuthService);
   protected readonly context = inject(CondominiumContext);
+  protected readonly theme = inject(ThemeService);
   private readonly dialog = inject(MatDialog);
   private readonly notify = inject(NotificationService);
+  private readonly router = inject(Router);
 
   protected readonly isHandset = toSignal(
     inject(BreakpointObserver).observe('(max-width: 959px)').pipe(map((r) => r.matches)),
     { initialValue: false },
+  );
+
+  /** Menu recolhido (só ícones) — opção do desktop, guardada no navegador. */
+  protected readonly collapsed = signal(readFlag(COLLAPSED_KEY));
+  protected readonly mini = computed(() => this.collapsed() && !this.isHandset());
+
+  /** Grupo aberto no menu (no máximo um). */
+  protected readonly open = signal<ReadonlySet<string>>(new Set(readList(OPEN_KEY)));
+
+  private readonly url = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map((e) => e.urlAfterRedirects),
+    ),
+    { initialValue: this.router.url },
   );
 
   /** Permissão no condomínio selecionado. */
@@ -72,6 +94,7 @@ export class Shell {
   private readonly groups: NavGroup[] = [
     {
       title: '',
+      icon: '',
       items: [
         { label: 'Início', icon: 'space_dashboard', link: '/', exact: true, visible: () => this.auth.isOrganizationMember() && !this.isResidentOnly() },
         { label: 'Portal do morador', icon: 'home', link: '/portal', visible: () => this.context.canAny('PORTAL_ACCESS') },
@@ -79,6 +102,7 @@ export class Shell {
     },
     {
       title: 'Cadastros',
+      icon: 'apartment',
       items: [
         { label: 'Condomínios', icon: 'apartment', link: '/condominios', visible: () => this.auth.canAny('CONDOMINIUM_VIEW') },
         { label: 'Unidades', icon: 'door_front', link: '/unidades', visible: this.inCondo('STRUCTURE_VIEW') },
@@ -87,6 +111,7 @@ export class Shell {
     },
     {
       title: 'Financeiro',
+      icon: 'account_balance',
       items: [
         { label: 'Financeiro', icon: 'account_balance', link: '/financeiro', visible: this.inCondo('FINANCE_VIEW') },
         { label: 'Cobrança e inadimplência', icon: 'request_quote', link: '/cobranca', visible: this.inCondo('BILLING_VIEW') },
@@ -96,6 +121,7 @@ export class Shell {
     },
     {
       title: 'Administração',
+      icon: 'home_work',
       items: [
         { label: 'Ocorrências', icon: 'build', link: '/ocorrencias', visible: this.inCondo('OCCURRENCE_VIEW') },
         { label: 'Comunicados', icon: 'campaign', link: '/comunicados', visible: this.inCondo('ANNOUNCEMENT_VIEW') },
@@ -108,6 +134,7 @@ export class Shell {
     },
     {
       title: 'Acesso e segurança',
+      icon: 'admin_panel_settings',
       items: [
         { label: 'Usuários', icon: 'group', link: '/usuarios', visible: () => this.auth.can('USER_VIEW') },
         { label: 'Auditoria', icon: 'policy', link: '/auditoria', visible: () => this.auth.can('AUDIT_VIEW') },
@@ -121,8 +148,14 @@ export class Shell {
     this.context.selected();
     this.context.options();
     return this.groups
-      .map((g) => ({ title: g.title, items: g.items.filter((i) => i.visible()) }))
+      .map((g) => ({ ...g, items: g.items.filter((i) => i.visible()) }))
       .filter((g) => g.items.length > 0);
+  });
+
+  /** Grupo da página atual: fica sempre aberto. */
+  protected readonly activeGroup = computed(() => {
+    const path = this.url().split(/[?#]/)[0];
+    return this.nav().find((g) => g.title && g.items.some((i) => (i.exact ? path === i.link : path === i.link || path.startsWith(i.link + '/'))))?.title;
   });
 
   protected readonly showSelector = computed(() => this.auth.isOrganizationMember() && this.context.options().length > 0);
@@ -137,6 +170,39 @@ export class Shell {
       .join('');
   });
 
+  protected readonly themeIcon = computed(() => ({ system: 'brightness_auto', light: 'light_mode', dark: 'dark_mode' })[this.theme.mode()]);
+
+  constructor() {
+    // Ao navegar para outra seção, abre o grupo dela (o usuário pode fechá-lo depois).
+    effect(() => {
+      const group = this.activeGroup();
+      if (group && !untracked(this.open).has(group)) this.saveOpen(new Set([group]));
+    });
+  }
+
+  isOpen(title: string): boolean {
+    return this.open().has(title);
+  }
+
+  /** Um grupo aberto por vez, como um acordeão. */
+  toggleGroup(title: string): void {
+    this.saveOpen(this.open().has(title) ? new Set() : new Set([title]));
+  }
+
+  private saveOpen(next: Set<string>): void {
+    this.open.set(next);
+    writeValue(OPEN_KEY, JSON.stringify([...next]));
+  }
+
+  toggleCollapsed(): void {
+    this.collapsed.update((v) => !v);
+    writeValue(COLLAPSED_KEY, this.collapsed() ? '1' : null);
+  }
+
+  setTheme(mode: ThemeMode): void {
+    this.theme.set(mode);
+  }
+
   /** Usuário cujo único acesso é o portal do morador. */
   isResidentOnly(): boolean {
     const me = this.auth.user();
@@ -149,5 +215,31 @@ export class Shell {
       .open<ChangePasswordDialog, void, boolean>(ChangePasswordDialog, { width: '440px' })
       .afterClosed()
       .subscribe((ok) => ok && this.notify.success('Senha alterada. As outras sessões foram encerradas.'));
+  }
+}
+
+function readFlag(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function readList(key: string): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(key) ?? '[]') as unknown;
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeValue(key: string, value: string | null): void {
+  try {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch {
+    // armazenamento indisponível: a preferência vale só nesta sessão
   }
 }

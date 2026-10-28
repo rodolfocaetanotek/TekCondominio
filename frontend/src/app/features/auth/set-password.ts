@@ -38,7 +38,7 @@ import { PasswordService, PasswordTokenInfo } from './password.service';
           <strong>{{ i.email }}</strong>.
         </p>
         @if (error(); as message) {
-          <p class="alert" role="alert">{{ message }}</p>
+          <p class="tc-alert" role="alert">{{ message }}</p>
         }
         <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
           <input type="email" [value]="i.email" autocomplete="username" hidden aria-hidden="true" />
@@ -62,10 +62,10 @@ import { PasswordService, PasswordTokenInfo } from './password.service';
     .wide { width: 100%; }
     button.wide, a.wide { height: 48px; margin-top: 8px; }
     mat-form-field { margin-bottom: 8px; }
-    .state { display: flex; gap: 12px; align-items: flex-start; }
-    .state mat-icon { color: var(--mat-sys-error); flex: none; }
-    .state p { margin: 0 0 8px; }
-    .alert { padding: 10px 12px; border-radius: 10px; background: var(--mat-sys-error-container); color: var(--mat-sys-on-error-container); }
+    .state { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; padding: 12px 14px;
+      border-radius: var(--tc-radius-sm); background: var(--tc-danger-container); color: var(--mat-sys-on-error-container); }
+    .state mat-icon { color: var(--tc-danger); flex: none; }
+    .state p { margin: 0; }
   `,
 })
 export class SetPassword implements OnInit {

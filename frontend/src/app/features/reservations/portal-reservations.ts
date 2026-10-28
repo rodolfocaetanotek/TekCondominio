@@ -29,18 +29,18 @@ import { CommonArea, Reservation, ReservationApi, Slot } from './reservation-api
           <mat-select [formControl]="area">
             @for (a of areas() ?? []; track a.id) { <mat-option [value]="a.id">{{ a.name }}</mat-option> }
           </mat-select></mat-form-field>
-        @if (selectedArea()) { <button mat-flat-button (click)="book(selectedArea()!)"><mat-icon>event_available</mat-icon> Reservar</button> }
+        @if (selectedArea()) { <button mat-flat-button class="primary" (click)="book(selectedArea()!)"><mat-icon>event_available</mat-icon> Reservar</button> }
       </div>
       @if (selectedArea(); as a) {
-        <p class="small">Funciona das {{ a.openTime.slice(0, 5) }} às {{ a.closeTime.slice(0, 5) }} · até {{ a.maxDurationMinutes / 60 }} h por reserva
+        <p class="small info">Funciona das {{ a.openTime.slice(0, 5) }} às {{ a.closeTime.slice(0, 5) }} · até {{ a.maxDurationMinutes / 60 }} h por reserva
           · antecedência mínima de {{ a.minAdvanceHours }} h{{ a.fee > 0 ? ' · taxa de uso ' : '' }}{{ a.fee > 0 ? (a.fee | currency: 'BRL') : '' }}
           {{ a.requiresApproval ? ' · sujeita à aprovação da administração' : '' }}</p>
         @if (a.rules) { <p class="rules small">{{ a.rules }}</p> }
-        <h4>Horários já reservados (próximos 60 dias)</h4>
+        <h4 class="tc-section-label">Horários já reservados (próximos 60 dias)</h4>
         <ul class="slots">
           @for (s of slots() ?? []; track s.date + s.startTime) {
-            <li>{{ s.date | isoDate }} · {{ s.startTime.slice(0, 5) }}–{{ s.endTime.slice(0, 5) }}{{ s.status === 'PENDING' ? ' (aguardando aprovação)' : '' }}</li>
-          } @empty { <li class="tc-muted">Nenhum horário reservado.</li> }
+            <li><mat-icon aria-hidden="true">event_busy</mat-icon><span>{{ s.date | isoDate }} · {{ s.startTime.slice(0, 5) }}–{{ s.endTime.slice(0, 5) }}{{ s.status === 'PENDING' ? ' (aguardando aprovação)' : '' }}</span></li>
+          } @empty { <li class="tc-muted none">Nenhum horário reservado.</li> }
         </ul>
       } @else if ((areas() ?? []).length === 0) {
         <tc-empty-state icon="deck" title="Nenhuma área disponível para reserva" />
@@ -48,18 +48,18 @@ import { CommonArea, Reservation, ReservationApi, Slot } from './reservation-api
     </section>
 
     <section class="tc-card mt">
-      <h3 class="tc-section-title">Minhas reservas</h3>
+      <h3 class="tc-section-title first">Minhas reservas</h3>
       @for (r of mine() ?? []; track r.id) {
         <div class="row">
-          <div><strong>{{ r.areaName }}</strong> · unid. {{ r.unitLabel }}<br />
+          <div class="who"><strong>{{ r.areaName }}</strong> · unid. {{ r.unitLabel }}<br />
             <span class="tc-muted small">{{ r.date | isoDate }} · {{ r.startTime.slice(0, 5) }}–{{ r.endTime.slice(0, 5) }}
               {{ r.fee > 0 ? ' · taxa ' : '' }}{{ r.fee > 0 ? (r.fee | currency: 'BRL') : '' }}</span>
-            @if (r.decisionNote || r.cancelReason) { <br /><span class="small">{{ r.cancelReason ?? r.decisionNote }}</span> }</div>
+            @if (r.decisionNote || r.cancelReason) { <br /><span class="small note">{{ r.cancelReason ?? r.decisionNote }}</span> }</div>
           <div class="right">
-            <span class="tc-status" [class.is-active]="r.status === 'CONFIRMED'" [class.is-pending]="r.status === 'PENDING'"
-              [class.is-inactive]="r.status === 'CANCELLED' || r.status === 'REJECTED'">{{ r.status | label: 'reservationStatus' }}</span>
+            <span class="tc-status" [class.is-success]="r.status === 'CONFIRMED'" [class.is-pending]="r.status === 'PENDING'"
+              [class.is-danger]="r.status === 'REJECTED'" [class.is-inactive]="r.status === 'CANCELLED'">{{ r.status | label: 'reservationStatus' }}</span>
             @if ((r.status === 'PENDING' || r.status === 'CONFIRMED') && r.date >= today) {
-              <button mat-button (click)="cancel(r)">Cancelar</button>
+              <button mat-stroked-button (click)="cancel(r)">Cancelar</button>
             }
           </div>
         </div>
@@ -67,12 +67,29 @@ import { CommonArea, Reservation, ReservationApi, Slot } from './reservation-api
     </section>
   `,
   styles: `
-    .mt { margin-top: 16px; }
-    .bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; } .grow { flex: 1 1 240px; }
-    .small { font: var(--mat-sys-body-small); } .rules { white-space: pre-line; }
-    .slots { margin: 0; padding-left: 18px; }
-    .row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--mat-sys-outline-variant); flex-wrap: wrap; }
-    .right { display: flex; align-items: center; gap: 8px; }
+    .mt { display: block; margin-top: 16px; }
+    .bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .grow { flex: 1 1 240px; min-width: 0; }
+    .bar .primary { margin-bottom: 20px; }
+    .small { font: var(--mat-sys-body-small); }
+    .info { margin: 0 0 12px; color: var(--tc-text-muted); }
+    .rules { white-space: pre-line; margin: 0 0 16px; padding: 12px 14px; border-radius: var(--tc-radius-sm); background: var(--tc-surface-muted); border: 1px solid var(--tc-border); }
+    h4.tc-section-label { margin: 8px 0 6px; }
+    .slots { list-style: none; margin: 0; padding: 0; }
+    .slots li { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--tc-border); font-variant-numeric: tabular-nums; }
+    .slots li:last-child { border-bottom: 0; }
+    .slots li mat-icon { color: var(--tc-text-muted); font-size: 20px; width: 20px; height: 20px; flex: 0 0 auto; }
+    .slots li.none { padding: 6px 0; }
+    .tc-section-title.first { margin-top: 0; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 10px 12px; padding: 12px 0; border-bottom: 1px solid var(--tc-border); flex-wrap: wrap; }
+    .row:last-of-type { border-bottom: 0; }
+    .who { flex: 1 1 220px; min-width: 0; line-height: 1.5; overflow-wrap: anywhere; }
+    .note { display: inline-block; margin-top: 4px; }
+    .right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    @media (max-width: 600px) {
+      .bar .primary { flex: 1 1 100%; margin-bottom: 8px; }
+      .right { flex: 1 1 100%; justify-content: space-between; }
+    }
   `,
 })
 export class PortalReservations {

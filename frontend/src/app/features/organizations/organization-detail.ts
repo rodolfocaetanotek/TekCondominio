@@ -41,13 +41,14 @@ import { Organization, OrganizationService, OrganizationUser } from './organizat
 
         <div class="layout">
           <section class="tc-table-card">
-            <h2 class="tc-section-title pad">Usuários ({{ users().length }})</h2>
+            <h2 class="tc-section-title tc-card-head is-divided">Usuários ({{ users().length }})</h2>
             @for (u of users(); track u.id) {
               <div class="row">
                 <div class="who">
                   <strong>{{ u.name }}</strong>
                   <span class="tc-muted">{{ u.email }} · {{ u.roles.join(', ') || 'sem papel' }}</span>
                 </div>
+                <div class="row-end">
                 @if (u.pendingInvite && u.active) {
                   <span class="tc-status is-pending">Convite pendente</span>
                 } @else if (!u.active) {
@@ -55,6 +56,7 @@ import { Organization, OrganizationService, OrganizationUser } from './organizat
                 } @else {
                   <span class="tc-muted small">{{ u.lastLoginAt ? 'Último acesso ' + (u.lastLoginAt | date: 'dd/MM/yyyy') : '' }}</span>
                 }
+                </div>
               </div>
             } @empty {
               <tc-empty-state icon="group" title="Nenhum usuário" />
@@ -76,7 +78,9 @@ import { Organization, OrganizationService, OrganizationUser } from './organizat
                 <input matInput type="email" formControlName="email" required autocomplete="off" />
                 <mat-error><tc-field-error [control]="form.controls.email" /></mat-error>
               </mat-form-field>
-              <button mat-flat-button type="submit" [disabled]="busy()"><mat-icon>send</mat-icon> Enviar convite</button>
+              <div class="tc-actions">
+                <button mat-flat-button type="submit" [disabled]="busy()"><mat-icon>send</mat-icon> Enviar convite</button>
+              </div>
             </form>
           </section>
         </div>
@@ -90,14 +94,16 @@ import { Organization, OrganizationService, OrganizationUser } from './organizat
     .back { margin: -8px 0 8px -12px; }
     .layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 16px; align-items: start; }
     @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
-    .pad { padding: 16px 20px 4px; margin: 0; }
-    .row { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--mat-sys-outline-variant); }
-    .who { flex: 1; display: grid; }
+    .row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 12px 20px; }
+    .row + .row { border-top: 1px solid var(--tc-border); }
+    .who { flex: 1 1 220px; min-width: 0; display: grid; gap: 2px; overflow-wrap: anywhere; }
+    .row-end { margin-left: auto; }
+    form { display: grid; gap: 4px; margin-top: 12px; }
+    @media (max-width: 600px) { .row { padding-inline: 16px; } }
     .small { font: var(--mat-sys-body-small); }
     .full { width: 100%; }
     .tc-section-title { margin-top: 0; }
-    .tc-status.big { font: var(--mat-sys-label-large); padding: 4px 14px; align-self: center; }
-    .danger-text { --mat-button-outlined-label-text-color: var(--mat-sys-error); }
+    .danger-text { --mat-button-outlined-label-text-color: var(--tc-danger); }
   `,
 })
 export class OrganizationDetail implements OnInit {

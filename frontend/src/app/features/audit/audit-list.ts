@@ -34,7 +34,7 @@ import { AuditQuery, AuditService } from './audit.service';
         subtitle="Registro das ações críticas realizadas na sua organização." />
 
       <div class="filters">
-        <mat-form-field>
+        <mat-form-field class="action">
           <mat-label>Ação</mat-label>
           <mat-select [formControl]="action">
             <mat-option value="">Todas</mat-option>
@@ -46,9 +46,7 @@ import { AuditQuery, AuditService } from './audit.service';
       </div>
 
       <section class="tc-table-card" [attr.aria-busy]="loading()">
-        @if (loading()) {
-          <mat-progress-bar mode="indeterminate" />
-        }
+        <mat-progress-bar [mode]="loading() ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="!loading()" />
         @if (error(); as message) {
           <tc-empty-state icon="cloud_off" title="Não foi possível carregar a auditoria" [description]="message" />
         } @else if (result(); as page) {
@@ -97,7 +95,7 @@ import { AuditQuery, AuditService } from './audit.service';
     </div>
   `,
   styles: `
-    .filters mat-form-field { width: min(320px, 100%); }
+    .filters > .action { flex-basis: 320px; }
     .sub { display: block; font: var(--mat-sys-body-small); }
     .nowrap { white-space: nowrap; }
     .details { max-width: 420px; font: var(--mat-sys-body-small); word-break: break-word; }

@@ -29,11 +29,12 @@ import { AssemblySummary, OpsApi } from './ops-api';
         <section class="tc-table-card">
           @for (a of list() ?? []; track a.id) {
             <a class="row" [routerLink]="['/assembleias', a.id]">
-              <mat-icon aria-hidden="true">event</mat-icon>
+              <span class="tc-ico" aria-hidden="true"><mat-icon>event</mat-icon></span>
               <div class="who"><strong>{{ a.title }}</strong>
                 <span class="tc-muted">{{ a.kind | label: 'assemblyKind' }} · {{ a.scheduledAt | date: 'dd/MM/yyyy HH:mm' }} · {{ a.location }}</span></div>
-              <span class="tc-status" [class.is-active]="a.status === 'CLOSED'" [class.is-pending]="a.status === 'CALLED' || a.status === 'IN_PROGRESS'"
+              <span class="tc-status" [class.is-success]="a.status === 'CLOSED'" [class.is-pending]="a.status === 'CALLED'" [class.is-info]="a.status === 'IN_PROGRESS'"
                 [class.is-inactive]="a.status === 'CANCELLED' || a.status === 'DRAFT'">{{ a.status | label: 'assemblyStatus' }}</span>
+              <mat-icon class="chev" aria-hidden="true">chevron_right</mat-icon>
             </a>
           } @empty { <tc-empty-state icon="groups" title="Nenhuma assembleia" /> }
         </section>
@@ -42,10 +43,20 @@ import { AssemblySummary, OpsApi } from './ops-api';
   `,
   styles: `
     .narrow { max-width: 1000px; }
-    .row { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--mat-sys-outline-variant); color: inherit; text-decoration: none; }
-    .row:hover { background: var(--mat-sys-surface-container); }
-    .row mat-icon { color: var(--mat-sys-primary); }
-    .who { flex: 1; display: grid; }
+    .row { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; padding: 14px 20px; color: inherit; text-decoration: none; transition: background-color 0.12s; }
+    .row + .row { border-top: 1px solid var(--tc-border); }
+    .row:hover, .row:focus-visible { background: color-mix(in srgb, var(--mat-sys-primary) 5%, var(--tc-surface)); }
+    .row:focus-visible { outline: none; box-shadow: inset 3px 0 0 var(--mat-sys-primary); }
+    .row:hover strong { color: var(--mat-sys-primary); }
+    .who { flex: 1 1 220px; display: grid; gap: 2px; min-width: 0; }
+    .who strong { overflow-wrap: anywhere; }
+    .who .tc-muted { font: var(--mat-sys-body-small); }
+    .chev { color: var(--tc-text-muted); }
+    @media (max-width: 600px) {
+      .row { padding: 12px 14px; }
+      .chev { display: none; }
+      .tc-status { margin-left: 52px; }
+    }
   `,
 })
 export class AssemblyList {

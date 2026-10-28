@@ -36,7 +36,7 @@ import { BankReturnTab } from './bank-return-tab';
       } @else {
         <mat-tab-group mat-stretch-tabs="false" animationDuration="0ms">
           <mat-tab label="Rateios / competências">
-            <section class="tc-table-card mt">
+            <section class="tc-table-card">
               @for (a of allocations() ?? []; track a.id) {
                 <div class="row" [class.off]="a.status === 'CANCELLED'">
                   <div class="who">
@@ -61,12 +61,24 @@ import { BankReturnTab } from './bank-return-tab';
           <mat-tab label="Inadimplência">
             <ng-template matTabContent>
               @if (delinquency(); as d) {
-                <section class="kpis mt">
-                  <div class="tc-card kpi"><span class="tc-muted">Principal vencido</span><strong>{{ d.totalPrincipal | currency: 'BRL' }}</strong></div>
-                  <div class="tc-card kpi"><span class="tc-muted">Multa + juros até hoje</span><strong>{{ d.totalCharges | currency: 'BRL' }}</strong></div>
-                  <div class="tc-card kpi"><span class="tc-muted">Índice de inadimplência</span><strong>{{ d.delinquencyRate | number: '1.2-2' }}%</strong>
-                    <small class="tc-muted">vencido ÷ emitido em 12 meses</small></div>
-                  <div class="tc-card kpi"><span class="tc-muted">Unidades em débito</span><strong>{{ d.unitsInDebt }} de {{ d.activeUnits }}</strong></div>
+                <section class="tc-kpis" aria-label="Indicadores de inadimplência">
+                  <div class="tc-kpi tc-card tone-danger">
+                    <span class="icon"><mat-icon aria-hidden="true">money_off</mat-icon></span>
+                    <span class="label">Principal vencido</span><span class="value">{{ d.totalPrincipal | currency: 'BRL' }}</span>
+                  </div>
+                  <div class="tc-kpi tc-card tone-warning">
+                    <span class="icon"><mat-icon aria-hidden="true">percent</mat-icon></span>
+                    <span class="label">Multa + juros até hoje</span><span class="value">{{ d.totalCharges | currency: 'BRL' }}</span>
+                  </div>
+                  <div class="tc-kpi tc-card tone-info">
+                    <span class="icon"><mat-icon aria-hidden="true">monitoring</mat-icon></span>
+                    <span class="label">Índice de inadimplência</span><span class="value">{{ d.delinquencyRate | number: '1.2-2' }}%</span>
+                    <span class="sub">vencido ÷ emitido em 12 meses</span>
+                  </div>
+                  <div class="tc-kpi tc-card">
+                    <span class="icon"><mat-icon aria-hidden="true">door_front</mat-icon></span>
+                    <span class="label">Unidades em débito</span><span class="value">{{ d.unitsInDebt }} de {{ d.activeUnits }}</span>
+                  </div>
                 </section>
                 <section class="tc-table-card">
                   @for (r of d.rows; track r.unitId) {
@@ -78,7 +90,7 @@ import { BankReturnTab } from './bank-return-tab';
                       </div>
                       <div class="nums"><span class="money negative">{{ r.total | currency: 'BRL' }}</span>
                         <small class="tc-muted">principal {{ r.principal | currency: 'BRL' }}</small></div>
-                      <mat-icon aria-hidden="true">chevron_right</mat-icon>
+                      <mat-icon class="chev" aria-hidden="true">chevron_right</mat-icon>
                     </a>
                   } @empty {
                     <tc-empty-state icon="sentiment_satisfied" title="Nenhuma unidade inadimplente" />
@@ -89,7 +101,7 @@ import { BankReturnTab } from './bank-return-tab';
           </mat-tab>
           <mat-tab label="Acordos">
             <ng-template matTabContent>
-              <section class="tc-table-card mt">
+              <section class="tc-table-card">
                 @for (a of agreements() ?? []; track a.id) {
                   <div class="row" [class.off]="a.status === 'CANCELLED'">
                     <div class="who">
@@ -98,7 +110,7 @@ import { BankReturnTab } from './bank-return-tab';
                         · original {{ a.originalAmount | currency: 'BRL' }} + encargos {{ a.chargesAmount | currency: 'BRL' }} − desconto {{ a.discount | currency: 'BRL' }}</span>
                     </div>
                     <div class="nums"><span class="money">{{ a.totalAmount | currency: 'BRL' }}</span>
-                      <small class="tc-status" [class.is-active]="a.status === 'COMPLETED'" [class.is-inactive]="a.status === 'CANCELLED'">{{ a.status | label: 'agreementStatus' }}</small></div>
+                      <small class="tc-status" [class.is-active]="a.status === 'ACTIVE'" [class.is-success]="a.status === 'COMPLETED'" [class.is-inactive]="a.status === 'CANCELLED'">{{ a.status | label: 'agreementStatus' }}</small></div>
                     @if (a.status === 'ACTIVE' && a.paidInstallments === 0 && canEdit()) {
                       <button mat-button (click)="cancelAgreement(a)">Cancelar</button>
                     }
@@ -115,16 +127,21 @@ import { BankReturnTab } from './bank-return-tab';
     </div>
   `,
   styles: `
-    .mt { margin-top: 16px; }
-    .row { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--mat-sys-outline-variant); color: inherit; text-decoration: none; }
+    .row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding: 14px 20px; border-top: 1px solid var(--tc-border); color: inherit; text-decoration: none; }
     .row:first-child { border-top: 0; }
-    .row.link:hover { background: var(--mat-sys-surface-container); }
+    .row.link { transition: background-color 0.12s; }
+    .row.link:hover, .row.link:focus-visible { background: color-mix(in srgb, var(--mat-sys-primary) 5%, var(--tc-surface)); }
+    .row.link:hover strong { color: var(--mat-sys-primary); }
     .row.off { opacity: .55; }
-    .who { flex: 1; display: grid; gap: 2px; min-width: 0; }
-    .nums { display: grid; text-align: right; }
-    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
-    .kpi { display: grid; gap: 2px; }
-    .kpi strong { font: var(--mat-sys-headline-small); font-variant-numeric: tabular-nums; }
+    .who { flex: 1 1 260px; display: grid; gap: 2px; min-width: 0; }
+    .who .tc-muted { font: var(--mat-sys-body-small); }
+    .nums { display: grid; justify-items: end; gap: 2px; text-align: right; }
+    .nums .money { font-weight: 650; font-size: 15px; }
+    .chev { color: var(--tc-text-muted); }
+    @media (max-width: 600px) {
+      .row { padding: 12px 16px; }
+      .nums { flex: 1 1 auto; }
+    }
   `,
 })
 export class BillingPage {

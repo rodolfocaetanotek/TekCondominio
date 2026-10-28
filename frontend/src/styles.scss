@@ -1,8 +1,9 @@
 @use '@angular/material' as mat;
 
-// Identidade visual Tek Condomínio: verde-petróleo (confiança, gestão) + terracota (acolhimento, moradia).
-// Tema Material 3 com modo claro/escuro automático conforme o sistema operacional.
-$font-stack: 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+// Identidade visual Tek Condomínio: verde-petróleo (marca, ações principais) + laranja Tek (destaques pontuais,
+// o mesmo da família Tek/TekPonto). Tema Material 3; modo claro/escuro segue o sistema operacional, ou a escolha
+// do usuário (atributo data-theme no <html>, ver core/layout/theme.service.ts).
+$font-stack: 'Inter Variable', 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
 
 html {
   color-scheme: light dark;
@@ -15,17 +16,116 @@ html {
     typography: (
       plain-family: $font-stack,
       brand-family: $font-stack,
+      bold-weight: 600,
+      medium-weight: 500,
     ),
-    density: 0,
+    // Área administrativa compacta (mais linhas por tela); o portal do morador volta ao padrão (.tc-comfortable).
+    density: -2,
   ));
 
-  --tc-radius: 14px;
-  --tc-gap: 16px;
-  --tc-content-max: 1240px;
+  // ---------- tokens da marca ----------
+  --tc-brand: #006a6a;
+  --tc-brand-strong: #004f50;
+  --tc-accent: #ee7a0c;
+  --tc-accent-strong: #b65807;
+  --tc-accent-soft: light-dark(#fdeedd, #3b2410);
+  --tc-on-accent-soft: light-dark(#9a4a05, #ffb877);
+
+  // ---------- superfícies ----------
+  --tc-bg: light-dark(#f2f4f5, #0e1415);
+  --tc-surface: light-dark(#ffffff, #161d1e);
+  --tc-surface-muted: light-dark(#f7f8f9, #1b2324);
+  --tc-border: light-dark(#e3e7e8, #2a3435);
+  --tc-border-strong: light-dark(#cfd6d7, #3a4647);
+  --tc-field-bg: light-dark(#f7f9fa, #131a1b);
+  --tc-text: light-dark(#1b2122, #e2e8e8);
+  --tc-text-muted: light-dark(#5b6667, #9eabac);
+  // Menu lateral no padrão da família Tek (TekPonto): grafite azulado com destaque laranja.
+  --tc-sidebar-bg: #1e2733;
+  --tc-sidebar-hover: #263140;
+  --tc-sidebar-active: #2a3646;
+  --tc-sidebar-text: #d3d9e1;
+  --tc-sidebar-muted: #8b97a7;
+
+  // ---------- estados ----------
   --tc-success: light-dark(#1b6e3a, #8fd6a4);
-  --tc-success-container: light-dark(#d6f2df, #154a28);
+  --tc-success-container: light-dark(#dff3e5, #153d24);
+  --tc-warning: light-dark(#9a4a05, #ffb877);
+  --tc-warning-container: light-dark(#fdeedd, #3b2410);
+  --tc-info: light-dark(#1d4ed8, #9db8ff);
+  --tc-info-container: light-dark(#e3ebff, #1a2648);
   --tc-danger: var(--mat-sys-error);
-  --tc-danger-container: var(--mat-sys-error-container);
+  --tc-danger-container: light-dark(#fde4e4, #4a1717);
+
+  // ---------- forma, espaço e sombra ----------
+  --tc-radius: 12px;
+  --tc-radius-sm: 8px;
+  --tc-gap: 16px;
+  --tc-content-max: 1280px;
+  --tc-shadow: 0 1px 2px rgb(16 24 40 / 0.05), 0 1px 3px rgb(16 24 40 / 0.06);
+  --tc-shadow-lg: 0 12px 32px rgb(16 24 40 / 0.18);
+
+  // ---------- componentes Material alinhados ao padrão ----------
+  --mat-sys-surface: var(--tc-surface);
+  --mat-sys-surface-container-lowest: var(--tc-bg);
+  --mat-form-field-outlined-outline-color: var(--tc-border-strong);
+  --mat-form-field-outlined-hover-outline-color: var(--tc-text-muted);
+  --mat-form-field-outlined-container-shape: var(--tc-radius-sm);
+  --mat-form-field-container-text-size: 14px;
+  --mat-form-field-outlined-label-text-size: 14px;
+  --mat-select-trigger-text-size: 14px;
+  --mat-option-label-text-size: 14px;
+  --mat-button-filled-container-shape: var(--tc-radius-sm);
+  --mat-button-outlined-container-shape: var(--tc-radius-sm);
+  --mat-button-protected-container-shape: var(--tc-radius-sm);
+  --mat-button-tonal-container-shape: var(--tc-radius-sm);
+  --mat-button-text-container-shape: var(--tc-radius-sm);
+  --mat-button-outlined-outline-color: var(--tc-border-strong);
+  --mat-button-filled-label-text-weight: 600;
+  --mat-button-outlined-label-text-weight: 600;
+  --mat-button-text-label-text-weight: 600;
+  --mat-dialog-container-shape: 14px;
+  --mat-dialog-subhead-size: 18px;
+  --mat-dialog-subhead-weight: 650;
+  --mat-dialog-subhead-line-height: 1.3;
+  --mat-dialog-subhead-tracking: -0.01em;
+  --mat-dialog-subhead-color: #fff;
+  --mat-dialog-headline-padding: 18px 56px 16px 24px;
+  --mat-dialog-container-color: var(--tc-surface);
+  --mat-table-background-color: var(--tc-surface);
+  --mat-table-header-headline-color: var(--tc-text-muted);
+  --mat-table-header-headline-size: 11.5px;
+  --mat-table-header-headline-weight: 600;
+  --mat-table-header-headline-tracking: 0.06em;
+  --mat-table-header-container-height: 44px;
+  --mat-table-row-item-container-height: 52px;
+  --mat-table-row-item-outline-color: var(--tc-border);
+  --mat-paginator-container-background-color: var(--tc-surface);
+  --mat-tab-divider-color: var(--tc-border);
+  --mat-tab-divider-height: 1px;
+  --mat-tab-label-text-weight: 600;
+  --mat-tab-inactive-label-text-color: var(--tc-text-muted);
+  --mat-menu-container-shape: 10px;
+  --mat-select-container-elevation-shadow: var(--tc-shadow-lg);
+  --mat-menu-container-elevation-shadow: var(--tc-shadow-lg);
+  --mat-snack-bar-container-shape: 10px;
+  --mat-sidenav-container-shape: 0;
+  --mat-badge-background-color: var(--tc-accent);
+  --mat-badge-text-color: #fff;
+}
+
+// Escolha explícita do usuário (claro/escuro); sem o atributo, segue o sistema.
+html[data-theme='light'] {
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+// Portal do morador: densidade padrão, mais confortável no toque.
+.tc-comfortable {
+  @include mat.theme((density: 0));
 }
 
 * {
@@ -40,12 +140,21 @@ body {
 body {
   margin: 0;
   font: var(--mat-sys-body-medium);
-  background: var(--mat-sys-surface-container-lowest);
-  color: var(--mat-sys-on-surface);
+  background: var(--tc-bg);
+  color: var(--tc-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 a {
   color: var(--mat-sys-primary);
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.01em;
 }
 
 .material-symbols-outlined {
@@ -56,23 +165,28 @@ a {
 .tc-page {
   max-width: var(--tc-content-max);
   margin: 0 auto;
-  padding: 24px;
+  padding: 24px 28px 40px;
+
+  @media (max-width: 600px) {
+    padding: 16px 12px 32px;
+  }
+}
+
+.tc-card {
+  background: var(--tc-surface);
+  border: 1px solid var(--tc-border);
+  border-radius: var(--tc-radius);
+  box-shadow: var(--tc-shadow);
+  padding: 20px;
 
   @media (max-width: 600px) {
     padding: 16px;
   }
 }
 
-.tc-card {
-  background: var(--mat-sys-surface);
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: var(--tc-radius);
-  padding: 20px;
-}
-
 .tc-grid {
   display: grid;
-  gap: 0 var(--tc-gap);
+  gap: 12px var(--tc-gap);
   grid-template-columns: repeat(12, minmax(0, 1fr));
 
   > * {
@@ -91,12 +205,101 @@ a {
 
 .tc-section-title {
   font: var(--mat-sys-title-medium);
+  font-weight: 600;
   margin: 8px 0 16px;
-  color: var(--mat-sys-on-surface);
+  color: var(--tc-text);
+}
+
+// Rótulo de seção em caixa alta (ex.: "RESUMO DO PERÍODO", grupos de filtros).
+.tc-section-label {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tc-text-muted);
+}
+
+// Lista de dados (chave/valor) com o rótulo em caixa alta acima do valor. Aceita
+// <dl class="tc-dl"><div><dt>Rótulo</dt><dd>Valor</dd></div></dl> ou
+// <div class="tc-dl"><div><span class="k">Rótulo</span><strong>Valor</strong></div></div>.
+// Uma coluna por padrão; `.cols` distribui os itens em colunas (largura mínima em --tc-dl-min).
+// `.wide` ocupa a linha inteira.
+.tc-dl {
+  display: grid;
+  gap: 12px 16px;
+  margin: 0;
+
+  &.cols {
+    grid-template-columns: repeat(auto-fit, minmax(min(var(--tc-dl-min, 170px), 100%), 1fr));
+  }
+
+  > div {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  > .wide {
+    grid-column: 1 / -1;
+  }
+
+  dt,
+  .k {
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--tc-text-muted);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+// Quadrado com ícone na cor da marca (listas de documentos, assembleias, unidades…).
+// <span class="tc-ico"><mat-icon>…</mat-icon></span>; `.sm` e `.lg` mudam o tamanho.
+// Também pode ser aplicado direto no <mat-icon class="tc-ico"> (36px, ícone de 20px).
+.tc-ico {
+  --tc-ico-size: 38px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: var(--tc-ico-size);
+  height: var(--tc-ico-size);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
+  color: var(--mat-sys-primary);
+
+  &.lg {
+    --tc-ico-size: 40px;
+  }
+
+  &.sm {
+    --tc-ico-size: 34px;
+    border-radius: 8px;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+}
+
+// Seletor com elemento para vencer o .mat-icon (24px, inline-block) do Material.
+mat-icon.tc-ico {
+  --tc-ico-size: 36px;
+  display: grid;
+  width: var(--tc-ico-size);
+  height: var(--tc-ico-size);
+  font-size: 20px;
 }
 
 .tc-muted {
-  color: var(--mat-sys-on-surface-variant);
+  color: var(--tc-text-muted);
 }
 
 .tc-spacer {
@@ -110,45 +313,184 @@ a {
   flex-wrap: wrap;
 }
 
-// ---------- chips de status ----------
+// Barra de filtros das listagens: os campos dividem a linha e quebram no celular.
+.filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 16px;
+
+  > mat-form-field {
+    flex: 0 1 200px;
+    min-width: 0;
+  }
+
+  > mat-form-field.search,
+  > mat-form-field.scope {
+    flex: 1 1 280px;
+    max-width: none;
+  }
+
+  @media (max-width: 600px) {
+    > mat-form-field,
+    > mat-form-field.search,
+    > mat-form-field.scope {
+      flex: 1 1 100% !important;
+      max-width: none !important;
+    }
+  }
+}
+
+// ---------- cartões de indicador ----------
+.tc-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+
+  // Indicadores dentro de um cartão: sem sombra, fundo rebaixado.
+  &.inset .tc-kpi {
+    box-shadow: none;
+    background: var(--tc-surface-muted);
+  }
+}
+
+.tc-kpi {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: 'icon label' 'icon value' 'icon sub';
+  column-gap: 14px;
+  row-gap: 2px;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+  padding: 16px;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+
+  .icon {
+    grid-area: icon;
+    align-self: start;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
+    color: var(--mat-sys-primary);
+
+    mat-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+    }
+  }
+
+  .label {
+    grid-area: label;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--tc-text-muted);
+  }
+
+  .value {
+    grid-area: value;
+    font-size: 22px;
+    font-weight: 650;
+    line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  .sub {
+    grid-area: sub;
+    font: var(--mat-sys-body-small);
+    color: var(--tc-text-muted);
+  }
+
+  &:is(a):hover,
+  &:is(a):focus-visible {
+    border-color: color-mix(in srgb, var(--mat-sys-primary) 45%, var(--tc-border));
+    box-shadow: 0 4px 14px rgb(16 24 40 / 0.08);
+  }
+
+  &.tone-success .icon { background: var(--tc-success-container); color: var(--tc-success); }
+  &.tone-danger .icon { background: var(--tc-danger-container); color: var(--tc-danger); }
+  &.tone-warning .icon { background: var(--tc-warning-container); color: var(--tc-warning); }
+  &.tone-info .icon { background: var(--tc-info-container); color: var(--tc-info); }
+  &.tone-danger .value { color: var(--tc-danger); }
+}
+
+// ---------- etiquetas de status ----------
 .tc-status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 2px 10px;
   border-radius: 999px;
-  font: var(--mat-sys-label-medium);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
   white-space: nowrap;
+  color: var(--tc-text-muted);
+  background: var(--tc-surface-muted);
+  border: 1px solid var(--tc-border);
 
   &::before {
     content: '';
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: currentColor;
   }
 
-  &.is-active {
+  &.is-active,
+  &.is-success {
     color: var(--tc-success);
     background: var(--tc-success-container);
+    border-color: transparent;
   }
 
-  &.is-pending {
-    color: var(--mat-sys-on-tertiary-container);
-    background: var(--mat-sys-tertiary-container);
+  &.is-pending,
+  &.is-warning {
+    color: var(--tc-warning);
+    background: var(--tc-warning-container);
+    border-color: transparent;
+  }
+
+  &.is-info {
+    color: var(--tc-info);
+    background: var(--tc-info-container);
+    border-color: transparent;
+  }
+
+  &.is-danger {
+    color: var(--tc-danger);
+    background: var(--tc-danger-container);
+    border-color: transparent;
   }
 
   &.is-inactive {
-    color: var(--mat-sys-on-surface-variant);
-    background: var(--mat-sys-surface-container-high);
+    color: var(--tc-text-muted);
+    background: var(--tc-surface-muted);
+  }
+
+  // Status de destaque no cabeçalho das páginas de detalhe.
+  &.big {
+    font: var(--mat-sys-label-large);
+    padding: 4px 14px;
+    align-self: center;
   }
 }
 
 // ---------- tabelas ----------
 .tc-table-card {
-  background: var(--mat-sys-surface);
-  border: 1px solid var(--mat-sys-outline-variant);
+  background: var(--tc-surface);
+  border: 1px solid var(--tc-border);
   border-radius: var(--tc-radius);
+  box-shadow: var(--tc-shadow);
   overflow: hidden;
 
   .table-scroll {
@@ -159,13 +501,185 @@ a {
     width: 100%;
   }
 
-  tr.is-clickable {
-    cursor: pointer;
+  mat-progress-bar.idle {
+    visibility: hidden;
+  }
+}
 
-    &:hover,
-    &:focus-visible {
-      background: var(--mat-sys-surface-container);
-      outline: none;
+// Linha de título de um cartão (título + ações). Pode ser o próprio título (<h3 class="tc-section-title tc-card-head">)
+// ou um contêiner com o título e botões. `.is-divided`: com linha divisória abaixo (listas de linhas).
+// Dentro de um .tc-card comum o cartão já tem padding; a linha só separa do conteúdo.
+.tc-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 0;
+  padding: 14px 20px 8px;
+
+  > h2,
+  > h3,
+  > .tc-section-title {
+    margin: 0;
+  }
+
+  &.is-divided {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--tc-border);
+
+    @media (max-width: 600px) {
+      padding-inline: 16px;
+    }
+  }
+}
+
+.tc-card > .tc-card-head {
+  padding: 0 0 8px;
+}
+
+.mat-mdc-table {
+  .mat-mdc-header-cell {
+    text-transform: uppercase;
+    background: var(--tc-surface-muted);
+  }
+
+  .mat-mdc-cell,
+  .mat-mdc-header-cell {
+    padding-inline: 12px;
+
+    &:first-of-type {
+      padding-left: 20px;
+    }
+
+    &:last-of-type {
+      padding-right: 20px;
+    }
+  }
+}
+
+tr.is-clickable {
+  cursor: pointer;
+  transition: background-color 0.12s;
+
+  &:hover,
+  &:focus-visible {
+    background: color-mix(in srgb, var(--mat-sys-primary) 5%, var(--tc-surface));
+    outline: none;
+  }
+
+  &:focus-visible {
+    box-shadow: inset 3px 0 0 var(--mat-sys-primary);
+  }
+}
+
+// Tabelas simples (HTML) dos módulos: mesmo padrão visual da mat-table.
+table.lines {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+
+  th {
+    padding: 10px 12px;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--tc-text-muted);
+    background: var(--tc-surface-muted);
+    border-bottom: 1px solid var(--tc-border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--tc-border);
+    text-align: left;
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  tbody tr:hover td {
+    background: color-mix(in srgb, var(--mat-sys-primary) 3%, transparent);
+  }
+
+  .money,
+  th.money {
+    text-align: right;
+  }
+}
+
+// Celular: as linhas das listagens viram cartões. Os rótulos vêm do cabeçalho (core/layout/responsive-tables.ts).
+@media (max-width: 720px) {
+  .tc-table-card .table-scroll,
+  .tc-cards-mobile {
+    overflow: visible;
+  }
+
+  .tc-table-card table.mat-mdc-table:not(.tc-table-wide),
+  table.lines.tc-cards-mobile {
+    display: block;
+    background: transparent;
+
+    thead,
+    .mat-mdc-header-row {
+      display: none;
+    }
+
+    tbody {
+      display: block;
+    }
+
+    tr.mat-mdc-row,
+    tbody tr {
+      display: block;
+      height: auto;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--tc-border);
+    }
+
+    td.mat-mdc-cell,
+    td {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      min-height: 0;
+      padding: 4px 0 !important;
+      border: 0;
+      text-align: right;
+
+      &[data-label]::before {
+        content: attr(data-label);
+        flex: 0 0 auto;
+        max-width: 45%;
+        text-align: left;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--tc-text-muted);
+      }
+
+      // Primeira coluna = título do cartão
+      &:first-child {
+        display: block;
+        text-align: left;
+        font-weight: 600;
+        padding-bottom: 6px !important;
+
+        &::before {
+          display: none;
+        }
+      }
+
+      &:empty {
+        display: none;
+      }
     }
   }
 }
@@ -173,6 +687,219 @@ a {
 .mono {
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-size: 0.92em;
+}
+
+// ---------- campos ----------
+.mat-mdc-form-field .mdc-text-field--outlined:not(.mdc-text-field--disabled) {
+  background: var(--tc-field-bg);
+  border-radius: var(--tc-radius-sm);
+}
+
+.mat-mdc-form-field .mdc-text-field--outlined.mdc-text-field--focused {
+  background: var(--tc-surface);
+}
+
+// Seletor de arquivo: <label class="tc-file-button"><input type="file" /> <mat-icon>…</mat-icon> Texto</label>.
+// O input fica invisível (mas focável); o rótulo recebe o anel de foco. `.is-text`: visual de botão de texto.
+.tc-file-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  max-width: 100%;
+  padding: 8px 16px;
+  border: 1px dashed var(--tc-border-strong);
+  border-radius: var(--tc-radius-sm);
+  background: var(--tc-surface-muted);
+  color: var(--mat-sys-primary);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+
+  > mat-icon {
+    flex: 0 0 auto;
+  }
+
+  > input[type='file'] {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+
+  &:hover {
+    border-color: var(--mat-sys-primary);
+    background: color-mix(in srgb, var(--mat-sys-primary) 6%, var(--tc-surface));
+  }
+
+  &:focus-within {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+
+  &.is-text {
+    gap: 6px;
+    min-height: 0;
+    padding: 6px 12px;
+    border: 0;
+    background: transparent;
+    font: var(--mat-sys-label-large);
+    font-weight: 600;
+    transition: background-color 0.12s;
+
+    &:hover {
+      background: color-mix(in srgb, var(--mat-sys-primary) 8%, transparent);
+    }
+  }
+}
+
+// ---------- painéis expansíveis como cartões ----------
+// <mat-accordion class="tc-accordion-cards">: cada painel vira um cartão separado; no celular o cabeçalho
+// quebra em duas linhas (título em cima, descrição/status embaixo).
+.tc-accordion-cards {
+  display: block;
+
+  > .mat-expansion-panel {
+    margin: 0 !important;
+    border: 1px solid var(--tc-border);
+    border-radius: var(--tc-radius) !important;
+    box-shadow: var(--tc-shadow) !important;
+
+    &.mat-expanded {
+      border-color: color-mix(in srgb, var(--mat-sys-primary) 35%, var(--tc-border));
+    }
+  }
+
+  > .mat-expansion-panel + .mat-expansion-panel {
+    margin-top: 10px !important;
+  }
+
+  mat-panel-title {
+    font-weight: 600;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  mat-panel-description {
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+
+  @media (max-width: 600px) {
+    .mat-expansion-panel-header {
+      height: auto !important;
+      padding-block: 12px;
+    }
+
+    .mat-expansion-panel-header .mat-content {
+      flex-wrap: wrap;
+      row-gap: 6px;
+    }
+
+    mat-panel-title {
+      flex: 1 1 100%;
+      margin-right: 0;
+    }
+
+    mat-panel-description {
+      justify-content: space-between;
+      margin-right: 0;
+    }
+  }
+}
+
+// ---------- abas ----------
+.mat-mdc-tab-group,
+.mat-mdc-tab-nav-bar {
+  --mat-tab-container-height: 46px;
+}
+
+.mat-mdc-tab-header {
+  margin-bottom: 8px;
+}
+
+// O conteúdo da aba corta o que passa da borda; o espaço evita cortar o rótulo flutuante dos campos.
+.mat-mdc-tab-body-content {
+  padding-top: 8px;
+}
+
+// ---------- diálogos: faixa de título na cor da marca ----------
+.mat-mdc-dialog-container {
+  .mat-mdc-dialog-title {
+    position: relative;
+    margin: 0;
+    padding: 18px 56px 16px 24px;
+    background: var(--tc-brand);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 650;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+
+    &::before {
+      display: none;
+    }
+
+    small,
+    .subtitle {
+      display: block;
+      margin-top: 2px;
+      font-size: 13px;
+      font-weight: 400;
+      opacity: 0.88;
+    }
+  }
+
+  .mat-mdc-dialog-title.is-danger {
+    background: var(--mat-sys-error);
+    color: var(--mat-sys-on-error);
+  }
+
+  .mat-mdc-dialog-content {
+    padding-top: 20px !important;
+    color: var(--tc-text);
+  }
+
+  .mat-mdc-dialog-actions {
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--tc-surface-muted);
+    border-top: 1px solid var(--tc-border);
+  }
+
+  .tc-dialog-close {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    color: inherit;
+  }
+}
+
+.danger.mat-mdc-unelevated-button:not(:disabled),
+.mat-mdc-unelevated-button.danger:not(:disabled) {
+  --mat-button-filled-container-color: var(--mat-sys-error);
+  --mat-button-filled-label-text-color: var(--mat-sys-on-error);
+}
+
+// ---------- notificações (snackbar) ----------
+.mat-mdc-snack-bar-container {
+  --mat-snack-bar-button-color: #fff;
+
+  &.tc-snack-success {
+    --mat-snack-bar-container-color: #14532d;
+    --mat-snack-bar-supporting-text-color: #fff;
+  }
+
+  &.tc-snack-error {
+    --mat-snack-bar-container-color: #7f1d1d;
+    --mat-snack-bar-supporting-text-color: #fff;
+  }
 }
 
 // Foco visível para navegação por teclado
@@ -193,9 +920,58 @@ a {
 // ---------- alertas em formulários/diálogos ----------
 .tc-alert {
   padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--mat-sys-error-container);
+  border-radius: var(--tc-radius-sm);
+  background: var(--tc-danger-container);
   color: var(--mat-sys-on-error-container);
+  border: 1px solid color-mix(in srgb, var(--mat-sys-error) 25%, transparent);
+}
+
+// Faixa de aviso no topo de páginas/formulários: <div class="tc-banner is-warning"><mat-icon>…</mat-icon>
+// <div><strong>Título</strong><span>Detalhe</span></div> [botão]</div>. `.is-warning` ou `.is-danger`.
+.tc-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: var(--tc-radius);
+  border: 1px solid var(--tc-border);
+  background: var(--tc-surface-muted);
+  color: var(--tc-text);
+  overflow-wrap: anywhere;
+
+  > mat-icon {
+    flex: 0 0 auto;
+  }
+
+  > div,
+  > span {
+    flex: 1 1 220px;
+    min-width: 0;
+  }
+
+  > div {
+    display: grid;
+    gap: 2px;
+  }
+
+  &.is-warning {
+    background: var(--tc-warning-container);
+    color: var(--tc-warning);
+    border-color: color-mix(in srgb, var(--tc-warning) 25%, transparent);
+
+    .tc-muted {
+      color: inherit;
+      opacity: 0.85;
+    }
+  }
+
+  &.is-danger {
+    background: var(--tc-danger-container);
+    color: var(--mat-sys-on-error-container);
+    border-color: color-mix(in srgb, var(--tc-danger) 25%, transparent);
+  }
 }
 
 .tc-chip-soft {
@@ -203,10 +979,11 @@ a {
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  border-radius: 8px;
-  font: var(--mat-sys-label-small);
-  background: var(--mat-sys-secondary-container);
-  color: var(--mat-sys-on-secondary-container);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--tc-info-container);
+  color: var(--tc-info);
 }
 
 .money {
@@ -221,4 +998,13 @@ a {
 
 .money.positive {
   color: var(--tc-success);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation-duration: 0.01ms !important;
+  }
 }

@@ -29,16 +29,18 @@ import { Announcement, OpsApi } from './ops-api';
       } @else {
         @for (a of list() ?? []; track a.id) {
           <article class="tc-card item" [class.unread]="!a.read" (click)="markRead(a)">
-            <header>
+            <header class="item-head">
               @if (a.pinned) { <mat-icon class="pin" aria-label="Fixado">push_pin</mat-icon> }
               <h3>{{ a.title }}</h3>
               <span class="tc-chip-soft">{{ a.audience === 'ALL' ? 'Todos' : a.audience === 'BUILDING' ? 'Bloco ' + a.buildingName : 'Unidade ' + a.unitLabel }}</span>
             </header>
             <p class="body">{{ a.body }}</p>
-            <footer class="tc-muted">
-              {{ a.publishedAt | date: 'dd/MM/yyyy HH:mm' }} · {{ a.createdByName }}{{ a.sendEmail ? ' · enviado por e-mail' : '' }}
-              · {{ a.readCount }} leitura(s){{ a.expiresOn ? ' · até ' + a.expiresOn.slice(8, 10) + '/' + a.expiresOn.slice(5, 7) : '' }}
-              @if (canEdit()) { <button mat-button (click)="archive(a, $event)">Arquivar</button> }
+            <footer class="item-foot">
+              <span class="meta tc-muted">
+                {{ a.publishedAt | date: 'dd/MM/yyyy HH:mm' }} · {{ a.createdByName }}{{ a.sendEmail ? ' · enviado por e-mail' : '' }}
+                · {{ a.readCount }} leitura(s){{ a.expiresOn ? ' · até ' + a.expiresOn.slice(8, 10) + '/' + a.expiresOn.slice(5, 7) : '' }}
+              </span>
+              @if (canEdit()) { <button mat-button (click)="archive(a, $event)"><mat-icon>archive</mat-icon> Arquivar</button> }
             </footer>
           </article>
         } @empty {
@@ -49,13 +51,15 @@ import { Announcement, OpsApi } from './ops-api';
   `,
   styles: `
     .narrow { max-width: 900px; }
-    .item { margin-bottom: 12px; cursor: default; }
+    .item { display: grid; gap: 10px; margin-bottom: 12px; cursor: default; }
     .item.unread { border-left: 4px solid var(--mat-sys-primary); }
-    header { display: flex; align-items: center; gap: 8px; }
-    header h3 { margin: 0; flex: 1; font: var(--mat-sys-title-medium); }
-    .pin { color: var(--mat-sys-tertiary); }
-    .body { white-space: pre-wrap; }
-    footer { font: var(--mat-sys-body-small); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+    .item-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .item-head h3 { margin: 0; flex: 1 1 200px; min-width: 0; font: var(--mat-sys-title-medium); font-weight: 600; color: var(--tc-text); overflow-wrap: anywhere; }
+    .pin { color: var(--tc-accent); }
+    .body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .item-foot { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--tc-border); }
+    .meta { flex: 1 1 240px; min-width: 0; font: var(--mat-sys-body-small); }
+    .item-foot button { margin-left: auto; }
   `,
 })
 export class AnnouncementList {

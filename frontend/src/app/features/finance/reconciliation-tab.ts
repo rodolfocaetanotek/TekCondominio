@@ -26,12 +26,12 @@ import { BankAccount, FinanceApi, StatementLineView } from './finance-api';
   imports: [CurrencyPipe, ReactiveFormsModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatSelectModule, MatTooltipModule, IsoDatePipe],
   template: `
     <section class="tc-card">
-      <div class="bar">
-        <mat-form-field class="grow"><mat-label>Conta bancária</mat-label>
+      <div class="filters">
+        <mat-form-field class="search"><mat-label>Conta bancária</mat-label>
           <mat-select [formControl]="account">
             @for (a of accounts() ?? []; track a.id) { <mat-option [value]="a.id">{{ a.name }}</mat-option> }
           </mat-select></mat-form-field>
-        <mat-form-field class="w"><mat-label>Situação</mat-label>
+        <mat-form-field><mat-label>Situação</mat-label>
           <mat-select [formControl]="status">
             <mat-option value="UNMATCHED">Pendentes</mat-option>
             <mat-option value="MATCHED">Conciliadas</mat-option>
@@ -39,17 +39,18 @@ import { BankAccount, FinanceApi, StatementLineView } from './finance-api';
             <mat-option value="">Todas</mat-option>
           </mat-select></mat-form-field>
         @if (canEdit() && account.value) {
-          <label class="file"><input type="file" accept=".ofx,.OFX" (change)="upload($event)" [disabled]="busy()" />
+          <label class="tc-file-button"><input type="file" accept=".ofx,.OFX" (change)="upload($event)" [disabled]="busy()" />
             <mat-icon>upload_file</mat-icon> {{ busy() ? 'Importando…' : 'Importar extrato OFX' }}</label>
         }
       </div>
-      <p class="tc-muted small">O sistema só concilia sozinho quando valor e data (até 3 dias de diferença) apontam para uma única
+      <p class="tc-muted small hint">O sistema só concilia sozinho quando valor e data (até 3 dias de diferença) apontam para uma única
         movimentação. Os demais casos aparecem abaixo com sugestões para você decidir.</p>
     </section>
 
     @if (account.value) {
-      <section class="tc-card scroll">
-        <table class="lines">
+      <section class="tc-table-card">
+        <div class="table-scroll">
+        <table class="lines tc-cards-mobile">
           <thead><tr><th>Data</th><th>Histórico do banco</th><th class="money">Valor</th><th>Situação / sugestões</th><th></th></tr></thead>
           <tbody>
             @for (l of lines() ?? []; track l.id) {
@@ -57,7 +58,7 @@ import { BankAccount, FinanceApi, StatementLineView } from './finance-api';
                 <td>{{ l.postedOn | isoDate }}</td>
                 <td>{{ l.memo }}<br /><span class="tc-muted small">{{ l.fitId }}</span></td>
                 <td class="money" [class.negative]="l.amount < 0" [class.positive]="l.amount > 0">{{ l.amount | currency: 'BRL' }}</td>
-                <td>
+                <td class="sugg-cell">
                   @switch (l.status) {
                     @case ('MATCHED') { <span class="tc-status is-active">Conciliada</span> }
                     @case ('IGNORED') { <span class="tc-status is-inactive">Ignorada</span> <span class="tc-muted small">{{ l.note }}</span> }
@@ -86,22 +87,20 @@ import { BankAccount, FinanceApi, StatementLineView } from './finance-api';
             }
           </tbody>
         </table>
+        </div>
       </section>
     }
   `,
   styles: `
-    :host { display: grid; gap: 16px; margin-top: 16px; }
-    .bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-    .grow { flex: 1 1 240px; } .w { flex: 0 1 180px; }
+    :host { display: grid; gap: 16px; }
     .small { font: var(--mat-sys-body-small); }
-    .file { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border: 1px dashed var(--mat-sys-outline); border-radius: 12px; cursor: pointer; }
-    .file input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-    .file:focus-within { outline: 2px solid var(--mat-sys-primary); }
-    .scroll { overflow-x: auto; }
-    .lines { width: 100%; border-collapse: collapse; }
-    .lines th, .lines td { padding: 6px 8px; border-bottom: 1px solid var(--mat-sys-outline-variant); text-align: left; vertical-align: top; }
-    .lines .money { text-align: right; white-space: nowrap; }
-    .sugg { margin: 0 6px 6px 0; } .acts { white-space: nowrap; }
+    .hint { margin: 0; }
+    .lines td { vertical-align: top; }
+    .sugg { margin: 0 6px 6px 0; max-width: 100%; height: auto; min-height: 32px; white-space: normal; text-align: left; }
+    .acts { white-space: nowrap; }
+    @media (max-width: 720px) {
+      .lines td.sugg-cell { flex-wrap: wrap; justify-content: flex-end; }
+    }
   `,
 })
 export class ReconciliationTab {

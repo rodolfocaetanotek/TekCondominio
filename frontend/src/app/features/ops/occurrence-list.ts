@@ -7,6 +7,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { Router } from '@angular/router';
@@ -25,7 +26,7 @@ import { OccurrenceDetail, OccurrenceSummary, OpsApi } from './ops-api';
 @Component({
   selector: 'tc-occurrence-list',
   imports: [DatePipe, DecimalPipe, ReactiveFormsModule, MatTableModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule,
-    MatIconModule, PageHeader, EmptyState, CondominiumRequired, LabelPipe],
+    MatIconModule, MatProgressBarModule, PageHeader, EmptyState, CondominiumRequired, LabelPipe],
   template: `
     <div class="tc-page">
       <tc-page-header eyebrow="Manutenção" title="Ocorrências" [subtitle]="context.selected()?.name">
@@ -35,17 +36,29 @@ import { OccurrenceDetail, OccurrenceSummary, OpsApi } from './ops-api';
         <tc-condominium-required />
       } @else {
         @if (stats(); as s) {
-          <section class="kpis">
-            <div class="tc-card kpi"><span class="tc-muted">Pendentes</span><strong>{{ s.open }}</strong></div>
-            <div class="tc-card kpi"><span class="tc-muted">Fora do prazo</span><strong [class.negative]="s.overdue > 0">{{ s.overdue }}</strong></div>
-            <div class="tc-card kpi"><span class="tc-muted">Resolvidas</span><strong>{{ s.byStatus['RESOLVED'] ?? 0 }}</strong></div>
-            <div class="tc-card kpi"><span class="tc-muted">Tempo médio de solução</span>
-              <strong>{{ s.averageResolutionHours !== null && s.averageResolutionHours !== undefined ? (s.averageResolutionHours | number: '1.0-1') + ' h' : '—' }}</strong></div>
+          <section class="tc-kpis" aria-label="Indicadores de ocorrências">
+            <div class="tc-kpi tc-card tone-warning">
+              <span class="icon"><mat-icon aria-hidden="true">pending_actions</mat-icon></span>
+              <span class="label">Pendentes</span><span class="value">{{ s.open }}</span>
+            </div>
+            <div class="tc-kpi tc-card" [class.tone-danger]="s.overdue > 0" [class.tone-success]="s.overdue === 0">
+              <span class="icon"><mat-icon aria-hidden="true">{{ s.overdue > 0 ? 'alarm' : 'verified' }}</mat-icon></span>
+              <span class="label">Fora do prazo</span><span class="value">{{ s.overdue }}</span>
+            </div>
+            <div class="tc-kpi tc-card tone-success">
+              <span class="icon"><mat-icon aria-hidden="true">task_alt</mat-icon></span>
+              <span class="label">Resolvidas</span><span class="value">{{ s.byStatus['RESOLVED'] ?? 0 }}</span>
+            </div>
+            <div class="tc-kpi tc-card tone-info">
+              <span class="icon"><mat-icon aria-hidden="true">timer</mat-icon></span>
+              <span class="label">Tempo médio de solução</span>
+              <span class="value">{{ s.averageResolutionHours !== null && s.averageResolutionHours !== undefined ? (s.averageResolutionHours | number: '1.0-1') + ' h' : '—' }}</span>
+            </div>
           </section>
         }
-        <div class="bar">
-          <mat-form-field class="grow"><mat-label>Buscar</mat-label><mat-icon matPrefix>search</mat-icon><input matInput [formControl]="search" /></mat-form-field>
-          <mat-form-field class="w"><mat-label>Situação</mat-label>
+        <div class="filters">
+          <mat-form-field class="search"><mat-label>Buscar</mat-label><mat-icon matPrefix>search</mat-icon><input matInput [formControl]="search" /></mat-form-field>
+          <mat-form-field><mat-label>Situação</mat-label>
             <mat-select [formControl]="status">
               <mat-option value="pending">Pendentes</mat-option>
               <mat-option value="RESOLVED">Resolvidas</mat-option>
@@ -53,25 +66,31 @@ import { OccurrenceDetail, OccurrenceSummary, OpsApi } from './ops-api';
               <mat-option value="">Todas</mat-option>
             </mat-select></mat-form-field>
         </div>
-        <section class="tc-table-card">
-          @if ((page()?.content ?? []).length === 0) {
+        <section class="tc-table-card" aria-live="polite" [attr.aria-busy]="page() === undefined">
+          <mat-progress-bar [mode]="page() === undefined ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="page() !== undefined" />
+          @if (page() === undefined) {
+            <span class="sr-only">Carregando ocorrências…</span>
+          } @else if ((page()?.content ?? []).length === 0) {
             <tc-empty-state icon="build" title="Nenhuma ocorrência" />
           } @else {
             <div class="table-scroll">
               <table mat-table [dataSource]="page()?.content ?? []">
-                <ng-container matColumnDef="number"><th mat-header-cell *matHeaderCellDef>Nº</th><td mat-cell *matCellDef="let o">{{ o.number }}</td></ng-container>
+                <ng-container matColumnDef="number"><th mat-header-cell *matHeaderCellDef>Nº</th><td mat-cell *matCellDef="let o" class="mono">{{ o.number }}</td></ng-container>
                 <ng-container matColumnDef="title"><th mat-header-cell *matHeaderCellDef>Ocorrência</th>
-                  <td mat-cell *matCellDef="let o"><strong>{{ o.title }}</strong><br />
-                    <span class="tc-muted">{{ o.category | label: 'occurrenceCategory' }}{{ o.unitLabel ? ' · Unid. ' + o.unitLabel : '' }} · {{ o.reporterName }} · {{ o.createdAt | date: 'dd/MM/yy HH:mm' }}</span></td></ng-container>
+                  <td mat-cell *matCellDef="let o"><span class="title-cell"><strong>{{ o.title }}</strong>
+                    <span class="tc-muted sub">{{ o.category | label: 'occurrenceCategory' }}{{ o.unitLabel ? ' · Unid. ' + o.unitLabel : '' }} · {{ o.reporterName }} · {{ o.createdAt | date: 'dd/MM/yy HH:mm' }}</span></span></td></ng-container>
                 <ng-container matColumnDef="priority"><th mat-header-cell *matHeaderCellDef>Prioridade</th>
                   <td mat-cell *matCellDef="let o"><span [class.urgent]="o.priority === 'URGENT' || o.priority === 'HIGH'">{{ o.priority | label: 'priority' }}</span></td></ng-container>
                 <ng-container matColumnDef="assignee"><th mat-header-cell *matHeaderCellDef>Responsável / prazo</th>
-                  <td mat-cell *matCellDef="let o">{{ o.assigneeName ?? '—' }}<br /><span [class.negative]="o.overdue">{{ o.dueDate ? 'até ' + o.dueDate.slice(8, 10) + '/' + o.dueDate.slice(5, 7) : '' }}</span></td></ng-container>
+                  <td mat-cell *matCellDef="let o"><span class="two-line">{{ o.assigneeName ?? '—' }}<span class="sub" [class.negative]="o.overdue">{{ o.dueDate ? 'até ' + o.dueDate.slice(8, 10) + '/' + o.dueDate.slice(5, 7) : '' }}</span></span></td></ng-container>
                 <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Situação</th>
-                  <td mat-cell *matCellDef="let o"><span class="tc-status" [class.is-active]="o.status === 'RESOLVED'" [class.is-pending]="o.status === 'OPEN' || o.overdue"
+                  <td mat-cell *matCellDef="let o"><span class="tc-status" [class.is-success]="o.status === 'RESOLVED'"
+                    [class.is-danger]="o.overdue && o.status !== 'RESOLVED' && o.status !== 'CANCELLED'"
+                    [class.is-pending]="!o.overdue && (o.status === 'OPEN' || o.status === 'WAITING')" [class.is-info]="!o.overdue && o.status === 'IN_PROGRESS'"
                     [class.is-inactive]="o.status === 'CANCELLED'">{{ o.status | label: 'occurrenceStatus' }}</span></td></ng-container>
                 <tr mat-header-row *matHeaderRowDef="columns"></tr>
-                <tr mat-row *matRowDef="let row; columns: columns" class="is-clickable" tabindex="0" (click)="open(row)" (keydown.enter)="open(row)"></tr>
+                <tr mat-row *matRowDef="let row; columns: columns" class="is-clickable" tabindex="0" role="link"
+                  [attr.aria-label]="'Abrir ocorrência nº ' + row.number" (click)="open(row)" (keydown.enter)="open(row)"></tr>
               </table>
             </div>
           }
@@ -80,11 +99,13 @@ import { OccurrenceDetail, OccurrenceSummary, OpsApi } from './ops-api';
     </div>
   `,
   styles: `
-    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
-    .kpi { display: grid; } .kpi strong { font: var(--mat-sys-headline-small); }
-    .bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
-    .grow { flex: 1 1 260px; } .w { flex: 0 1 200px; }
-    .urgent { color: var(--mat-sys-error); font-weight: 600; }
+    .title-cell, .two-line { display: grid; gap: 2px; padding-block: 6px; }
+    .sub { font: var(--mat-sys-body-small); }
+    .negative { color: var(--tc-danger); font-weight: 600; }
+    .urgent { color: var(--tc-danger); font-weight: 600; }
+    @media (max-width: 720px) {
+      .title-cell, .two-line { justify-items: end; padding-block: 0; }
+    }
   `,
 })
 export class OccurrenceList {

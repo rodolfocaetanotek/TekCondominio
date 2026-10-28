@@ -32,28 +32,29 @@ import { Contract, OpsApi } from './ops-api';
       @if (!context.id()) {
         <tc-condominium-required />
       } @else {
-        <mat-accordion>
+        <mat-accordion class="tc-accordion-cards">
           @for (c of list() ?? []; track c.id) {
             <mat-expansion-panel (opened)="openHistory(c)">
               <mat-expansion-panel-header>
                 <mat-panel-title>{{ c.title }}</mat-panel-title>
                 <mat-panel-description>
-                  {{ c.supplierName }} · {{ c.amount | currency: 'BRL' }} {{ c.periodicity | label: 'periodicity' }}
-                  <span class="tc-status" [class.is-active]="c.status === 'ACTIVE' && !c.expiring && !c.expired" [class.is-pending]="c.expiring || c.expired"
+                  <span class="meta">{{ c.supplierName }} · <span class="money">{{ c.amount | currency: 'BRL' }}</span> {{ c.periodicity | label: 'periodicity' }}</span>
+                  <span class="tc-status" [class.is-active]="c.status === 'ACTIVE' && !c.expiring && !c.expired"
+                    [class.is-pending]="c.status !== 'TERMINATED' && !c.expired && c.expiring" [class.is-danger]="c.status !== 'TERMINATED' && c.expired"
                     [class.is-inactive]="c.status === 'TERMINATED'">{{ c.status === 'TERMINATED' ? 'Encerrado' : c.expired ? 'Vencido' : c.expiring ? 'A vencer' : 'Vigente' }}</span>
                 </mat-panel-description>
               </mat-expansion-panel-header>
-              <p>Vigência: {{ c.startDate | isoDate }} a {{ c.endDate ? (c.endDate | isoDate) : 'indeterminado' }} · aviso prévio {{ c.noticeDays }} dias
+              <p class="terms">Vigência: {{ c.startDate | isoDate }} a {{ c.endDate ? (c.endDate | isoDate) : 'indeterminado' }} · aviso prévio {{ c.noticeDays }} dias
                 {{ c.readjustmentIndex ? ' · reajuste ' + c.readjustmentIndex + (c.readjustmentMonth ? ' em ' + c.readjustmentMonth + '/ano' : '') : '' }}</p>
               @if (c.description) { <p class="pre">{{ c.description }}</p> }
               @if (c.terminationReason) { <p class="tc-muted">Encerrado em {{ c.terminatedOn | isoDate }}: {{ c.terminationReason }}</p> }
-              <h4>Histórico</h4>
+              <h4 class="tc-section-label">Histórico</h4>
               @for (h of history()[c.id] ?? []; track h.createdAt) {
-                <p class="small"><strong>{{ h.createdAt | date: 'dd/MM/yy HH:mm' }}</strong> {{ h.createdByName }}: {{ h.change }}</p>
+                <p class="small hist"><strong>{{ h.createdAt | date: 'dd/MM/yy HH:mm' }}</strong> {{ h.createdByName }}: {{ h.change }}</p>
               }
               <tc-attachments [condominiumId]="context.id()!" entityType="Contract" [entityId]="c.id" category="CONTRACT" [canEdit]="canEdit()" />
               @if (canEdit() && c.status === 'ACTIVE') {
-                <div class="tc-actions">
+                <div class="tc-actions foot">
                   <button mat-button (click)="terminate(c)">Encerrar contrato</button>
                   <button mat-stroked-button (click)="edit(c)">Editar</button>
                 </div>
@@ -66,7 +67,17 @@ import { Contract, OpsApi } from './ops-api';
       }
     </div>
   `,
-  styles: `.narrow { max-width: 1000px; } mat-panel-description { gap: 8px; flex-wrap: wrap; } .pre { white-space: pre-wrap; } .small { font: var(--mat-sys-body-small); margin: 2px 0; } h4 { margin: 12px 0 4px; }`,
+  styles: `
+    .narrow { max-width: 1000px; }
+    .meta { flex: 1 1 auto; min-width: 0; }
+    .terms { margin-top: 4px; }
+    .pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+    .small { font: var(--mat-sys-body-small); margin: 2px 0; }
+    .hist { padding: 4px 0 4px 10px; border-left: 2px solid var(--tc-border); }
+    h4.tc-section-label { margin: 16px 0 6px; }
+    tc-attachments { display: block; margin-top: 16px; }
+    .foot { margin-top: 12px; }
+  `,
 })
 export class ContractList {
   protected readonly context = inject(CondominiumContext);

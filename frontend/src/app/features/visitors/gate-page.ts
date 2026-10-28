@@ -36,37 +36,60 @@ import { VisitorApi, VisitorPass } from './visitor-api';
       } @else {
         @if (canEdit()) {
           <section class="tc-card code">
-            <mat-form-field><mat-label>Código de acesso (6 dígitos)</mat-label>
-              <input matInput [formControl]="code" inputmode="numeric" maxlength="6" (keydown.enter)="checkInByCode()" /></mat-form-field>
-            <button mat-flat-button (click)="checkInByCode()" [disabled]="code.invalid"><mat-icon>login</mat-icon> Liberar entrada</button>
+            <span class="code-icon" aria-hidden="true"><mat-icon>pin</mat-icon></span>
+            <mat-form-field class="code-field" subscriptSizing="dynamic"><mat-label>Código de acesso (6 dígitos)</mat-label>
+              <input matInput [formControl]="code" inputmode="numeric" maxlength="6" autocomplete="off" (keydown.enter)="checkInByCode()" /></mat-form-field>
+            <button mat-flat-button class="code-btn" (click)="checkInByCode()" [disabled]="code.invalid"><mat-icon>login</mat-icon> Liberar entrada</button>
           </section>
         }
-        @for (group of groups(); track group.title) {
-          <section class="tc-card">
+        @for (group of groups(); track group.title; let gi = $index) {
+          <section class="tc-card group" [class.g-inside]="gi === 0" [class.g-expected]="gi === 1" [class.g-left]="gi === 2">
             <h3 class="tc-section-title">{{ group.title }} ({{ group.items.length }})</h3>
             @for (v of group.items; track v.id) {
               <div class="row">
-                <div><strong>{{ v.name }}</strong> · {{ v.kind | label: 'visitorKind' }} · unid. {{ v.unitLabel }}<br />
+                <div class="who"><strong>{{ v.name }}</strong> · {{ v.kind | label: 'visitorKind' }} · unid. {{ v.unitLabel }}<br />
                   <span class="tc-muted small">{{ v.company ?? '' }}{{ v.document ? ' · doc. ' + v.document : '' }}{{ v.vehiclePlate ? ' · placa ' + v.vehiclePlate : '' }}
                     · autorizado por {{ v.authorizedByName }}{{ v.validFrom !== v.validUntil ? ' · válido até ' + (v.validUntil | isoDate) : '' }}
                     {{ v.enteredAt ? ' · entrada ' + (v.enteredAt | date: 'HH:mm') : '' }}{{ v.leftAt ? ' · saída ' + (v.leftAt | date: 'HH:mm') : '' }}</span></div>
                 @if (canEdit()) {
-                  @if (v.status === 'EXPECTED') { <button mat-stroked-button (click)="act(v, 'in')"><mat-icon>login</mat-icon> Entrada</button> }
-                  @if (v.status === 'INSIDE') { <button mat-stroked-button (click)="act(v, 'out')"><mat-icon>logout</mat-icon> Saída</button> }
+                  @if (v.status === 'EXPECTED') { <button mat-flat-button class="act" (click)="act(v, 'in')"><mat-icon>login</mat-icon> Entrada</button> }
+                  @if (v.status === 'INSIDE') { <button mat-stroked-button class="act" (click)="act(v, 'out')"><mat-icon>logout</mat-icon> Saída</button> }
                 }
               </div>
-            } @empty { <p class="tc-muted">Nenhum registro.</p> }
+            } @empty { <p class="tc-muted none">Nenhum registro.</p> }
           </section>
         }
-        @if ((list() ?? []).length === 0) { <tc-empty-state icon="badge" title="Sem movimentação hoje" /> }
+        @if ((list() ?? []).length === 0) { <section class="tc-card"><tc-empty-state icon="badge" title="Sem movimentação hoje" /></section> }
       }
     </div>
   `,
   styles: `
     :host .tc-page > section { margin-bottom: 16px; }
-    .code { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-    .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--mat-sys-outline-variant); flex-wrap: wrap; }
+    .code { display: flex; gap: 12px 16px; align-items: center; flex-wrap: wrap; padding: 20px 24px;
+      border-color: color-mix(in srgb, var(--mat-sys-primary) 35%, var(--tc-border));
+      background: color-mix(in srgb, var(--mat-sys-primary) 4%, var(--tc-surface)); }
+    .code-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 12px; flex: 0 0 auto;
+      background: color-mix(in srgb, var(--mat-sys-primary) 14%, transparent); color: var(--mat-sys-primary); }
+    .code-icon mat-icon { font-size: 26px; width: 26px; height: 26px; }
+    .code-field { flex: 1 1 260px; max-width: 420px; min-width: 0; }
+    .code-field input { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 26px; font-weight: 650; letter-spacing: .3em; }
+    .code-btn { min-height: 52px; padding-inline: 24px; font-size: 15px; }
+    .group .tc-section-title { margin-top: 0; padding-left: 10px; border-left: 3px solid var(--tc-border-strong); line-height: 1.2; }
+    .g-inside .tc-section-title { border-left-color: var(--tc-success); }
+    .g-expected .tc-section-title { border-left-color: var(--tc-warning); }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 10px 12px; padding: 12px 0; border-bottom: 1px solid var(--tc-border); flex-wrap: wrap; }
+    .row:last-of-type { border-bottom: 0; padding-bottom: 0; }
+    .who { flex: 1 1 260px; min-width: 0; line-height: 1.5; overflow-wrap: anywhere; }
+    .who strong { font-size: 15px; }
+    .act { min-width: 120px; }
+    .none { margin: 0; }
     .small { font: var(--mat-sys-body-small); }
+    @media (max-width: 600px) {
+      .code { padding: 16px; }
+      .code-icon { display: none; }
+      .code-field { flex: 1 1 100%; max-width: none; }
+      .code-btn, .act { flex: 1 1 100%; }
+    }
   `,
 })
 export class GatePage {

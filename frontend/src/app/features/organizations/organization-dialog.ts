@@ -9,17 +9,18 @@ import { MaskDirective } from '../../shared/format/mask.directive';
 import { FieldError } from '../../shared/forms/field-error';
 import { applyServerErrors } from '../../shared/forms/server-errors';
 import { Organization, OrganizationService } from './organization.service';
+import { DialogClose } from '../../shared/ui/dialog-close';
 
 /** Cadastro de administradora + primeiro administrador. A política de senha é validada pelo backend. */
 @Component({
   selector: 'tc-organization-dialog',
-  imports: [ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MaskDirective, FieldError],
+  imports: [DialogClose, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MaskDirective, FieldError],
   template: `
-    <h2 mat-dialog-title>Nova administradora</h2>
+    <h2 mat-dialog-title>Nova administradora <tc-dialog-close /></h2>
     <form [formGroup]="form" (ngSubmit)="save()" novalidate>
       <mat-dialog-content>
         @if (error(); as message) {
-          <p class="alert" role="alert">{{ message }}</p>
+          <p class="tc-alert" role="alert">{{ message }}</p>
         }
         <div class="tc-grid">
           <mat-form-field class="span-8">
@@ -71,7 +72,6 @@ import { Organization, OrganizationService } from './organization.service';
     </form>
   `,
   styles: `
-    .alert { padding: 10px 12px; border-radius: 10px; background: var(--mat-sys-error-container); color: var(--mat-sys-on-error-container); }
     h3.tc-section-title { margin-top: 16px; }
   `,
 })

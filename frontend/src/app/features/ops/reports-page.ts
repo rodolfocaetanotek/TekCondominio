@@ -45,7 +45,7 @@ const REPORTS = [
         <tc-condominium-required />
       } @else {
         <section class="tc-card filters">
-          <mat-form-field class="kind"><mat-label>Relatório</mat-label>
+          <mat-form-field class="search kind"><mat-label>Relatório</mat-label>
             <mat-select [formControl]="kind">
               @for (r of reports; track r.kind) { <mat-option [value]="r.kind">{{ r.group }} · {{ r.label }}</mat-option> }
             </mat-select></mat-form-field>
@@ -62,29 +62,31 @@ const REPORTS = [
             <mat-form-field><mat-label>Conta</mat-label><mat-select [formControl]="bank">
               @for (b of banks(); track b.id) { <mat-option [value]="b.id">{{ b.name }}</mat-option> }</mat-select></mat-form-field>
           }
-          <button mat-flat-button (click)="run()"><mat-icon>play_arrow</mat-icon> Gerar</button>
+          <button mat-flat-button class="run" (click)="run()"><mat-icon>play_arrow</mat-icon> Gerar</button>
           @if (canExport() && table()) {
-            <span class="exports">
+            <span class="exports" role="group" aria-label="Exportar relatório">
               <button mat-stroked-button (click)="export('PDF')"><mat-icon>picture_as_pdf</mat-icon> PDF</button>
               <button mat-stroked-button (click)="export('XLSX')"><mat-icon>table_view</mat-icon> Excel</button>
               <button mat-stroked-button (click)="export('CSV')"><mat-icon>description</mat-icon> CSV</button>
             </span>
           }
         </section>
-        @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
+        @if (loading()) { <mat-progress-bar class="loading" mode="indeterminate" /> }
         @if (error(); as message) {
           <section class="tc-card"><tc-empty-state icon="error" title="Não foi possível gerar" [description]="message" /></section>
         } @else if (table(); as t) {
           <section class="tc-card report">
-            <h2>{{ t.title }}</h2>
-            @if (t.subtitle) { <p class="tc-muted">{{ t.subtitle }}</p> }
-            <div class="table-scroll">
-              <table>
+            <header class="report-head">
+              <h2 class="tc-section-title">{{ t.title }}</h2>
+              @if (t.subtitle) { <p class="tc-muted">{{ t.subtitle }}</p> }
+            </header>
+            <div class="table-scroll" tabindex="0" role="region" [attr.aria-label]="t.title">
+              <table class="lines">
                 <thead><tr>@for (c of t.columns; track c.key) { <th [class.num]="isNum(c.type)">{{ c.label }}</th> }</tr></thead>
                 <tbody>
                   @for (r of t.rows; track $index) {
                     <tr>@for (c of t.columns; track c.key; let i = $index) { <td [class.num]="isNum(c.type)">{{ fmt(r[i], c.type) }}</td> }</tr>
-                  } @empty { <tr><td [attr.colspan]="t.columns.length" class="tc-muted">Nenhum registro no período.</td></tr> }
+                  } @empty { <tr><td [attr.colspan]="t.columns.length" class="tc-muted empty">Nenhum registro no período.</td></tr> }
                 </tbody>
                 @if (t.totals) {
                   <tfoot><tr>@for (c of t.columns; track c.key; let i = $index) { <td [class.num]="isNum(c.type)">{{ fmt(t.totals[i], c.type) }}</td> }</tr></tfoot>
@@ -98,16 +100,29 @@ const REPORTS = [
     </div>
   `,
   styles: `
-    .filters { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
-    .kind { flex: 1 1 320px; }
-    .exports { display: flex; gap: 8px; flex-wrap: wrap; }
-    .report h2 { margin: 0; font: var(--mat-sys-title-large); }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-    th, td { padding: 6px 10px; border-bottom: 1px solid var(--mat-sys-outline-variant); text-align: left; }
-    th { background: var(--mat-sys-surface-container); }
-    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    tfoot td { font-weight: 700; border-top: 2px solid var(--mat-sys-outline); }
-    .small { font: var(--mat-sys-body-small); }
+    .filters { padding-block: 16px 4px; }
+    .kind { flex-basis: 320px; }
+    .exports { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; margin-bottom: 18px; }
+    .run { margin-bottom: 18px; }
+    .loading { margin-bottom: 12px; border-radius: 4px; }
+    .report { min-width: 0; padding: 0; overflow: hidden; }
+    .report-head { padding: 18px 20px 14px; border-bottom: 1px solid var(--tc-border); }
+    .report-head h2 { margin: 0; }
+    .report-head p { margin: 4px 0 0; }
+    .table-scroll { overflow-x: auto; max-width: 100%; }
+    .table-scroll:focus-visible { outline-offset: -2px; }
+    table.lines th:first-child, table.lines td:first-child { padding-left: 20px; }
+    table.lines th:last-child, table.lines td:last-child { padding-right: 20px; }
+    .num { text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    tfoot td { font-weight: 700; padding: 10px 12px; background: var(--tc-surface-muted); border-top: 2px solid var(--tc-border-strong); }
+    .empty { text-align: center !important; padding-block: 24px !important; }
+    .small { font: var(--mat-sys-body-small); margin: 0; padding: 10px 20px 0; }
+    .small:last-child { padding-bottom: 16px; }
+    @media (max-width: 600px) {
+      .run, .exports { flex: 1 1 100%; margin-left: 0; }
+      .exports > button { flex: 1 1 0; }
+      .report-head { padding: 14px 16px 12px; }
+    }
   `,
 })
 export class ReportsPage {

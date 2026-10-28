@@ -63,9 +63,7 @@ import { UserService } from './user.service';
       </div>
 
       <section class="tc-table-card" [attr.aria-busy]="loading()">
-        @if (loading()) {
-          <mat-progress-bar mode="indeterminate" />
-        }
+        <mat-progress-bar [mode]="loading() ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="!loading()" />
         @if (error(); as message) {
           <tc-empty-state icon="cloud_off" title="Não foi possível carregar os usuários" [description]="message" />
         } @else if (result(); as page) {
@@ -115,9 +113,6 @@ import { UserService } from './user.service';
     </div>
   `,
   styles: `
-    .filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-    .filters .search { flex: 1 1 320px; }
-    .filters .status { flex: 0 1 200px; }
     .block { display: block; }
   `,
 })

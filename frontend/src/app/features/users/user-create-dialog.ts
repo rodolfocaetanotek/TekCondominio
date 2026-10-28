@@ -11,18 +11,19 @@ import { applyServerErrors } from '../../shared/forms/server-errors';
 import { RoleFields } from './role-fields';
 import { UserDetail } from './user.models';
 import { UserService } from './user.service';
+import { DialogClose } from '../../shared/ui/dialog-close';
 
 /** Novo usuário: a pessoa recebe um convite por e-mail e define a própria senha (ninguém mais a conhece). */
 @Component({
   selector: 'tc-user-create-dialog',
-  imports: [ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatIconModule, FieldError, RoleFields],
+  imports: [DialogClose, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatIconModule, FieldError, RoleFields],
   template: `
-    <h2 mat-dialog-title>Novo usuário</h2>
+    <h2 mat-dialog-title>Novo usuário <tc-dialog-close /></h2>
     <form [formGroup]="form" (ngSubmit)="save()" novalidate>
       <mat-dialog-content>
         <p class="tc-muted info"><mat-icon>mail</mat-icon> Enviaremos um convite por e-mail para a pessoa definir a própria senha.</p>
         @if (error(); as message) {
-          <p class="alert" role="alert">{{ message }}</p>
+          <p class="tc-alert" role="alert">{{ message }}</p>
         }
         <div class="tc-grid">
           <mat-form-field class="span-6">
@@ -47,7 +48,6 @@ import { UserService } from './user.service';
   `,
   styles: `
     .info { display: flex; align-items: center; gap: 8px; margin-top: 0; }
-    .alert { padding: 10px 12px; border-radius: 10px; background: var(--mat-sys-error-container); color: var(--mat-sys-on-error-container); }
   `,
 })
 export class UserCreateDialog {

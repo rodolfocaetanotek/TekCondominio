@@ -8,12 +8,13 @@ import { toProblem } from '../../core/api/api.models';
 import { FieldError } from '../../shared/forms/field-error';
 import { Building } from './structure.models';
 import { StructureService } from './structure.service';
+import { DialogClose } from '../../shared/ui/dialog-close';
 
 @Component({
   selector: 'tc-building-dialog',
-  imports: [ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, FieldError],
+  imports: [DialogClose, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, FieldError],
   template: `
-    <h2 mat-dialog-title>{{ data.building ? 'Editar bloco' : 'Novo bloco/torre' }}</h2>
+    <h2 mat-dialog-title>{{ data.building ? 'Editar bloco' : 'Novo bloco/torre' }} <tc-dialog-close /></h2>
     <form [formGroup]="form" (ngSubmit)="save()" novalidate>
       <mat-dialog-content>
         @if (error(); as message) {

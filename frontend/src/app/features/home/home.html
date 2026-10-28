@@ -16,28 +16,59 @@
   @if (data() === undefined) {
     <mat-progress-bar mode="indeterminate" />
   } @else if (data(); as d) {
-    <section class="kpis" aria-label="Indicadores">
-      <a class="kpi tc-card" routerLink="/condominios"><span class="label">Condomínios ativos</span><span class="value">{{ d.condominiums }}</span></a>
-      <a class="kpi tc-card" routerLink="/unidades"><span class="label">Unidades</span><span class="value">{{ d.units }}</span></a>
-      <a class="kpi tc-card" routerLink="/pessoas"><span class="label">Moradores e proprietários</span><span class="value">{{ d.residents }}</span></a>
-      @if (d.finance) {
-        <div class="kpi tc-card"><span class="label">Saldo consolidado (hoje)</span><span class="value">{{ d.balance | currency: 'BRL' }}</span></div>
-        <div class="kpi tc-card"><span class="label">Receitas no período</span><span class="value">{{ d.income | currency: 'BRL' }}</span></div>
-        <div class="kpi tc-card"><span class="label">Despesas no período</span><span class="value">{{ d.expense | currency: 'BRL' }}</span>
-          <span class="sub">Resultado {{ result() | currency: 'BRL' }}</span></div>
-        <a class="kpi tc-card" routerLink="/financeiro"><span class="label">A receber em aberto</span><span class="value">{{ d.receivablesOpen | currency: 'BRL' }}</span>
-          <span class="sub">{{ d.chargesIssued }} cobrança(s) emitida(s) no período</span></a>
-        <a class="kpi tc-card" routerLink="/financeiro"><span class="label">A pagar em aberto</span><span class="value">{{ d.payablesOpen | currency: 'BRL' }}</span></a>
-        <a class="kpi tc-card alert" routerLink="/cobranca"><span class="label">Inadimplência</span>
-          <span class="value">{{ d.delinquencyRate | number: '1.1-1' }}%</span>
-          <span class="sub"><mat-icon inline aria-hidden="true">warning</mat-icon> {{ d.overdueAmount | currency: 'BRL' }} vencido · {{ d.overdueCharges }} cobrança(s)</span></a>
-      }
+    <p class="tc-section-label">Visão geral</p>
+    <section class="tc-kpis" aria-label="Cadastros">
+      <a class="tc-kpi tc-card" routerLink="/condominios">
+        <span class="icon"><mat-icon aria-hidden="true">apartment</mat-icon></span>
+        <span class="label">Condomínios ativos</span><span class="value">{{ d.condominiums }}</span>
+      </a>
+      <a class="tc-kpi tc-card" routerLink="/unidades">
+        <span class="icon"><mat-icon aria-hidden="true">door_front</mat-icon></span>
+        <span class="label">Unidades</span><span class="value">{{ d.units }}</span>
+      </a>
+      <a class="tc-kpi tc-card" routerLink="/pessoas">
+        <span class="icon"><mat-icon aria-hidden="true">groups</mat-icon></span>
+        <span class="label">Moradores e proprietários</span><span class="value">{{ d.residents }}</span>
+      </a>
     </section>
+    @if (d.finance) {
+      <p class="tc-section-label">Financeiro no período</p>
+      <section class="tc-kpis" aria-label="Indicadores financeiros">
+        <div class="tc-kpi tc-card tone-info">
+          <span class="icon"><mat-icon aria-hidden="true">account_balance_wallet</mat-icon></span>
+          <span class="label">Saldo consolidado (hoje)</span><span class="value">{{ d.balance | currency: 'BRL' }}</span>
+        </div>
+        <div class="tc-kpi tc-card tone-success">
+          <span class="icon"><mat-icon aria-hidden="true">trending_up</mat-icon></span>
+          <span class="label">Receitas no período</span><span class="value">{{ d.income | currency: 'BRL' }}</span>
+        </div>
+        <div class="tc-kpi tc-card tone-warning">
+          <span class="icon"><mat-icon aria-hidden="true">trending_down</mat-icon></span>
+          <span class="label">Despesas no período</span><span class="value">{{ d.expense | currency: 'BRL' }}</span>
+          <span class="sub">Resultado {{ result() | currency: 'BRL' }}</span>
+        </div>
+        <a class="tc-kpi tc-card" routerLink="/financeiro">
+          <span class="icon"><mat-icon aria-hidden="true">call_received</mat-icon></span>
+          <span class="label">A receber em aberto</span><span class="value">{{ d.receivablesOpen | currency: 'BRL' }}</span>
+          <span class="sub">{{ d.chargesIssued }} cobrança(s) emitida(s) no período</span>
+        </a>
+        <a class="tc-kpi tc-card" routerLink="/financeiro">
+          <span class="icon"><mat-icon aria-hidden="true">call_made</mat-icon></span>
+          <span class="label">A pagar em aberto</span><span class="value">{{ d.payablesOpen | currency: 'BRL' }}</span>
+        </a>
+        <a class="tc-kpi tc-card" [class.tone-danger]="d.overdueCharges > 0" [class.tone-success]="d.overdueCharges === 0" routerLink="/cobranca">
+          <span class="icon"><mat-icon aria-hidden="true">{{ d.overdueCharges > 0 ? 'warning' : 'verified' }}</mat-icon></span>
+          <span class="label">Inadimplência</span>
+          <span class="value">{{ d.delinquencyRate | number: '1.1-1' }}%</span>
+          <span class="sub">{{ d.overdueAmount | currency: 'BRL' }} vencido · {{ d.overdueCharges }} cobrança(s)</span>
+        </a>
+      </section>
+    }
 
     <div class="cols">
       @if (d.finance) {
         <section class="tc-card chart">
-          <h2 class="tc-section-title">Receitas × despesas — últimos 12 meses</h2>
+          <h2 class="tc-section-title">Receitas × despesas <small class="tc-muted">últimos 12 meses</small></h2>
           <tc-monthly-chart [points]="d.series" />
         </section>
         <section class="tc-card">
