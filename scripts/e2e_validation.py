@@ -42,9 +42,9 @@ def call(method, path, token=None, body=None, expect=200, raw=None, content_type
     return json.loads(text) if text else None
 
 
-def multipart(path, token, filename, content, params=''):
+def multipart(path, token, filename, content, params='', field='file'):
     boundary = uuid.uuid4().hex
-    body = (f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{filename}"\r\n'
+    body = (f'--{boundary}\r\nContent-Disposition: form-data; name="{field}"; filename="{filename}"\r\n'
             f'Content-Type: application/octet-stream\r\n\r\n').encode('latin-1') + content + f'\r\n--{boundary}--\r\n'.encode()
     return call('POST', path + params, token, raw=body, expect=201, content_type='multipart/form-data; boundary=' + boundary)
 
@@ -131,9 +131,9 @@ def main():
     ok('3 unidades com frações somando 100%', len(units) == 3)
 
     print('3. Financeiro: conta e rateio')
-    bank = call('POST', b + '/finance/bank-accounts', admin, {'name': 'Sicoob Cobrança', 'kind': 'CHECKING', 'bankCode': '756',
-                                                              'agency': '4321', 'accountNumber': '12345-6', 'openingBalance': '0',
-                                                              'openingDate': (TODAY - dt.timedelta(days=120)).isoformat()}, expect=201)['id']
+    bank = call('POST', b + '/financeiro/contas-bancarias', admin, {'nome': 'Sicoob Cobrança', 'tipo': 'CHECKING', 'codigoBanco': '756',
+                                                              'agencia': '4321', 'numeroConta': '12345-6', 'saldoInicial': '0',
+                                                              'dataAbertura': (TODAY - dt.timedelta(days=120)).isoformat()}, expect=201)['id']
     comp = (TODAY.replace(day=1) - dt.timedelta(days=1)).replace(day=1)
     alloc = {'competence': comp.strftime('%Y-%m'), 'description': 'Taxa condominial', 'chartAccountId': '20000000-0000-0000-0000-000000000101',
              'method': 'IDEAL_FRACTION', 'amount': '1000.00', 'dueDate': (TODAY - dt.timedelta(days=12)).isoformat()}
@@ -142,26 +142,26 @@ def main():
     call('POST', b + '/billing/allocations', admin, alloc, expect=201)
     call('POST', b + '/billing/allocations', admin, alloc, expect=409)
     ok('geração duplicada da mesma competência é bloqueada', True)
-    charges = call('GET', b + '/finance/entries?kind=INCOME&tamanho=10&ordem=dueDate,asc', admin)['conteudo']
+    charges = call('GET', b + '/financeiro/lancamentos?natureza=INCOME&tamanho=10&ordem=dataVencimento,asc', admin)['conteudo']
     ok('3 cobranças geradas, uma por unidade', len(charges) == 3)
-    c101 = next(x for x in charges if x['unitLabel'] == '101')
+    c101 = next(x for x in charges if x['rotuloUnidade'] == '101')
 
     print('4. Retorno CNAB 240 (baixa automática)')
     paid_on = TODAY - dt.timedelta(days=2)
     d = lambda x: x.strftime('%d%m%Y')
     n = lambda v, size: str(round(float(v) * 100)).zfill(size)
     lines = [cnab_line([(0, '756'), (7, '0'), (143, d(TODAY))]),
-             cnab_line([(0, '756'), (7, '3'), (8, '00001'), (13, 'T'), (15, '06'), (58, str(c101['collectionNumber']).ljust(15)),
-                        (73, d(TODAY - dt.timedelta(days=12))), (81, n(c101['amount'], 15)), (198, n('1.50', 15))]),
+             cnab_line([(0, '756'), (7, '3'), (8, '00001'), (13, 'T'), (15, '06'), (58, str(c101['numeroCobranca']).ljust(15)),
+                        (73, d(TODAY - dt.timedelta(days=12))), (81, n(c101['valor'], 15)), (198, n('1.50', 15))]),
              cnab_line([(0, '756'), (7, '3'), (8, '00002'), (13, 'U'), (17, n('8.00', 15)), (32, n(0, 15)), (47, n(0, 15)),
-                        (77, n(float(c101['amount']) + 8, 15)), (92, n(float(c101['amount']) + 8, 15)), (137, d(paid_on)), (145, d(paid_on))]),
+                        (77, n(float(c101['valor']) + 8, 15)), (92, n(float(c101['valor']) + 8, 15)), (137, d(paid_on)), (145, d(paid_on))]),
              cnab_line([(0, '756'), (7, '9')])]
     ret = multipart(b + '/billing/bank-returns', admin, 'COB.RET', '\r\n'.join(lines).encode('latin-1'), f'?bankAccountId={bank}')
     ok('retorno baixou 1 cobrança sem pendências', ret['settled'] == 1 and ret['pending'] == 0, str(ret))
-    detail = call('GET', b + f"/finance/entries/{c101['id']}", admin)
-    pay = detail['payments'][0]
-    ok('multa (2%) e juros separados e total = valor pago', money(pay['total']) == money(float(c101['amount']) + 8)
-       and float(pay['fine']) > 0, json.dumps(pay))
+    detail = call('GET', b + f"/financeiro/lancamentos/{c101['id']}", admin)
+    pay = detail['baixas'][0]
+    ok('multa (2%) e juros separados e total = valor pago', money(pay['total']) == money(float(c101['valor']) + 8)
+       and float(pay['multa']) > 0, json.dumps(pay))
 
     print('5. Extrato OFX (conciliação automática)')
     total = money(pay['total']).replace('.', ',')
@@ -170,13 +170,13 @@ def main():
            f'<STMTTRN><TRNTYPE>CREDIT<DTPOSTED>{paid_on:%Y%m%d}<TRNAMT>{total}<FITID>E2E-1<MEMO>LIQUIDACAO BOLETO</STMTTRN>\n'
            f'<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>{paid_on:%Y%m%d}<TRNAMT>-1,50<FITID>E2E-2<MEMO>TARIFA COBRANCA</STMTTRN>\n'
            '</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>')
-    imp = multipart(b + f'/finance/bank-accounts/{bank}/statement-imports', admin, 'extrato.ofx', ofx.encode('latin-1'))
-    ok('OFX: crédito conciliado automaticamente, tarifa pendente', imp['autoMatched'] == 1 and imp['pending'] == 1, str(imp))
-    fee_line = next(l for l in call('GET', b + f'/finance/bank-accounts/{bank}/statement-lines?status=UNMATCHED', admin))
-    call('POST', b + f"/finance/statement-lines/{fee_line['id']}/register", admin,
-         {'chartAccountId': '20000000-0000-0000-0000-000000000211', 'description': 'Tarifa de cobrança'})
-    st = call('GET', b + f'/finance/bank-accounts/{bank}/statement?from={(TODAY - dt.timedelta(days=30)).isoformat()}&to={TODAY.isoformat()}', admin)
-    ok('saldo do extrato = saldo conciliado após registrar a tarifa', money(st['closingBalance']) == money(st['reconciledBalance']), str(st)[:200])
+    imp = multipart(b + f'/financeiro/contas-bancarias/{bank}/extratos', admin, 'extrato.ofx', ofx.encode('latin-1'), field='arquivo')
+    ok('OFX: crédito conciliado automaticamente, tarifa pendente', imp['conciliadasAutomaticamente'] == 1 and imp['pendentes'] == 1, str(imp))
+    fee_line = next(l for l in call('GET', b + f'/financeiro/contas-bancarias/{bank}/linhas-extrato?situacao=UNMATCHED', admin))
+    call('POST', b + f"/financeiro/linhas-extrato/{fee_line['id']}/lancar", admin,
+         {'idContaPlano': '20000000-0000-0000-0000-000000000211', 'descricao': 'Tarifa de cobrança'})
+    st = call('GET', b + f'/financeiro/contas-bancarias/{bank}/extrato?de={(TODAY - dt.timedelta(days=30)).isoformat()}&ate={TODAY.isoformat()}', admin)
+    ok('saldo do extrato = saldo conciliado após registrar a tarifa', money(st['saldoFinal']) == money(st['saldoConciliado']), str(st)[:200])
 
     print('6. Inadimplência e acordo')
     delinquency = call('GET', b + '/billing/delinquency', admin)
@@ -190,10 +190,10 @@ def main():
     print('7. Fechamento mensal')
     month_end = TODAY.replace(day=1) - dt.timedelta(days=1)
     first_closable = (comp - dt.timedelta(days=1))
-    call('POST', b + '/finance/closing', admin, {'until': first_closable.isoformat(), 'notes': 'E2E'})
+    call('POST', b + '/financeiro/fechamento', admin, {'ate': first_closable.isoformat(), 'observacoes': 'E2E'})
     ok('período fechado até ' + first_closable.isoformat(), True)
-    call('POST', b + '/finance/entries', admin, {'kind': 'EXPENSE', 'description': 'Retroativa', 'chartAccountId': '20000000-0000-0000-0000-000000000205',
-                                                 'amount': '10.00', 'dueDate': first_closable.isoformat()}, expect=422)
+    call('POST', b + '/financeiro/lancamentos', admin, {'natureza': 'EXPENSE', 'descricao': 'Retroativa', 'idContaPlano': '20000000-0000-0000-0000-000000000205',
+                                                 'valor': '10.00', 'dataVencimento': first_closable.isoformat()}, expect=422)
     ok('lançamento retroativo em período fechado é bloqueado', True)
 
     print('8. Reservas e portaria')
@@ -216,18 +216,18 @@ def main():
     print('9. Portal do morador e isolamento')
     portal_charges = call('GET', p + '/charges', resident_token)
     ok('morador vê apenas a própria unidade (101)', [u['unitLabel'] for u in portal_charges] == ['101'])
-    call('GET', b + '/finance/entries', resident_token, expect=403)
+    call('GET', b + '/financeiro/lancamentos', resident_token, expect=403)
     ok('morador não acessa a área administrativa (403)', True)
     other_email = f'outra.{STAMP}@e2e.local'
     call('POST', '/api/v1/administradoras', platform, {'nome': f'Outra Administradora {STAMP}', 'cnpj': cnpj(),
          'administrador': {'nome': 'Outra', 'email': other_email, 'senha': 'SenhaValida2026'}}, expect=201)
     foreign = login(other_email, 'SenhaValida2026')
-    call('GET', b + '/finance/closing', foreign, expect=404)
+    call('GET', b + '/financeiro/fechamento', foreign, expect=404)
     call('GET', b + '/common-areas', foreign, expect=404)
     call('GET', b + '/visitors/today', foreign, expect=404)
     ok('outra administradora recebe 404 nos dados deste condomínio', True)
-    insights = call('GET', b + '/insights/cash-projection', admin)
-    ok('projeção de caixa calculada', len(insights['weeks']) == 13)
+    insights = call('GET', b + '/indicadores/projecao-caixa', admin)
+    ok('projeção de caixa calculada', len(insights['semanas']) == 13)
 
     print(f'\nValidação integrada concluída: {len(checks)} verificações OK.')
 

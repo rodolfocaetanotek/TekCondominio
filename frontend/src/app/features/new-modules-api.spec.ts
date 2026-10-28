@@ -19,29 +19,29 @@ describe('APIs dos novos módulos', () => {
   it('fecha e reabre o período com justificativa', () => {
     const api = TestBed.inject(FinanceApi);
     api.close('c1', '2026-09-30', 'Conferido').subscribe();
-    const close = backend.expectOne('/api/v1/condominios/c1/finance/closing');
+    const close = backend.expectOne('/api/v1/condominios/c1/financeiro/fechamento');
     expect(close.request.method).toBe('POST');
-    expect(close.request.body).toEqual({ until: '2026-09-30', notes: 'Conferido' });
-    close.flush({ history: [] });
+    expect(close.request.body).toEqual({ ate: '2026-09-30', observacoes: 'Conferido' });
+    close.flush({ historico: [] });
 
     api.reopen('c1', null, 'Estorno solicitado').subscribe();
-    const reopen = backend.expectOne('/api/v1/condominios/c1/finance/closing/reopen');
-    expect(reopen.request.body).toEqual({ until: null, reason: 'Estorno solicitado' });
-    reopen.flush({ history: [] });
+    const reopen = backend.expectOne('/api/v1/condominios/c1/financeiro/fechamento/reabrir');
+    expect(reopen.request.body).toEqual({ ate: null, motivo: 'Estorno solicitado' });
+    reopen.flush({ historico: [] });
   });
 
   it('envia o extrato OFX como multipart e permite ignorar a checagem de conta', () => {
     const api = TestBed.inject(FinanceApi);
     const file = new File(['<OFX>'], 'extrato.ofx');
     api.importStatement('c1', 'a1', file, true).subscribe();
-    const req = backend.expectOne((r) => r.url === '/api/v1/condominios/c1/finance/bank-accounts/a1/statement-imports');
-    expect(req.request.params.get('ignoreAccountCheck')).toBe('true');
-    expect((req.request.body as FormData).get('file')).toBeInstanceOf(File);
+    const req = backend.expectOne((r) => r.url === '/api/v1/condominios/c1/financeiro/contas-bancarias/a1/extratos');
+    expect(req.request.params.get('ignorarConferenciaConta')).toBe('true');
+    expect((req.request.body as FormData).get('arquivo')).toBeInstanceOf(File);
     req.flush({});
 
     api.matchLine('c1', 'l1', 'PAYMENT', 'p1').subscribe();
-    const match = backend.expectOne('/api/v1/condominios/c1/finance/statement-lines/l1/match');
-    expect(match.request.body).toEqual({ type: 'PAYMENT', movementId: 'p1' });
+    const match = backend.expectOne('/api/v1/condominios/c1/financeiro/linhas-extrato/l1/conciliar');
+    expect(match.request.body).toEqual({ tipo: 'PAYMENT', idMovimentacao: 'p1' });
     match.flush({});
   });
 

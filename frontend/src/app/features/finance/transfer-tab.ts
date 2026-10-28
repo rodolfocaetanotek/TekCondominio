@@ -15,7 +15,7 @@ import { todayIso } from '../../shared/ui/dates';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { openForm } from '../../shared/ui/form-dialog';
 import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
-import { FinanceApi, Transfer } from './finance-api';
+import { FinanceApi, Transferencia } from './finance-api';
 
 @Component({
   selector: 'tc-transfer-tab',
@@ -35,18 +35,18 @@ import { FinanceApi, Transfer } from './finance-api';
       } @else {
         <div class="table-scroll">
           <table mat-table [dataSource]="list() ?? []">
-            <ng-container matColumnDef="date"><th mat-header-cell *matHeaderCellDef>Data</th><td mat-cell *matCellDef="let t">{{ t.date | isoDate }}</td></ng-container>
+            <ng-container matColumnDef="date"><th mat-header-cell *matHeaderCellDef>Data</th><td mat-cell *matCellDef="let t">{{ t.data | isoDate }}</td></ng-container>
             <ng-container matColumnDef="route"><th mat-header-cell *matHeaderCellDef>De → Para</th>
-              <td mat-cell *matCellDef="let t">{{ t.fromAccountName }} → {{ t.toAccountName }}<br /><span class="tc-muted">{{ t.description }}</span></td></ng-container>
-            <ng-container matColumnDef="amount"><th mat-header-cell *matHeaderCellDef class="money">Valor</th><td mat-cell *matCellDef="let t" class="money">{{ t.amount | currency: 'BRL' }}</td></ng-container>
+              <td mat-cell *matCellDef="let t">{{ t.nomeContaOrigem }} → {{ t.nomeContaDestino }}<br /><span class="tc-muted">{{ t.descricao }}</span></td></ng-container>
+            <ng-container matColumnDef="amount"><th mat-header-cell *matHeaderCellDef class="money">Valor</th><td mat-cell *matCellDef="let t" class="money">{{ t.valor | currency: 'BRL' }}</td></ng-container>
             <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Situação</th>
               <td mat-cell *matCellDef="let t">
-                @if (t.reversed) { <span class="tc-status is-inactive" [title]="t.reversalReason ?? ''">Estornada</span> }
-                @else { <span class="tc-status" [class.is-success]="t.reconciled" [class.is-active]="!t.reconciled">{{ t.reconciled ? 'Conciliada' : 'Efetivada' }}</span> }
+                @if (t.estornada) { <span class="tc-status is-inactive" [title]="t.motivoEstorno ?? ''">Estornada</span> }
+                @else { <span class="tc-status" [class.is-success]="t.conciliada" [class.is-active]="!t.conciliada">{{ t.conciliada ? 'Conciliada' : 'Efetivada' }}</span> }
               </td></ng-container>
             <ng-container matColumnDef="actions"><th mat-header-cell *matHeaderCellDef></th>
               <td mat-cell *matCellDef="let t">
-                @if (!t.reversed && canCancel()) { <button mat-button (click)="reverse(t)">Estornar</button> }
+                @if (!t.estornada && canCancel()) { <button mat-button (click)="reverse(t)">Estornar</button> }
               </td></ng-container>
             <tr mat-header-row *matHeaderRowDef="columns"></tr>
             <tr mat-row *matRowDef="let row; columns: columns"></tr>
@@ -69,36 +69,36 @@ export class TransferTab {
   protected readonly list = toSignal(
     combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(
       filter(([c]) => !!c),
-      switchMap(([c]) => this.api.transfers(c!).pipe(catchError(() => of([] as Transfer[])))),
+      switchMap(([c]) => this.api.transfers(c!).pipe(catchError(() => of([] as Transferencia[])))),
     ),
   );
 
   create(): void {
     const c = this.context.id()!;
     this.api.bankAccounts(c).subscribe((accounts) => {
-      const opts = accounts.filter((a) => a.active).map((a) => ({ value: a.id, label: a.name }));
+      const opts = accounts.filter((a) => a.ativo).map((a) => ({ value: a.id, label: a.nome }));
       openForm(this.dialog, {
         title: 'Nova transferência',
         fields: [
-          { key: 'fromAccountId', label: 'De', type: 'select', required: true, options: opts, span: 6 },
-          { key: 'toAccountId', label: 'Para', type: 'select', required: true, options: opts, span: 6 },
-          { key: 'amount', label: 'Valor (R$)', type: 'number', required: true, span: 6, min: 0.01 },
-          { key: 'date', label: 'Data', type: 'date', required: true, value: todayIso(), span: 6 },
-          { key: 'description', label: 'Descrição', maxLength: 200 },
+          { key: 'idContaOrigem', label: 'De', type: 'select', required: true, options: opts, span: 6 },
+          { key: 'idContaDestino', label: 'Para', type: 'select', required: true, options: opts, span: 6 },
+          { key: 'valor', label: 'Valor (R$)', type: 'number', required: true, span: 6, min: 0.01 },
+          { key: 'data', label: 'Data', type: 'date', required: true, value: todayIso(), span: 6 },
+          { key: 'descricao', label: 'Descrição', maxLength: 200 },
         ],
         submit: (v) => this.api.transfer(c, v),
       }).pipe(filter((r) => !!r)).subscribe(() => {
-        this.notify.success('Transferência registrada.');
+        this.notify.success('Transferenciaência registrada.');
         this.tick.update((t) => t + 1);
       });
     });
   }
 
-  reverse(t: Transfer): void {
-    askReason(this.dialog, 'Estornar transferência', `Estornar a transferência de ${t.fromAccountName} para ${t.toAccountName}?`, 'Estornar')
+  reverse(t: Transferencia): void {
+    askReason(this.dialog, 'Estornar transferência', `Estornar a transferência de ${t.nomeContaOrigem} para ${t.nomeContaDestino}?`, 'Estornar')
       .pipe(switchMap((reason) => this.api.reverseTransfer(this.context.id()!, t.id, reason)))
       .subscribe({
-        next: () => { this.notify.success('Transferência estornada.'); this.tick.update((x) => x + 1); },
+        next: () => { this.notify.success('Transferenciaência estornada.'); this.tick.update((x) => x + 1); },
         error: (err: unknown) => this.notify.error(toProblem(err).detail),
       });
   }

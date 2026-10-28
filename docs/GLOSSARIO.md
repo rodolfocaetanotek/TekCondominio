@@ -41,12 +41,17 @@ seletores), mais as decisões tomadas para o Tek Condomínio._
   `organizationId`) não mudam: são dados históricos e campos de observabilidade.
 - **Códigos de erro da API.** `NOT_FOUND`, `VALIDATION_ERROR`, `INVALID_SORT`… são códigos estáveis para o cliente.
 - **Formatos externos.** Campos dos layouts OFX e CNAB 240 (`FITID`, `TRNAMT`, segmentos T/U) seguem o padrão
-  do banco ou do layout.
+  do banco ou do layout. Por isso a linha do extrato expõe `fitId` (FITID do OFX) com esse nome.
+- **Códigos de movimentação e fotografia do fechamento.** Os tipos de movimentação do extrato/conciliação
+  (`PAYMENT`, `TRANSFER_IN`, `TRANSFER_OUT`, `TRANSFER`) são códigos estáveis trocados com o cliente. As chaves do
+  JSON gravado em `period_closing.snapshot` (`from`, `until`, `income`, `expense`, `unreconciledMovements`,
+  `pendingApprovals`, `balances[].account/balance/reconciled`) são dado histórico e continuam em inglês; o campo da
+  API que as carrega chama-se `fotografia`.
 - **Planilha de importação de unidades.** O cabeçalho CSV documentado (`bloco; unidade; tipo; fracao; area;
   proprietario; documento; email; telefone`) e os apelidos da coluna `tipo` já são em português e continuam aceitos
   como estão (não quebram as planilhas dos usuários).
 - **Caminhos de outros módulos sob `/condominios/{id}`.** O recurso raiz passou a `/api/v1/condominios`; os
-  subcaminhos dos módulos ainda não padronizados (`/finance`, `/billing`, `/announcements`...) mudam no lote de cada módulo.
+  subcaminhos dos módulos ainda não padronizados (`/billing`, `/announcements`...) mudam no lote de cada módulo.
 
 ## Módulos (pacotes Java / pastas)
 
@@ -157,3 +162,31 @@ seletores), mais as decisões tomadas para o Tek Condomínio._
 | current (vínculo) | vigente | | file (multipart da importação de unidades) | arquivo |
 | CondominiumOption / accessible | OpcaoCondominio / acessiveis | | CondominiumAccess (require / requireActive) | AcessoCondominio (exigir / exigirAtivo) |
 | FractionSummary / ImportResult / ImportError | ResumoFracoes / ResultadoImportacao / ErroImportacao | | Summary / Detail (DTOs) | Resumo / Detalhe |
+
+## Financeiro e indicadores (lote 3)
+
+| Inglês | Português | | Inglês | Português |
+|---|---|---|---|---|
+| FinancialEntry.Kind / Status / Approval / Origin | Lancamento.Natureza / Situacao / Aprovacao / Origem | | EntryPayment.Method | Baixa.FormaPagamento (`formaPagamento`) |
+| ChartAccount.Nature / analytic / system | ContaPlano.Natureza / `analitica` / `sistema` | | BankAccount.Kind | ContaBancaria.Tipo (`tipo`) |
+| chartAccountId / costCenterId / supplierId / unitId / personId | idContaPlano / idCentroCusto / idFornecedor / idUnidade / idPessoa | | bankAccountId / paymentId / transferId | idContaBancaria / idBaixa / idTransferencia |
+| remaining | valorAberto | | overdue | vencido |
+| competence | competencia | | documentNumber / collectionNumber | numeroDocumento / numeroCobranca |
+| installment / installments / installmentLabel | parcela / totalParcelas / rotuloParcela | | repeat (lançamento) | repeticoes |
+| recurrenceGroup | grupoRecorrencia | | allocationId / agreementId | idRateio / idAcordo |
+| approvalNote / approvedAt / approvedBy | observacaoAprovacao / aprovadoEm / aprovadoPor | | cancelReason / cancelledAt | motivoCancelamento / canceladoEm |
+| note (decisão, linha do extrato) | observacao | | reason (justificativa) | motivo (`MotivoRequest`) |
+| paidOn / principal | dataPagamento / principal | | reconciled / reversed / reversedAt / reversalReason | conciliada / estornada / estornadaEm / motivoEstorno |
+| Quote (encargos) / daysLate | CalculoEncargos / diasAtraso | | pay / reverse / approve / reject / cancel | baixar / estornar / aprovar / reprovar / cancelar |
+| openingBalance / openingDate / closingBalance / reconciledBalance | saldoInicial / dataAbertura / saldoFinal / saldoConciliado | | bankCode / agency / accountNumber | codigoBanco / agencia / numeroConta |
+| fromAccount / toAccount (transferência) | contaOrigem / contaDestino | | Statement / StatementLine (movimento) | Extrato / Movimentacao (`movimentacoes`) |
+| ReconcileRequest / ReconcileItem / items | ConciliacaoRequest / ItemConciliacao / itens | | Settings (financeiro) | ParametrosFinanceiros (`/parametros`) |
+| BudgetCell / BudgetRow / cells / rows | CelulaOrcamento / ContaOrcamento / celulas / contas | | budgeted / realized / year / month | previsto / realizado / ano / mes |
+| PeriodClosing.Action / closedUntil / previousUntil | FechamentoPeriodo.Acao / fechadoAte / fechadoAteAnterior | | suggestedUntil / history / snapshot | sugestaoAte / historico / fotografia |
+| ClosingCheck / until / unreconciledMovements / pendingApprovals | Verificacao / ate / movimentacoesNaoConciliadas / aprovacoesPendentes | | income / expense (totais) | receitas / despesas |
+| createdByName | nomeCriadoPor | | PeriodLock.ensureOpen | BloqueioPeriodo.exigirAberto |
+| StatementImport (fileName, fileHash, periodStart/End, linesTotal/New, autoMatched) | ImportacaoExtrato (nomeArquivo, hashArquivo, inicioPeriodo/fimPeriodo, totalLinhas/linhasNovas, conciliadasAutomaticamente) | | StatementLine (postedOn, trnType, memo, status) | LinhaExtrato (dataLancamento, tipoTransacao, historico, situacao) |
+| match / unmatch / ignore / register (linha) | conciliar / desfazer-conciliacao / ignorar / lancar | | suggestions / matchedType / matchedId | sugestoes / tipoConciliado / idConciliado |
+| StatementMatcher (Line, Candidate, autoMatch) | ConciliacaoExtratoMatcher (Linha, Candidato, paresInequivocos) | | FinanceQueries / FinanceSetupService | ConsultasFinanceiras / ConfiguracaoFinanceiraService |
+| CashProjection (asOf, currentBalance, overdueReceivables/Payables, lowest…) | ProjecaoCaixa (dataBase, saldoAtual, aReceberVencido/aPagarVencido, menorSaldoProjetado, dataMenorSaldo) | | Week (expectedIn/Out, projectedBalance) | Semana (entradasPrevistas/saidasPrevistas, saldoProjetado) |
+| ExpenseAnomaly (historicalMean, ratio, explanation) | DespesaForaDoPadrao (mediaHistorica, razao, explicacao) | | Due / Deviation (mean, stdDev) | Vencimento / Desvio (media, desvioPadrao) |

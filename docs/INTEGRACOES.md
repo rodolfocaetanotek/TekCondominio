@@ -8,11 +8,11 @@ deve ser homologado antes do uso em produção.
 
 | Item | Detalhe |
 |---|---|
-| Código | `integration/bank/OfxParser.java`, `finance/service/StatementImportService.java`, `StatementMatcher.java` |
-| Endpoint | `POST /api/v1/condominios/{c}/finance/bank-accounts/{a}/statement-imports` (multipart `file`) |
+| Código | `integration/bank/OfxParser.java`, `financeiro/service/ImportacaoExtratoService.java`, `ConciliacaoExtratoMatcher.java` |
+| Endpoint | `POST /api/v1/condominios/{idCondominio}/financeiro/contas-bancarias/{idConta}/extratos` (multipart `arquivo`) |
 | Formatos | OFX 1.x (SGML) e 2.x (XML); charset 1252 ou UTF-8; valor com ponto ou vírgula decimal |
 | Idempotência | hash SHA-256 do arquivo por conta (409 se repetido); `FITID` único por conta (extratos sobrepostos não duplicam) |
-| Conferência | o número da conta no arquivo (`ACCTID`) é comparado ao cadastro. Se divergir, responde 422, a menos que `ignoreAccountCheck=true`. |
+| Conferência | o número da conta no arquivo (`ACCTID`) é comparado ao cadastro. Se divergir, responde 422, a menos que `ignorarConferenciaConta=true`. |
 | Conciliação automática | apenas pares inequívocos: mesmo valor com sinal, até 3 dias de diferença, um candidato para a linha e uma linha para o candidato |
 | Depende de terceiros | Não. O usuário baixa o OFX no internet banking. |
 | Validar por banco | exportação OFX de cada banco usado: datas, sinal e FITID estável entre exportações. Alguns bancos geram FITID instável; nesse caso a deduplicação usa o FITID tal como vem. |

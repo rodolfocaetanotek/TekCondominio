@@ -21,7 +21,7 @@ import { EmptyState } from '../../shared/ui/empty-state';
 import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
 import { StructureService } from '../structure/structure.service';
 import { openEntryForm } from './entry-form';
-import { EntrySummary, FinanceApi } from './finance-api';
+import { LancamentoResumo, FinanceApi } from './finance-api';
 
 /** Contas a pagar (EXPENSE) ou a receber (INCOME) do condomínio selecionado. */
 @Component({
@@ -64,37 +64,37 @@ import { EntrySummary, FinanceApi } from './finance-api';
               <caption class="sr-only">Lançamentos</caption>
               <ng-container matColumnDef="due">
                 <th mat-header-cell *matHeaderCellDef>Vencimento</th>
-                <td mat-cell *matCellDef="let e" [class.late]="e.overdue">{{ e.dueDate | isoDate }}</td>
+                <td mat-cell *matCellDef="let e" [class.late]="e.vencido">{{ e.dataVencimento | isoDate }}</td>
               </ng-container>
               <ng-container matColumnDef="description">
                 <th mat-header-cell *matHeaderCellDef>Descrição</th>
                 <td mat-cell *matCellDef="let e">
-                  <strong class="block">{{ e.description }}</strong>
-                  <span class="tc-muted small">{{ e.accountCode }} {{ e.accountName }}{{ e.supplierName ? ' · ' + e.supplierName : '' }}{{ e.unitLabel ? ' · Unid. ' + e.unitLabel : '' }}</span>
+                  <strong class="block">{{ e.descricao }}</strong>
+                  <span class="tc-muted small">{{ e.codigoConta }} {{ e.nomeConta }}{{ e.nomeFornecedor ? ' · ' + e.nomeFornecedor : '' }}{{ e.rotuloUnidade ? ' · Unid. ' + e.rotuloUnidade : '' }}</span>
                 </td>
               </ng-container>
               <ng-container matColumnDef="amount">
                 <th mat-header-cell *matHeaderCellDef class="money">Valor</th>
-                <td mat-cell *matCellDef="let e" class="money">{{ e.amount | currency: 'BRL' }}</td>
+                <td mat-cell *matCellDef="let e" class="money">{{ e.valor | currency: 'BRL' }}</td>
               </ng-container>
               <ng-container matColumnDef="remaining">
                 <th mat-header-cell *matHeaderCellDef class="money">Em aberto</th>
-                <td mat-cell *matCellDef="let e" class="money">{{ e.remaining | currency: 'BRL' }}</td>
+                <td mat-cell *matCellDef="let e" class="money">{{ e.valorAberto | currency: 'BRL' }}</td>
               </ng-container>
               <ng-container matColumnDef="status">
                 <th mat-header-cell *matHeaderCellDef>Situação</th>
                 <td mat-cell *matCellDef="let e">
-                  <span class="tc-status" [class.is-active]="e.status === 'PAID'"
-                    [class.is-pending]="e.approval === 'PENDING' || (!e.overdue && (e.status === 'OPEN' || e.status === 'PARTIAL'))"
-                    [class.is-danger]="e.approval !== 'PENDING' && e.overdue"
-                    [class.is-inactive]="e.status === 'CANCELLED' || e.status === 'RENEGOTIATED'">
-                    {{ e.approval === 'PENDING' ? 'Aguardando aprovação' : e.overdue ? 'Vencido' : (e.status | label: 'entryStatus') }}
+                  <span class="tc-status" [class.is-active]="e.situacao === 'PAID'"
+                    [class.is-pending]="e.aprovacao === 'PENDING' || (!e.vencido && (e.situacao === 'OPEN' || e.situacao === 'PARTIAL'))"
+                    [class.is-danger]="e.aprovacao !== 'PENDING' && e.vencido"
+                    [class.is-inactive]="e.situacao === 'CANCELLED' || e.situacao === 'RENEGOTIATED'">
+                    {{ e.aprovacao === 'PENDING' ? 'Aguardando aprovação' : e.vencido ? 'Vencido' : (e.situacao | label: 'entryStatus') }}
                   </span>
                 </td>
               </ng-container>
               <tr mat-header-row *matHeaderRowDef="columns"></tr>
               <tr mat-row *matRowDef="let row; columns: columns" class="is-clickable" tabindex="0" role="link"
-                [attr.aria-label]="'Abrir ' + row.description" (click)="open(row)" (keydown.enter)="open(row)"></tr>
+                [attr.aria-label]="'Abrir ' + row.descricao" (click)="open(row)" (keydown.enter)="open(row)"></tr>
             </table>
           </div>
           <mat-paginator [length]="p.totalElementos" [pageIndex]="p.pagina" [pageSize]="p.tamanho" [pageSizeOptions]="[25, 50, 100]"
@@ -135,10 +135,10 @@ export class EntryList {
       tap(() => { this.loading.set(true); this.error.set(null); }),
       switchMap((q) => {
         const statusFilter: Record<string, Record<string, string | string[]>> = {
-          open: { status: ['OPEN', 'PARTIAL'] }, overdue: { overdue: 'true' }, pending: { approval: 'PENDING', status: ['OPEN'] },
-          paid: { status: ['PAID'] }, all: {},
+          open: { situacao: ['OPEN', 'PARTIAL'] }, overdue: { vencido: 'true' }, pending: { aprovacao: 'PENDING', situacao: ['OPEN'] },
+          paid: { situacao: ['PAID'] }, all: {},
         };
-        return this.api.entries(q.c!, { kind: q.kind, search: q.search, dueFrom: q.from, dueTo: q.to, pagina: q.page, tamanho: q.size, ...statusFilter[q.status] })
+        return this.api.entries(q.c!, { natureza: q.kind, busca: q.search, vencimentoDe: q.from, vencimentoAte: q.to, pagina: q.page, tamanho: q.size, ...statusFilter[q.status] })
           .pipe(catchError((err: unknown) => { this.error.set(toProblem(err).detail); return of(null); }), finalize(() => this.loading.set(false)));
       }),
     ),
@@ -156,7 +156,7 @@ export class EntryList {
     this.params.update((p) => ({ ...p, page: e.pageIndex, size: e.pageSize }));
   }
 
-  open(e: EntrySummary): void {
+  open(e: LancamentoResumo): void {
     void this.router.navigate(['/financeiro/lancamentos', e.id]);
   }
 

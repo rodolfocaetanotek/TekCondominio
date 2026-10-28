@@ -100,7 +100,7 @@ export class AllocationDialog {
   protected consumption: Record<string, number> = {};
 
   protected readonly accounts = toSignal(this.api.chartAccounts().pipe(
-    map((list) => list.filter((a) => a.analytic && a.active && a.nature === 'INCOME').map((a) => ({ value: a.id, label: `${a.code} — ${a.name}` }))),
+    map((list) => list.filter((a) => a.analitica && a.ativo && a.natureza === 'INCOME').map((a) => ({ value: a.id, label: `${a.codigo} — ${a.nome}` }))),
     catchError(() => of([]))), { initialValue: [] });
   protected readonly units = toSignal(inject(StructureService).units(this.data.condominiumId, { page: 0, size: 100, active: 'true' })
     .pipe(map((p) => p.conteudo), catchError(() => of([]))), { initialValue: [] });

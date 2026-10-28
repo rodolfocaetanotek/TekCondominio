@@ -22,12 +22,12 @@ import br.com.tekcondo.billing.entity.Allocation;
 import br.com.tekcondo.billing.repository.AllocationRepository;
 import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.condominio.service.AcessoCondominio;
-import br.com.tekcondo.finance.entity.ChartAccount;
-import br.com.tekcondo.finance.entity.FinancialEntry;
-import br.com.tekcondo.finance.repository.ChartAccountRepository;
-import br.com.tekcondo.finance.repository.FinancialEntryRepository;
-import br.com.tekcondo.finance.service.FinanceSetupService;
-import br.com.tekcondo.finance.service.PeriodLock;
+import br.com.tekcondo.financeiro.entity.ContaPlano;
+import br.com.tekcondo.financeiro.entity.Lancamento;
+import br.com.tekcondo.financeiro.repository.ContaPlanoRepository;
+import br.com.tekcondo.financeiro.repository.LancamentoRepository;
+import br.com.tekcondo.financeiro.service.ConfiguracaoFinanceiraService;
+import br.com.tekcondo.financeiro.service.BloqueioPeriodo;
 import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.pessoa.entity.Vinculo;
 import br.com.tekcondo.pessoa.entity.Pessoa;
@@ -43,19 +43,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class AllocationService {
 
     private final AllocationRepository allocations;
-    private final FinancialEntryRepository entries;
-    private final ChartAccountRepository chartAccounts;
+    private final LancamentoRepository entries;
+    private final ContaPlanoRepository chartAccounts;
     private final UnidadeRepository units;
     private final VinculoRepository occupancies;
-    private final FinanceSetupService setup;
-    private final PeriodLock periodLock;
+    private final ConfiguracaoFinanceiraService setup;
+    private final BloqueioPeriodo periodLock;
     private final AcessoCondominio access;
     private final AuditoriaService auditService;
     private final Clock clock;
 
-    public AllocationService(AllocationRepository allocations, FinancialEntryRepository entries,
-                             ChartAccountRepository chartAccounts, UnidadeRepository units, VinculoRepository occupancies,
-                             FinanceSetupService setup, PeriodLock periodLock, AcessoCondominio access, AuditoriaService auditService,
+    public AllocationService(AllocationRepository allocations, LancamentoRepository entries,
+                             ContaPlanoRepository chartAccounts, UnidadeRepository units, VinculoRepository occupancies,
+                             ConfiguracaoFinanceiraService setup, BloqueioPeriodo periodLock, AcessoCondominio access, AuditoriaService auditService,
                              Clock clock) {
         this.allocations = allocations;
         this.entries = entries;
@@ -69,7 +69,7 @@ public class AllocationService {
         this.clock = clock;
     }
 
-    private record Plan(Condominio condominium, ChartAccount account, LocalDate competence, LocalDate dueDate,
+    private record Plan(Condominio condominium, ContaPlano account, LocalDate competence, LocalDate dueDate,
                         List<Unidade> units, Map<UUID, BigDecimal> shares, Map<UUID, Pessoa> responsible, BigDecimal total) {
     }
 
@@ -81,7 +81,7 @@ public class AllocationService {
     @Transactional
     public AllocationResponse generate(UUID condominiumId, AllocationRequest request) {
         Plan plan = plan(condominiumId, request);
-        periodLock.ensureOpen(condominiumId, plan.competence());
+        periodLock.exigirAberto(condominiumId, plan.competence());
         UUID userId = access.usuario().idUsuario();
         Allocation allocation = allocations.save(new Allocation(plan.condominium().getIdAdministradora(), condominiumId,
                 plan.competence(), request.description().trim(), plan.account().getId(), request.method(),
@@ -92,12 +92,12 @@ public class AllocationService {
             if (value == null || value.signum() <= 0) {
                 continue;
             }
-            FinancialEntry charge = new FinancialEntry(plan.condominium().getIdAdministradora(), condominiumId,
-                    FinancialEntry.Kind.INCOME, FinancialEntry.Origin.ALLOCATION, userId);
-            charge.details(request.description().trim(), plan.account(), null, null, unit, plan.responsible().get(unit.getId()),
+            Lancamento charge = new Lancamento(plan.condominium().getIdAdministradora(), condominiumId,
+                    Lancamento.Natureza.INCOME, Lancamento.Origem.ALLOCATION, userId);
+            charge.atualizar(request.description().trim(), plan.account(), null, null, unit, plan.responsible().get(unit.getId()),
                     value, plan.dueDate(), plan.competence(), null, null, userId);
-            charge.lateFees(plan.condominium().getPercentualMulta(), plan.condominium().getPercentualJurosMensal());
-            charge.linkAllocation(allocation.getId());
+            charge.definirEncargos(plan.condominium().getPercentualMulta(), plan.condominium().getPercentualJurosMensal());
+            charge.vincularRateio(allocation.getId());
             entries.save(charge);
         }
         auditService.registrar(AcaoAuditoria.ALLOCATION_GENERATED, "Allocation", allocation.getId(), Map.of(
@@ -109,8 +109,8 @@ public class AllocationService {
     @Transactional(readOnly = true)
     public List<AllocationResponse> list(UUID condominiumId) {
         access.exigir(condominiumId, Permissao.BILLING_VIEW);
-        Map<UUID, ChartAccount> accounts = chartAccounts.findAvailable(access.idAdministradora()).stream()
-                .collect(Collectors.toMap(ChartAccount::getId, a -> a));
+        Map<UUID, ContaPlano> accounts = chartAccounts.buscarDisponiveis(access.idAdministradora()).stream()
+                .collect(Collectors.toMap(ContaPlano::getId, a -> a));
         return allocations.findByCondominiumIdOrderByCompetenceDescCreatedAtDesc(condominiumId).stream()
                 .map(a -> toResponse(a, accounts.get(a.getChartAccountId()))).toList();
     }
@@ -122,16 +122,16 @@ public class AllocationService {
         access.exigir(condominiumId, Permissao.FINANCE_CANCEL);
         Allocation allocation = allocations.findByIdAndCondominiumId(id, condominiumId)
                 .orElseThrow(() -> ApiException.naoEncontrado("Rateio"));
-        periodLock.ensureOpen(condominiumId, allocation.getCompetence());
-        List<FinancialEntry> charges = entries.findByAllocationId(id);
-        if (charges.stream().anyMatch(e -> e.getPaidAmount().signum() > 0)) {
+        periodLock.exigirAberto(condominiumId, allocation.getCompetence());
+        List<Lancamento> charges = entries.findByIdRateio(id);
+        if (charges.stream().anyMatch(e -> e.getValorPago().signum() > 0)) {
             throw ApiException.regraNegocio("ALLOCATION_HAS_PAYMENTS",
                     "Há cobranças deste rateio com pagamento. Estorne as baixas ou cancele as cobranças individualmente.");
         }
         UUID by = access.usuario().idUsuario();
         Instant now = Instant.now(clock);
-        charges.stream().filter(e -> e.getStatus() == FinancialEntry.Status.OPEN)
-                .forEach(e -> e.cancel("Rateio cancelado: " + reason.trim(), by, now));
+        charges.stream().filter(e -> e.getSituacao() == Lancamento.Situacao.OPEN)
+                .forEach(e -> e.cancelar("Rateio cancelado: " + reason.trim(), by, now));
         allocation.cancel(reason.trim(), by, now);
         auditService.registrar(AcaoAuditoria.ALLOCATION_CANCELLED, "Allocation", id, Map.of("reason", reason.trim()));
         return toResponse(allocation, chartAccounts.findById(allocation.getChartAccountId()).orElse(null));
@@ -141,10 +141,10 @@ public class AllocationService {
 
     private Plan plan(UUID condominiumId, AllocationRequest request) {
         Condominio condominium = access.exigirAtivo(condominiumId, Permissao.BILLING_EDIT);
-        ChartAccount account = setup.analyticAccount(request.chartAccountId(), ChartAccount.Nature.INCOME);
+        ContaPlano account = setup.contaAnalitica(request.chartAccountId(), ContaPlano.Natureza.INCOME);
         LocalDate competence = YearMonth.parse(request.competence()).atDay(1);
         if (allocations.existsGenerated(condominiumId, competence, account.getId())) {
-            throw ApiException.conflito("ALLOCATION_EXISTS", "Já existe cobrança gerada para " + account.getName()
+            throw ApiException.conflito("ALLOCATION_EXISTS", "Já existe cobrança gerada para " + account.getNome()
                     + " na competência " + YearMonth.from(competence) + ". Cancele a anterior para gerar novamente.");
         }
         if (request.method() != AllocationCalculator.Method.CONSUMPTION && request.amount() == null) {
@@ -193,12 +193,12 @@ public class AllocationService {
         return new AllocationPreview(plan.competence(), plan.dueDate(), plan.total(), lines.size(), withoutResponsible, lines);
     }
 
-    private AllocationResponse toResponse(Allocation a, ChartAccount account) {
-        List<FinancialEntry> charges = entries.findByAllocationId(a.getId());
-        long paid = charges.stream().filter(e -> e.getStatus() == FinancialEntry.Status.PAID).count();
-        BigDecimal received = charges.stream().map(FinancialEntry::getPaidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+    private AllocationResponse toResponse(Allocation a, ContaPlano account) {
+        List<Lancamento> charges = entries.findByIdRateio(a.getId());
+        long paid = charges.stream().filter(e -> e.getSituacao() == Lancamento.Situacao.PAID).count();
+        BigDecimal received = charges.stream().map(Lancamento::getValorPago).reduce(BigDecimal.ZERO, BigDecimal::add);
         return new AllocationResponse(a.getId(), a.getCompetence(), a.getDescription(),
-                account == null ? null : account.getCode(), account == null ? null : account.getName(), a.getMethod(),
+                account == null ? null : account.getCodigo(), account == null ? null : account.getNome(), a.getMethod(),
                 a.getBaseAmount(), a.getDueDate(), a.getUnitsCount(), a.getGeneratedAmount(), a.getStatus(), paid, received,
                 a.getCancelReason(), a.getCreatedAt());
     }

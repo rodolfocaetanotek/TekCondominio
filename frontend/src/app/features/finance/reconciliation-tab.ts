@@ -15,7 +15,7 @@ import { NotificationService } from '../../core/notify/notification.service';
 import { askConfirm } from '../../shared/ui/confirm-dialog';
 import { openForm } from '../../shared/ui/form-dialog';
 import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
-import { BankAccount, FinanceApi, StatementLineView } from './finance-api';
+import { ContaBancaria, FinanceApi, LinhaExtrato } from './finance-api';
 
 /**
  * Conciliação pelo extrato do banco: importa o OFX, casa automaticamente os pares inequívocos e deixa as demais
@@ -29,7 +29,7 @@ import { BankAccount, FinanceApi, StatementLineView } from './finance-api';
       <div class="filters">
         <mat-form-field class="search"><mat-label>Conta bancária</mat-label>
           <mat-select [formControl]="account">
-            @for (a of accounts() ?? []; track a.id) { <mat-option [value]="a.id">{{ a.name }}</mat-option> }
+            @for (a of accounts() ?? []; track a.id) { <mat-option [value]="a.id">{{ a.nome }}</mat-option> }
           </mat-select></mat-form-field>
         <mat-form-field><mat-label>Situação</mat-label>
           <mat-select [formControl]="status">
@@ -55,25 +55,25 @@ import { BankAccount, FinanceApi, StatementLineView } from './finance-api';
           <tbody>
             @for (l of lines() ?? []; track l.id) {
               <tr>
-                <td>{{ l.postedOn | isoDate }}</td>
-                <td>{{ l.memo }}<br /><span class="tc-muted small">{{ l.fitId }}</span></td>
-                <td class="money" [class.negative]="l.amount < 0" [class.positive]="l.amount > 0">{{ l.amount | currency: 'BRL' }}</td>
+                <td>{{ l.dataLancamento | isoDate }}</td>
+                <td>{{ l.historico }}<br /><span class="tc-muted small">{{ l.fitId }}</span></td>
+                <td class="money" [class.negative]="l.valor < 0" [class.positive]="l.valor > 0">{{ l.valor | currency: 'BRL' }}</td>
                 <td class="sugg-cell">
-                  @switch (l.status) {
+                  @switch (l.situacao) {
                     @case ('MATCHED') { <span class="tc-status is-active">Conciliada</span> }
-                    @case ('IGNORED') { <span class="tc-status is-inactive">Ignorada</span> <span class="tc-muted small">{{ l.note }}</span> }
+                    @case ('IGNORED') { <span class="tc-status is-inactive">Ignorada</span> <span class="tc-muted small">{{ l.observacao }}</span> }
                     @default {
-                      @for (s of l.suggestions; track s.id) {
-                        <button mat-stroked-button class="sugg" [disabled]="!canEdit()" (click)="match(l, s.type, s.id)"
+                      @for (s of l.sugestoes; track s.id) {
+                        <button mat-stroked-button class="sugg" [disabled]="!canEdit()" (click)="match(l, s.tipo, s.id)"
                           [matTooltip]="'Conciliar com esta movimentação'">
-                          {{ s.date | isoDate }} · {{ s.description }}</button>
+                          {{ s.data | isoDate }} · {{ s.descricao }}</button>
                       } @empty { <span class="tc-muted">Sem movimentação compatível no sistema</span> }
                     }
                   }
                 </td>
                 <td class="acts">
                   @if (canEdit()) {
-                    @if (l.status === 'UNMATCHED') {
+                    @if (l.situacao === 'UNMATCHED') {
                       <button mat-icon-button (click)="register(l)" matTooltip="Lançar e baixar (tarifa, rendimento…)" aria-label="Lançar"><mat-icon>post_add</mat-icon></button>
                       <button mat-icon-button (click)="ignore(l)" matTooltip="Ignorar com motivo" aria-label="Ignorar"><mat-icon>block</mat-icon></button>
                     } @else {
@@ -118,11 +118,11 @@ export class ReconciliationTab {
   protected readonly canEdit = computed(() => this.context.can('FINANCE_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   protected readonly accounts = toSignal(toObservable(this.context.id).pipe(
     filter((c) => !!c),
-    switchMap((c) => this.api.bankAccounts(c!).pipe(catchError(() => of([] as BankAccount[])))),
+    switchMap((c) => this.api.bankAccounts(c!).pipe(catchError(() => of([] as ContaBancaria[])))),
   ));
   protected readonly lines = toSignal(combineLatest([toObservable(this.accountValue), toObservable(this.statusValue), toObservable(this.tick)]).pipe(
     filter(([a]) => !!a && !!this.context.id()),
-    switchMap(([a, s]) => this.api.statementLines(this.context.id()!, a!, s || undefined).pipe(catchError(() => of([] as StatementLineView[])))),
+    switchMap(([a, s]) => this.api.statementLines(this.context.id()!, a!, s || undefined).pipe(catchError(() => of([] as LinhaExtrato[])))),
   ));
 
   upload(event: Event): void {
@@ -133,12 +133,12 @@ export class ReconciliationTab {
     this.send(file, false);
   }
 
-  private send(file: File, ignoreAccountCheck: boolean): void {
+  private send(file: File, ignorarConferenciaConta: boolean): void {
     this.busy.set(true);
-    this.api.importStatement(this.context.id()!, this.account.value!, file, ignoreAccountCheck).subscribe({
+    this.api.importStatement(this.context.id()!, this.account.value!, file, ignorarConferenciaConta).subscribe({
       next: (r) => {
         this.busy.set(false);
-        this.notify.success(`${r.newLines} linha(s) importada(s), ${r.duplicates} repetida(s); ${r.autoMatched} conciliada(s) automaticamente; ${r.pending} pendente(s).`);
+        this.notify.success(`${r.linhasNovas} linha(s) importada(s), ${r.duplicadas} repetida(s); ${r.conciliadasAutomaticamente} conciliada(s) automaticamente; ${r.pendentes} pendente(s).`);
         this.tick.update((t) => t + 1);
       },
       error: (err: unknown) => {
@@ -154,31 +154,31 @@ export class ReconciliationTab {
     });
   }
 
-  match(l: StatementLineView, type: string, movementId: string): void {
-    this.run(this.api.matchLine(this.context.id()!, l.id, type, movementId), 'Linha conciliada.');
+  match(l: LinhaExtrato, type: string, idMovimentacao: string): void {
+    this.run(this.api.matchLine(this.context.id()!, l.id, type, idMovimentacao), 'Linha conciliada.');
   }
 
-  unmatch(l: StatementLineView): void {
+  unmatch(l: LinhaExtrato): void {
     this.run(this.api.unmatchLine(this.context.id()!, l.id), 'Conciliação desfeita.');
   }
 
-  ignore(l: StatementLineView): void {
+  ignore(l: LinhaExtrato): void {
     openForm(this.dialog, {
       title: 'Ignorar linha do extrato',
-      fields: [{ key: 'note', label: 'Motivo', required: true, maxLength: 255 }],
-      submit: (v) => this.api.ignoreLine(this.context.id()!, l.id, v['note'] as string),
+      fields: [{ key: 'observacao', label: 'Motivo', required: true, maxLength: 255 }],
+      submit: (v) => this.api.ignoreLine(this.context.id()!, l.id, v['observacao'] as string),
     }).pipe(filter((r) => !!r)).subscribe(() => this.tick.update((t) => t + 1));
   }
 
-  register(l: StatementLineView): void {
-    const nature = l.amount > 0 ? 'INCOME' : 'EXPENSE';
+  register(l: LinhaExtrato): void {
+    const nature = l.valor > 0 ? 'INCOME' : 'EXPENSE';
     this.api.chartAccounts().subscribe((accounts) => openForm(this.dialog, {
-      title: l.amount > 0 ? 'Lançar receita do extrato' : 'Lançar despesa do extrato',
+      title: l.valor > 0 ? 'Lançar receita do extrato' : 'Lançar despesa do extrato',
       intro: 'O lançamento é criado já baixado na data do extrato e conciliado com esta linha.',
       fields: [
-        { key: 'description', label: 'Descrição', required: true, maxLength: 200, value: l.memo },
-        { key: 'chartAccountId', label: 'Conta do plano de contas', type: 'select', required: true,
-          options: accounts.filter((a) => a.nature === nature && a.analytic && a.active).map((a) => ({ value: a.id, label: `${a.code} ${a.name}` })) },
+        { key: 'descricao', label: 'Descrição', required: true, maxLength: 200, value: l.historico },
+        { key: 'idContaPlano', label: 'Conta do plano de contas', type: 'select', required: true,
+          options: accounts.filter((a) => a.natureza === nature && a.analitica && a.ativo).map((a) => ({ value: a.id, label: `${a.codigo} ${a.nome}` })) },
       ],
       submit: (v) => this.api.registerLine(this.context.id()!, l.id, v),
     }).pipe(filter((r) => !!r)).subscribe(() => {

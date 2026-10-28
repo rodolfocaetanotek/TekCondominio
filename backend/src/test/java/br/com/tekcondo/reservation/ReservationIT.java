@@ -124,24 +124,24 @@ class ReservationIT extends IntegrationTest {
         JsonNode confirmed = call(token, "POST", base + "/reservations/" + id + "/approve", Map.of("note", "Ok"), 200);
         assertThat(confirmed.get("status").asText()).isEqualTo("CONFIRMED");
         String entry = confirmed.get("entryId").asText();
-        JsonNode charge = call(token, "GET", base + "/finance/entries/" + entry, null, 200).get("summary");
-        assertThat(charge.get("amount").decimalValue()).isEqualByComparingTo("150.00");
-        assertThat(charge.get("unitLabel").asText()).isEqualTo("101");
-        assertThat(charge.get("personName").asText()).isEqualTo("Rita Proprietária");
+        JsonNode charge = call(token, "GET", base + "/financeiro/lancamentos/" + entry, null, 200).get("resumo");
+        assertThat(charge.get("valor").decimalValue()).isEqualByComparingTo("150.00");
+        assertThat(charge.get("rotuloUnidade").asText()).isEqualTo("101");
+        assertThat(charge.get("nomePessoa").asText()).isEqualTo("Rita Proprietária");
 
         JsonNode cancelled = call(resident, "POST", portal + "/reservations/" + id + "/cancel", Map.of("reason", "Mudança de planos"), 200);
         assertThat(cancelled.get("status").asText()).isEqualTo("CANCELLED");
-        assertThat(call(token, "GET", base + "/finance/entries/" + entry, null, 200).get("summary").get("status").asText()).isEqualTo("CANCELLED");
+        assertThat(call(token, "GET", base + "/financeiro/lancamentos/" + entry, null, 200).get("resumo").get("situacao").asText()).isEqualTo("CANCELLED");
 
         // Inadimplente não reserva área com bloqueio.
         Map<String, Object> overdue = new HashMap<>();
-        overdue.put("kind", "INCOME");
-        overdue.put("description", "Taxa condominial");
-        overdue.put("chartAccountId", "20000000-0000-0000-0000-000000000101");
-        overdue.put("amount", "400.00");
-        overdue.put("dueDate", LocalDate.now().minusDays(20).toString());
-        overdue.put("unitId", unit101);
-        call(token, "POST", base + "/finance/entries", overdue, 201);
+        overdue.put("natureza", "INCOME");
+        overdue.put("descricao", "Taxa condominial");
+        overdue.put("idContaPlano", "20000000-0000-0000-0000-000000000101");
+        overdue.put("valor", "400.00");
+        overdue.put("dataVencimento", LocalDate.now().minusDays(20).toString());
+        overdue.put("idUnidade", unit101);
+        call(token, "POST", base + "/financeiro/lancamentos", overdue, 201);
         call(resident, "POST", portal + "/reservations", booking(hall, unit101, day, "18:00", "22:00"), 422);
 
         assertThat(call(resident, "GET", portal + "/reservations", null, 200)).hasSize(1);

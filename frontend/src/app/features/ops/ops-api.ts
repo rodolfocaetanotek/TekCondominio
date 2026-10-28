@@ -65,7 +65,7 @@ export class OpsApi {
     return id ? this.http.put<AssemblyDetail>(`${this.b(c)}/assemblies/${id}`, body) : this.http.post<AssemblyDetail>(`${this.b(c)}/assemblies`, body);
   }
   assemblyAction(c: string, id: string, action: 'call' | 'start' | 'close', ): Observable<AssemblyDetail> { return this.http.post<AssemblyDetail>(`${this.b(c)}/assemblies/${id}/${action}`, null); }
-  cancelAssembly(c: string, id: string, reason: string): Observable<AssemblyDetail> { return this.http.post<AssemblyDetail>(`${this.b(c)}/assemblies/${id}/cancel`, { reason }); }
+  cancelAssembly(c: string, id: string, reason: string): Observable<AssemblyDetail> { return this.http.post<AssemblyDetail>(`${this.b(c)}/assemblies/${id}/cancel`, { motivo: reason }); }
   attend(c: string, id: string, body: Record<string, unknown>): Observable<AssemblyDetail> { return this.http.post<AssemblyDetail>(`${this.b(c)}/assemblies/${id}/attendance`, body); }
   removeAttendance(c: string, id: string, attendanceId: string): Observable<AssemblyDetail> { return this.http.delete<AssemblyDetail>(`${this.b(c)}/assemblies/${id}/attendance/${attendanceId}`); }
   vote(c: string, id: string, body: Record<string, unknown>): Observable<AssemblyDetail> { return this.http.post<AssemblyDetail>(`${this.b(c)}/assemblies/${id}/votes`, body); }

@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import br.com.tekcondo.finance.dto.FinanceDtos.ReasonRequest;
+import br.com.tekcondo.financeiro.dto.FinanceiroDtos.MotivoRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -66,8 +66,8 @@ public class AssemblyController {
     }
 
     @PostMapping("/{id}/cancel")
-    public AssemblyService.Detail cancel(@PathVariable UUID c, @PathVariable UUID id, @Valid @RequestBody ReasonRequest request) {
-        return service.cancel(c, id, request.reason());
+    public AssemblyService.Detail cancel(@PathVariable UUID c, @PathVariable UUID id, @Valid @RequestBody MotivoRequest request) {
+        return service.cancel(c, id, request.motivo());
     }
 
     @PostMapping("/{id}/attendance")

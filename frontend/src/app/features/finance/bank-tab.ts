@@ -18,7 +18,7 @@ import { todayIso } from '../../shared/ui/dates';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { openForm } from '../../shared/ui/form-dialog';
 import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
-import { BankAccount, FinanceApi, Statement } from './finance-api';
+import { ContaBancaria, FinanceApi, Extrato } from './finance-api';
 
 @Component({
   selector: 'tc-bank-tab',
@@ -33,12 +33,12 @@ import { BankAccount, FinanceApi, Statement } from './finance-api';
     </div>
     <div class="accounts">
       @for (a of accounts() ?? []; track a.id) {
-        <button type="button" class="account tc-kpi tc-card" [class.tone-danger]="a.balance < 0" [class.selected]="selected() === a.id"
-          [class.inactive]="!a.active" [attr.aria-pressed]="selected() === a.id" (click)="selected.set(a.id)">
-          <span class="icon"><mat-icon aria-hidden="true">{{ a.kind === 'CASH' ? 'payments' : 'account_balance' }}</mat-icon></span>
-          <span class="label">{{ a.name }}</span>
-          <span class="value money" [class.negative]="a.balance < 0">{{ a.balance | currency: 'BRL' }}</span>
-          <span class="sub">{{ a.kind | label: 'bankKind' }}{{ a.bankCode ? ' · ' + a.bankCode + ' ag. ' + a.agency + ' c/c ' + a.accountNumber : '' }}</span>
+        <button type="button" class="account tc-kpi tc-card" [class.tone-danger]="a.saldo < 0" [class.selected]="selected() === a.id"
+          [class.inactive]="!a.ativo" [attr.aria-pressed]="selected() === a.id" (click)="selected.set(a.id)">
+          <span class="icon"><mat-icon aria-hidden="true">{{ a.tipo === 'CASH' ? 'payments' : 'account_balance' }}</mat-icon></span>
+          <span class="label">{{ a.nome }}</span>
+          <span class="value money" [class.negative]="a.saldo < 0">{{ a.saldo | currency: 'BRL' }}</span>
+          <span class="sub">{{ a.tipo | label: 'bankKind' }}{{ a.codigoBanco ? ' · ' + a.codigoBanco + ' ag. ' + a.agencia + ' c/c ' + a.numeroConta : '' }}</span>
         </button>
       } @empty {
         <section class="tc-card empty">
@@ -56,22 +56,22 @@ import { BankAccount, FinanceApi, Statement } from './finance-api';
         </div>
         @if (statement(); as s) {
           <div class="summary">
-            <div><span class="tc-section-label">Saldo anterior</span><strong class="money">{{ s.openingBalance | currency: 'BRL' }}</strong></div>
-            <div><span class="tc-section-label">Saldo final</span><strong class="money">{{ s.closingBalance | currency: 'BRL' }}</strong></div>
-            <div><span class="tc-section-label">Saldo conciliado</span><strong class="money">{{ s.reconciledBalance | currency: 'BRL' }}</strong></div>
+            <div><span class="tc-section-label">Saldo anterior</span><strong class="money">{{ s.saldoInicial | currency: 'BRL' }}</strong></div>
+            <div><span class="tc-section-label">Saldo final</span><strong class="money">{{ s.saldoFinal | currency: 'BRL' }}</strong></div>
+            <div><span class="tc-section-label">Saldo conciliado</span><strong class="money">{{ s.saldoConciliado | currency: 'BRL' }}</strong></div>
           </div>
           <div class="scroll">
             <table class="lines">
               <thead><tr><th>Conciliado</th><th>Data</th><th>Histórico</th><th class="money">Valor</th><th class="money">Saldo</th></tr></thead>
               <tbody>
-                @for (l of s.lines; track l.id + l.type) {
+                @for (l of s.movimentacoes; track l.id + l.tipo) {
                   <tr>
-                    <td><mat-checkbox [checked]="l.reconciled" [disabled]="!canEdit()" (change)="toggle(l.type, l.id, $event.checked)"
-                      [attr.aria-label]="'Conciliar ' + l.description" /></td>
-                    <td>{{ l.date | isoDate }}</td>
-                    <td>{{ l.description }}</td>
-                    <td class="money" [class.negative]="l.amount < 0" [class.positive]="l.amount > 0">{{ l.amount | currency: 'BRL' }}</td>
-                    <td class="money">{{ l.balance | currency: 'BRL' }}</td>
+                    <td><mat-checkbox [checked]="l.conciliada" [disabled]="!canEdit()" (change)="toggle(l.tipo, l.id, $event.checked)"
+                      [attr.aria-label]="'Conciliar ' + l.descricao" /></td>
+                    <td>{{ l.data | isoDate }}</td>
+                    <td>{{ l.descricao }}</td>
+                    <td class="money" [class.negative]="l.valor < 0" [class.positive]="l.valor > 0">{{ l.valor | currency: 'BRL' }}</td>
+                    <td class="money">{{ l.saldo | currency: 'BRL' }}</td>
                   </tr>
                 } @empty {
                   <tr><td colspan="5" class="tc-muted">Sem movimentações no período.</td></tr>
@@ -122,14 +122,14 @@ export class BankTab {
   protected readonly accounts = toSignal(
     combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(
       filter(([c]) => !!c),
-      switchMap(([c]) => this.api.bankAccounts(c!).pipe(catchError(() => of([] as BankAccount[])))),
+      switchMap(([c]) => this.api.bankAccounts(c!).pipe(catchError(() => of([] as ContaBancaria[])))),
     ),
   );
 
   protected readonly statement = toSignal(
     combineLatest([toObservable(this.selected), toObservable(this.fromValue), toObservable(this.toValue), toObservable(this.tick)]).pipe(
       filter(([id]) => !!id && !!this.context.id()),
-      switchMap(([id, from, to]) => this.api.statement(this.context.id()!, id!, from, to).pipe(catchError(() => of(null as Statement | null)))),
+      switchMap(([id, from, to]) => this.api.statement(this.context.id()!, id!, from, to).pipe(catchError(() => of(null as Extrato | null)))),
     ),
   );
 
@@ -138,13 +138,13 @@ export class BankTab {
       title: 'Nova conta bancária ou caixa',
       intro: 'O saldo inicial e a data de abertura não podem ser alterados depois (integridade do histórico).',
       fields: [
-        { key: 'name', label: 'Nome', required: true, span: 8, maxLength: 80 },
-        { key: 'kind', label: 'Tipo', type: 'select', required: true, value: 'CHECKING', span: 4, options: options('bankKind') },
-        { key: 'bankCode', label: 'Banco (código)', span: 4, maxLength: 5 },
-        { key: 'agency', label: 'Agência', span: 4, maxLength: 10 },
-        { key: 'accountNumber', label: 'Conta', span: 4, maxLength: 20 },
-        { key: 'openingBalance', label: 'Saldo inicial (R$)', type: 'number', value: 0, span: 6 },
-        { key: 'openingDate', label: 'Data do saldo inicial', type: 'date', value: todayIso(), span: 6 },
+        { key: 'nome', label: 'Nome', required: true, span: 8, maxLength: 80 },
+        { key: 'tipo', label: 'Tipo', type: 'select', required: true, value: 'CHECKING', span: 4, options: options('bankKind') },
+        { key: 'codigoBanco', label: 'Banco (código)', span: 4, maxLength: 5 },
+        { key: 'agencia', label: 'Agência', span: 4, maxLength: 10 },
+        { key: 'numeroConta', label: 'Conta', span: 4, maxLength: 20 },
+        { key: 'saldoInicial', label: 'Saldo inicial (R$)', type: 'number', value: 0, span: 6 },
+        { key: 'dataAbertura', label: 'Data do saldo inicial', type: 'date', value: todayIso(), span: 6 },
       ],
       submit: (v) => this.api.createBankAccount(this.context.id()!, v),
     }).pipe(filter((r) => !!r)).subscribe(() => {
@@ -154,7 +154,7 @@ export class BankTab {
   }
 
   toggle(type: string, id: string, reconciled: boolean): void {
-    this.api.reconcile(this.context.id()!, [{ type, id }], reconciled).subscribe({
+    this.api.reconcile(this.context.id()!, [{ tipo: type, id }], reconciled).subscribe({
       next: () => this.tick.update((t) => t + 1),
       error: (err: unknown) => this.notify.error(toProblem(err).detail),
     });

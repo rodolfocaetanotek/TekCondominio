@@ -88,11 +88,11 @@ class BillingIT extends IntegrationTest {
         call("POST", base + "/billing/allocations", allocation(next, ACC_CONDO_FEE, null), 409);
         call("POST", base + "/billing/allocations", allocation(next, ACC_RESERVE, null), 201); // outra conta, mesma competência
 
-        JsonNode charges = call("GET", base + "/finance/entries?kind=INCOME&unitId=" + unitA, null, 200);
+        JsonNode charges = call("GET", base + "/financeiro/lancamentos?natureza=INCOME&idUnidade=" + unitA, null, 200);
         assertThat(charges.get("totalElementos").asInt()).isEqualTo(2);
-        assertThat(charges.get("conteudo").get(0).get("personName").asText()).isEqualTo("Ana Pagadora");
+        assertThat(charges.get("conteudo").get(0).get("nomePessoa").asText()).isEqualTo("Ana Pagadora");
 
-        call("POST", base + "/billing/allocations/" + id + "/cancel", Map.of("reason", "Valor aprovado em assembleia mudou"), 200);
+        call("POST", base + "/billing/allocations/" + id + "/cancel", Map.of("motivo", "Valor aprovado em assembleia mudou"), 200);
         call("POST", base + "/billing/allocations", allocation(next, ACC_CONDO_FEE, null), 201);
     }
 
@@ -136,7 +136,7 @@ class BillingIT extends IntegrationTest {
         assertThat(created.get("totalAmount").decimalValue()).isEqualByComparingTo("510.00");
         BigDecimal sum = BigDecimal.ZERO;
         for (JsonNode parcel : created.get("installmentEntries")) {
-            sum = sum.add(parcel.get("amount").decimalValue());
+            sum = sum.add(parcel.get("valor").decimalValue());
         }
         assertThat(sum).isEqualByComparingTo("510.00");
         call("POST", base + "/billing/agreements", agreement, 422); // débito já renegociado
@@ -145,7 +145,7 @@ class BillingIT extends IntegrationTest {
         assertThat(report.get("unitsInDebt").asInt()).isEqualTo(2);
 
         call("POST", base + "/billing/agreements/" + created.get("id").asText() + "/cancel",
-                Map.of("reason", "Condômino desistiu do acordo"), 200);
+                Map.of("motivo", "Condômino desistiu do acordo"), 200);
         report = call("GET", base + "/billing/delinquency", null, 200);
         assertThat(report.get("unitsInDebt").asInt()).isEqualTo(3);
     }

@@ -6,8 +6,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import br.com.tekcondo.announcement.AnnouncementRepository;
-import br.com.tekcondo.finance.entity.FinancialEntry;
-import br.com.tekcondo.finance.repository.FinancialEntryRepository;
+import br.com.tekcondo.financeiro.entity.Lancamento;
+import br.com.tekcondo.financeiro.repository.LancamentoRepository;
 import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.notificacao.NotificacaoService;
 import br.com.tekcondo.supplier.entity.Contract;
@@ -33,12 +33,12 @@ public class DailyRemindersJob {
     private static final int DAYS_AHEAD = 3;
 
     private final ContractRepository contracts;
-    private final FinancialEntryRepository entries;
+    private final LancamentoRepository entries;
     private final AnnouncementRepository announcements;
     private final NotificacaoService notifications;
     private final Clock clock;
 
-    public DailyRemindersJob(ContractRepository contracts, FinancialEntryRepository entries,
+    public DailyRemindersJob(ContractRepository contracts, LancamentoRepository entries,
                              AnnouncementRepository announcements, NotificacaoService notifications, Clock clock) {
         this.contracts = contracts;
         this.entries = entries;
@@ -70,33 +70,33 @@ public class DailyRemindersJob {
     }
 
     int payablesAwaitingApproval(LocalDate today) {
-        Specification<FinancialEntry> spec = (root, q, cb) -> cb.and(
-                cb.equal(root.get("kind"), FinancialEntry.Kind.EXPENSE),
-                cb.equal(root.get("approval"), FinancialEntry.Approval.PENDING),
-                cb.equal(root.get("status"), FinancialEntry.Status.OPEN),
-                cb.lessThanOrEqualTo(root.get("dueDate"), today.plusDays(DAYS_AHEAD)));
+        Specification<Lancamento> spec = (root, q, cb) -> cb.and(
+                cb.equal(root.get("natureza"), Lancamento.Natureza.EXPENSE),
+                cb.equal(root.get("aprovacao"), Lancamento.Aprovacao.PENDING),
+                cb.equal(root.get("situacao"), Lancamento.Situacao.OPEN),
+                cb.lessThanOrEqualTo(root.get("dataVencimento"), today.plusDays(DAYS_AHEAD)));
         int sent = 0;
-        for (FinancialEntry e : entries.findAll(spec)) {
-            sent += notifications.notificar(e.getOrganizationId(),
-                    notifications.usuariosComPermissao(e.getOrganizationId(), e.getCondominiumId(), Permissao.FINANCE_APPROVE),
-                    "Pagamento aguardando aprovação", e.getDescription() + " — R$ " + e.getAmount().toPlainString()
-                            + ", vence em " + BR.format(e.getDueDate()), "/financeiro/lancamentos/" + e.getId(),
+        for (Lancamento e : entries.findAll(spec)) {
+            sent += notifications.notificar(e.getIdAdministradora(),
+                    notifications.usuariosComPermissao(e.getIdAdministradora(), e.getIdCondominio(), Permissao.FINANCE_APPROVE),
+                    "Pagamento aguardando aprovação", e.getDescricao() + " — R$ " + e.getValor().toPlainString()
+                            + ", vence em " + BR.format(e.getDataVencimento()), "/financeiro/lancamentos/" + e.getId(),
                     "payable-approval:" + e.getId());
         }
         return sent;
     }
 
     int chargesDueSoon(LocalDate today) {
-        Specification<FinancialEntry> spec = (root, q, cb) -> cb.and(
-                cb.equal(root.get("kind"), FinancialEntry.Kind.INCOME),
-                cb.isNotNull(root.get("unit")),
-                root.get("status").in(FinancialEntry.Status.OPEN, FinancialEntry.Status.PARTIAL),
-                cb.between(root.get("dueDate"), today, today.plusDays(DAYS_AHEAD)));
+        Specification<Lancamento> spec = (root, q, cb) -> cb.and(
+                cb.equal(root.get("natureza"), Lancamento.Natureza.INCOME),
+                cb.isNotNull(root.get("unidade")),
+                root.get("situacao").in(Lancamento.Situacao.OPEN, Lancamento.Situacao.PARTIAL),
+                cb.between(root.get("dataVencimento"), today, today.plusDays(DAYS_AHEAD)));
         int sent = 0;
-        for (FinancialEntry e : entries.findAll(spec)) {
-            List<java.util.UUID> residents = announcements.residentUsers(e.getCondominiumId(), "UNIT", null, e.getUnit().getId());
-            sent += notifications.notificar(e.getOrganizationId(), residents, "Cobrança a vencer",
-                    e.getDescription() + " — R$ " + e.remaining().toPlainString() + ", vencimento " + BR.format(e.getDueDate()),
+        for (Lancamento e : entries.findAll(spec)) {
+            List<java.util.UUID> residents = announcements.residentUsers(e.getIdCondominio(), "UNIT", null, e.getUnidade().getId());
+            sent += notifications.notificar(e.getIdAdministradora(), residents, "Cobrança a vencer",
+                    e.getDescricao() + " — R$ " + e.valorAberto().toPlainString() + ", vencimento " + BR.format(e.getDataVencimento()),
                     "/portal", "charge-due:" + e.getId());
         }
         return sent;

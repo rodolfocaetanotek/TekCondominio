@@ -49,8 +49,8 @@ class BankReturnIT extends IntegrationTest {
         condo = data.condominio(org, "Condomínio Retorno");
         token = TestData.bearer(data.login(data.adminAdministradora(org)));
         base = "/api/v1/condominios/" + condo.getId();
-        bank = call("POST", base + "/finance/bank-accounts", Map.of("name", "Sicoob Cobrança", "kind", "CHECKING", "bankCode", "756",
-                "openingBalance", "0", "openingDate", today.minusMonths(2).toString()), 201).get("id").asText();
+        bank = call("POST", base + "/financeiro/contas-bancarias", Map.of("nome", "Sicoob Cobrança", "tipo", "CHECKING", "codigoBanco", "756",
+                "saldoInicial", "0", "dataAbertura", today.minusMonths(2).toString()), 201).get("id").asText();
         unit = call("POST", base + "/unidades", Map.of("identificacao", "101", "tipo", "APARTMENT", "fracaoIdeal", "10"), 201).get("id").asText();
     }
 
@@ -74,21 +74,21 @@ class BankReturnIT extends IntegrationTest {
 
     private JsonNode charge(String amount) throws Exception {
         Map<String, Object> income = new HashMap<>();
-        income.put("kind", "INCOME");
-        income.put("description", "Taxa condominial");
-        income.put("chartAccountId", ACC_CONDO_FEE);
-        income.put("amount", amount);
-        income.put("dueDate", due.toString());
-        income.put("unitId", unit);
-        return call("POST", base + "/finance/entries", income, 201).get(0).get("summary");
+        income.put("natureza", "INCOME");
+        income.put("descricao", "Taxa condominial");
+        income.put("idContaPlano", ACC_CONDO_FEE);
+        income.put("valor", amount);
+        income.put("dataVencimento", due.toString());
+        income.put("idUnidade", unit);
+        return call("POST", base + "/financeiro/lancamentos", income, 201).get(0).get("resumo");
     }
 
     @Test
     void settlementsAreBookedOnceWithFineAndInterestSplit() throws Exception {
         JsonNode first = charge("500.00");
         JsonNode second = charge("500.00");
-        long number = first.get("collectionNumber").asLong();
-        assertThat(second.get("collectionNumber").asLong()).isNotEqualTo(number);
+        long number = first.get("numeroCobranca").asLong();
+        assertThat(second.get("numeroCobranca").asLong()).isNotEqualTo(number);
 
         LocalDate paid = today.minusDays(2);
         String file = String.join("\r\n", header("756", today),
@@ -96,7 +96,7 @@ class BankReturnIT extends IntegrationTest {
                 segmentU(2, "13.40", "0", "513.40", paid, paid.plusDays(1)),
                 segmentT(3, "06", "", "99999999", due, "500.00"),
                 segmentU(4, "0", "0", "500.00", paid, paid),
-                segmentT(5, "02", "", String.valueOf(second.get("collectionNumber").asLong()), due, "500.00"),
+                segmentT(5, "02", "", String.valueOf(second.get("numeroCobranca").asLong()), due, "500.00"),
                 segmentU(6, "0", "0", "0", paid, paid),
                 trailer());
 
@@ -105,14 +105,14 @@ class BankReturnIT extends IntegrationTest {
         assertThat(result.get("pending").asInt()).isEqualTo(1);
         upload(bank, file, 409);
 
-        JsonNode entry = call("GET", base + "/finance/entries/" + first.get("id").asText(), null, 200);
-        assertThat(entry.get("summary").get("status").asText()).isEqualTo("PAID");
-        JsonNode payment = entry.get("payments").get(0);
-        assertThat(payment.get("method").asText()).isEqualTo("BOLETO");
-        assertThat(payment.get("fine").decimalValue()).isEqualByComparingTo("10.00"); // 2% de 500
-        assertThat(payment.get("interest").decimalValue()).isEqualByComparingTo("3.40");
+        JsonNode entry = call("GET", base + "/financeiro/lancamentos/" + first.get("id").asText(), null, 200);
+        assertThat(entry.get("resumo").get("situacao").asText()).isEqualTo("PAID");
+        JsonNode payment = entry.get("baixas").get(0);
+        assertThat(payment.get("formaPagamento").asText()).isEqualTo("BOLETO");
+        assertThat(payment.get("multa").decimalValue()).isEqualByComparingTo("10.00"); // 2% de 500
+        assertThat(payment.get("juros").decimalValue()).isEqualByComparingTo("3.40");
         assertThat(payment.get("total").decimalValue()).isEqualByComparingTo("513.40");
-        assertThat(payment.get("paidOn").asText()).isEqualTo(paid.plusDays(1).toString()); // data do crédito
+        assertThat(payment.get("dataPagamento").asText()).isEqualTo(paid.plusDays(1).toString()); // data do crédito
 
         JsonNode items = call("GET", base + "/billing/bank-returns/" + result.get("id").asText() + "/items", null, 200);
         assertThat(items.get(2).get("status").asText()).isEqualTo("INFO");
@@ -134,15 +134,15 @@ class BankReturnIT extends IntegrationTest {
         JsonNode settled = call("POST", base + "/billing/bank-return-items/" + unknown + "/settle",
                 Map.of("entryId", second.get("id").asText()), 200);
         assertThat(settled.get("status").asText()).isEqualTo("SETTLED");
-        assertThat(call("GET", base + "/finance/entries/" + second.get("id").asText(), null, 200)
-                .get("summary").get("status").asText()).isEqualTo("PAID");
+        assertThat(call("GET", base + "/financeiro/lancamentos/" + second.get("id").asText(), null, 200)
+                .get("resumo").get("situacao").asText()).isEqualTo("PAID");
         call("POST", base + "/billing/bank-return-items/" + unknown + "/settle", Map.of("entryId", second.get("id").asText()), 422);
     }
 
     @Test
     void rejectsReturnFromAnotherBankAndOtherOrganizations() throws Exception {
-        String bb = call("POST", base + "/finance/bank-accounts", Map.of("name", "Banco do Brasil", "kind", "CHECKING", "bankCode", "001",
-                "openingBalance", "0", "openingDate", today.minusMonths(2).toString()), 201).get("id").asText();
+        String bb = call("POST", base + "/financeiro/contas-bancarias", Map.of("nome", "Banco do Brasil", "tipo", "CHECKING", "codigoBanco", "001",
+                "saldoInicial", "0", "dataAbertura", today.minusMonths(2).toString()), 201).get("id").asText();
         upload(bb, String.join("\n", header("756", today), trailer()), 422);
 
         String foreign = TestData.bearer(data.login(data.adminAdministradora(data.administradora())));

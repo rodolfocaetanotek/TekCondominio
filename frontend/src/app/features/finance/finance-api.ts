@@ -3,36 +3,37 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { PaginaResponse } from '../../core/api/api.models';
 
-export interface ChartAccount { id: string; code: string; name: string; nature: 'INCOME' | 'EXPENSE'; analytic: boolean; system: boolean; active: boolean; }
-export interface CostCenter { id: string; name: string; active: boolean; }
-export interface BankAccount { id: string; name: string; kind: string; bankCode?: string; agency?: string; accountNumber?: string; openingBalance: number; openingDate: string; active: boolean; balance: number; }
-export interface Settings { finePercent: number; interestMonthlyPercent: number; billingDueDay: number; requirePayableApproval: boolean; }
+export interface ContaPlano { id: string; codigo: string; nome: string; natureza: 'INCOME' | 'EXPENSE'; analitica: boolean; sistema: boolean; ativo: boolean; }
+export interface CentroCusto { id: string; nome: string; ativo: boolean; }
+export interface ContaBancaria { id: string; nome: string; tipo: string; codigoBanco?: string; agencia?: string; numeroConta?: string; saldoInicial: number; dataAbertura: string; ativo: boolean; saldo: number; }
+export interface ParametrosFinanceiros { percentualMulta: number; percentualJurosMensal: number; diaVencimento: number; exigeAprovacaoContasPagar: boolean; }
 export interface Supplier { id: string; name: string; document?: string; category?: string; email?: string; phone?: string; contactName?: string; notes?: string; active: boolean; }
 
-export interface EntrySummary {
-  id: string; kind: 'INCOME' | 'EXPENSE'; description: string; accountCode: string; accountName: string; supplierName?: string;
-  unitLabel?: string; personName?: string; amount: number; paidAmount: number; remaining: number; dueDate: string; competence: string;
-  status: string; approval: string; overdue: boolean; installmentLabel?: string; documentNumber?: string; collectionNumber?: number;
+export interface LancamentoResumo {
+  id: string; natureza: 'INCOME' | 'EXPENSE'; descricao: string; codigoConta: string; nomeConta: string; nomeFornecedor?: string;
+  rotuloUnidade?: string; nomePessoa?: string; valor: number; valorPago: number; valorAberto: number; dataVencimento: string; competencia: string;
+  situacao: string; aprovacao: string; vencido: boolean; rotuloParcela?: string; numeroDocumento?: string; numeroCobranca?: number;
 }
-export interface Payment {
-  id: string; bankAccountId: string; bankAccountName: string; paidOn: string; principal: number; fine: number; interest: number;
-  discount: number; total: number; method: string; notes?: string; reconciled: boolean; reversed: boolean; reversalReason?: string;
+export interface Baixa {
+  id: string; idContaBancaria: string; nomeContaBancaria: string; dataPagamento: string; principal: number; multa: number; juros: number;
+  desconto: number; total: number; formaPagamento: string; observacoes?: string; conciliada: boolean; estornada: boolean; estornadaEm?: string; motivoEstorno?: string;
 }
-export interface EntryDetail {
-  summary: EntrySummary; chartAccountId: string; costCenterId?: string; costCenterName?: string; supplierId?: string; unitId?: string;
-  personId?: string; notes?: string; origin: string; approvalNote?: string; approvedAt?: string; cancelReason?: string;
-  finePercent?: number; interestMonthlyPercent?: number; version: number; payments: Payment[];
+export interface LancamentoDetalhe {
+  resumo: LancamentoResumo; idContaPlano: string; idCentroCusto?: string; nomeCentroCusto?: string; idFornecedor?: string; idUnidade?: string;
+  idPessoa?: string; observacoes?: string; origem: string; observacaoAprovacao?: string; aprovadoEm?: string; motivoCancelamento?: string;
+  canceladoEm?: string; percentualMulta?: number; percentualJurosMensal?: number; versao: number; baixas: Baixa[];
 }
-export interface EntryRequest {
-  kind: 'INCOME' | 'EXPENSE'; description: string; chartAccountId: string; costCenterId: string | null; supplierId: string | null;
-  unitId: string | null; personId: string | null; amount: number; dueDate: string; competence: string | null;
-  documentNumber: string | null; notes: string | null; repeat: number | null; version?: number;
+export interface LancamentoRequest {
+  natureza: 'INCOME' | 'EXPENSE'; descricao: string; idContaPlano: string; idCentroCusto: string | null; idFornecedor: string | null;
+  idUnidade: string | null; idPessoa: string | null; valor: number; dataVencimento: string; competencia: string | null;
+  numeroDocumento: string | null; observacoes: string | null; repeticoes: number | null; versao?: number;
 }
-export interface Quote { principal: number; daysLate: number; fine: number; interest: number; total: number; }
-export interface Transfer { id: string; fromAccountId: string; fromAccountName: string; toAccountId: string; toAccountName: string; amount: number; date: string; description?: string; reconciled: boolean; reversed: boolean; reversalReason?: string; }
-export interface StatementLine { type: string; id: string; date: string; description: string; amount: number; balance: number; reconciled: boolean; }
-export interface Statement { bankAccountId: string; bankAccountName: string; from: string; to: string; openingBalance: number; closingBalance: number; reconciledBalance: number; lines: StatementLine[]; }
-export interface BudgetRow { chartAccountId: string; code: string; name: string; nature: string; budgeted: number[]; realized: number[]; totalBudgeted: number; totalRealized: number; }
+export interface CalculoEncargos { principal: number; diasAtraso: number; multa: number; juros: number; total: number; }
+export interface Transferencia { id: string; idContaOrigem: string; nomeContaOrigem: string; idContaDestino: string; nomeContaDestino: string; valor: number; data: string; descricao?: string; conciliada: boolean; estornada: boolean; motivoEstorno?: string; }
+export interface Movimentacao { tipo: string; id: string; data: string; descricao: string; valor: number; saldo: number; conciliada: boolean; }
+export interface Extrato { idContaBancaria: string; nomeContaBancaria: string; de: string; ate: string; saldoInicial: number; saldoFinal: number; saldoConciliado: number; movimentacoes: Movimentacao[]; }
+export interface ContaOrcamento { idContaPlano: string; codigo: string; nome: string; natureza: string; previsto: number[]; realizado: number[]; totalPrevisto: number; totalRealizado: number; }
+export interface Orcamento { ano: number; contas: ContaOrcamento[]; }
 
 export interface Allocation { id: string; competence: string; description: string; accountCode?: string; accountName?: string; method: string; baseAmount: number; dueDate: string; unitsCount: number; generatedAmount: number; status: string; paidCount: number; receivedAmount: number; cancelReason?: string; }
 export interface AllocationRequest { competence: string; description: string; chartAccountId: string; method: string; amount: number | null; dueDate: string | null; consumption?: Record<string, number>; }
@@ -41,15 +42,18 @@ export interface DelinquencyRow { unitId: string; unitLabel: string; responsible
 export interface Delinquency { asOf: string; totalPrincipal: number; totalCharges: number; total: number; issuedLast12Months: number; delinquencyRate: number; unitsInDebt: number; activeUnits: number; rows: DelinquencyRow[]; }
 export interface DebtLine { entryId: string; description: string; competence: string; dueDate: string; amount: number; paid: number; remaining: number; status: string; daysLate: number; fine: number; interest: number; updatedTotal: number; }
 export interface Note { id: string; contactType: string; contactDate: string; note: string; createdByName?: string; createdAt: string; }
-export interface Agreement { id: string; unitId: string; unitLabel?: string; originalAmount: number; chargesAmount: number; discount: number; totalAmount: number; installments: number; firstDueDate: string; status: string; paidInstallments: number; notes?: string; cancelReason?: string; createdAt: string; installmentEntries: EntrySummary[]; }
+export interface Agreement { id: string; unitId: string; unitLabel?: string; originalAmount: number; chargesAmount: number; discount: number; totalAmount: number; installments: number; firstDueDate: string; status: string; paidInstallments: number; notes?: string; cancelReason?: string; createdAt: string; installmentEntries: LancamentoResumo[]; }
 export interface UnitDebt { unitId: string; unitLabel: string; responsibleName?: string; asOf: string; openPrincipal: number; openCharges: number; openTotal: number; lines: DebtLine[]; notes: Note[]; agreements: Agreement[]; }
 
-export interface ClosingHistory { id: string; action: 'CLOSE' | 'REOPEN'; closedUntil?: string; previousUntil?: string; notes?: string; snapshot?: { income: string; expense: string; unreconciledMovements: number; balances: { account: string; balance: string; reconciled: string }[] }; createdAt: string; createdByName?: string; }
-export interface ClosingStatus { closedUntil?: string; suggestedUntil?: string; history: ClosingHistory[]; }
-export interface ClosingCheck { from: string; until: string; unreconciledMovements: number; pendingApprovals: number; income: number; expense: number; balances: { id: string; name: string; balance: number; reconciledBalance: number }[]; }
-export interface ImportResult { importId: string; fileName: string; periodStart?: string; periodEnd?: string; linesInFile: number; newLines: number; duplicates: number; autoMatched: number; pending: number; }
-export interface StatementSuggestion { type: string; id: string; date: string; amount: number; description: string; }
-export interface StatementLineView { id: string; fitId: string; postedOn: string; amount: number; trnType?: string; memo?: string; status: 'UNMATCHED' | 'MATCHED' | 'IGNORED'; matchedType?: string; matchedId?: string; note?: string; suggestions: StatementSuggestion[]; }
+/** Fotografia gravada no fechamento: chaves em inglês por serem dado histórico persistido. */
+export interface FotografiaFechamento { income: string; expense: string; unreconciledMovements: number; balances: { account: string; balance: string; reconciled: string }[]; }
+export interface ItemHistorico { id: string; acao: 'CLOSE' | 'REOPEN'; fechadoAte?: string; fechadoAteAnterior?: string; observacoes?: string; fotografia?: FotografiaFechamento; criadoEm: string; nomeCriadoPor?: string; }
+export interface SituacaoFechamento { fechadoAte?: string; sugestaoAte?: string; historico: ItemHistorico[]; }
+export interface SaldoConta { id: string; nome: string; saldo: number; saldoConciliado: number; }
+export interface Verificacao { de: string; ate: string; movimentacoesNaoConciliadas: number; aprovacoesPendentes: number; receitas: number; despesas: number; saldos: SaldoConta[]; }
+export interface ResultadoImportacao { idImportacao: string; nomeArquivo: string; inicioPeriodo?: string; fimPeriodo?: string; linhasArquivo: number; linhasNovas: number; duplicadas: number; conciliadasAutomaticamente: number; pendentes: number; }
+export interface Sugestao { tipo: string; id: string; data: string; valor: number; descricao: string; }
+export interface LinhaExtrato { id: string; fitId: string; dataLancamento: string; valor: number; tipoTransacao?: string; historico?: string; situacao: 'UNMATCHED' | 'MATCHED' | 'IGNORED'; tipoConciliado?: string; idConciliado?: string; observacao?: string; sugestoes: Sugestao[]; }
 export interface ReturnFile { id: string; bankAccountId: string; fileName: string; bankCode: string; generatedOn?: string; itemsTotal: number; settled: number; pending: number; createdAt: string; createdByName?: string; }
 export interface ReturnItem { id: string; fileId: string; sequence: number; movementCode: string; movementLabel: string; ourNumber?: string; yourNumber?: string; dueDate?: string; faceValue: number; fees: number; discount: number; paidAmount: number; bankFee: number; occurrenceDate?: string; creditDate?: string; status: 'SETTLED' | 'PENDING' | 'INFO' | 'IGNORED'; entryId?: string; entryDescription?: string; unitLabel?: string; message?: string; }
 
@@ -57,89 +61,92 @@ export interface ReturnItem { id: string; fileId: string; sequence: number; move
 export class FinanceApi {
   private readonly http = inject(HttpClient);
   private b(c: string): string {
-    return `/api/v1/condominios/${c}`;
+    return `/api/v1/condominios/${c}/financeiro`;
+  }
+  private billing(c: string): string {
+    return `/api/v1/condominios/${c}/billing`;
   }
 
-  chartAccounts(): Observable<ChartAccount[]> { return this.http.get<ChartAccount[]>('/api/v1/finance/chart-accounts'); }
-  createChartAccount(body: { code: string; name: string; nature: string }): Observable<ChartAccount> { return this.http.post<ChartAccount>('/api/v1/finance/chart-accounts', body); }
-  settings(c: string): Observable<Settings> { return this.http.get<Settings>(`${this.b(c)}/finance/settings`); }
-  saveSettings(c: string, s: Settings): Observable<Settings> { return this.http.put<Settings>(`${this.b(c)}/finance/settings`, s); }
-  costCenters(c: string): Observable<CostCenter[]> { return this.http.get<CostCenter[]>(`${this.b(c)}/finance/cost-centers`); }
-  saveCostCenter(c: string, name: string, id?: string, active?: boolean): Observable<CostCenter> {
+  chartAccounts(): Observable<ContaPlano[]> { return this.http.get<ContaPlano[]>('/api/v1/financeiro/plano-contas'); }
+  createChartAccount(body: { codigo: string; nome: string; natureza: string }): Observable<ContaPlano> { return this.http.post<ContaPlano>('/api/v1/financeiro/plano-contas', body); }
+  settings(c: string): Observable<ParametrosFinanceiros> { return this.http.get<ParametrosFinanceiros>(`${this.b(c)}/parametros`); }
+  saveSettings(c: string, s: ParametrosFinanceiros): Observable<ParametrosFinanceiros> { return this.http.put<ParametrosFinanceiros>(`${this.b(c)}/parametros`, s); }
+  costCenters(c: string): Observable<CentroCusto[]> { return this.http.get<CentroCusto[]>(`${this.b(c)}/centros-custo`); }
+  saveCostCenter(c: string, nome: string, id?: string, ativo?: boolean): Observable<CentroCusto> {
     return id
-      ? this.http.put<CostCenter>(`${this.b(c)}/finance/cost-centers/${id}`, { name }, { params: active === undefined ? {} : { active } })
-      : this.http.post<CostCenter>(`${this.b(c)}/finance/cost-centers`, { name });
+      ? this.http.put<CentroCusto>(`${this.b(c)}/centros-custo/${id}`, { nome }, { params: ativo === undefined ? {} : { ativo } })
+      : this.http.post<CentroCusto>(`${this.b(c)}/centros-custo`, { nome });
   }
-  bankAccounts(c: string): Observable<BankAccount[]> { return this.http.get<BankAccount[]>(`${this.b(c)}/finance/bank-accounts`); }
-  createBankAccount(c: string, body: Record<string, unknown>): Observable<BankAccount> { return this.http.post<BankAccount>(`${this.b(c)}/finance/bank-accounts`, body); }
-  updateBankAccount(c: string, id: string, body: Record<string, unknown>, active?: boolean): Observable<BankAccount> {
-    return this.http.put<BankAccount>(`${this.b(c)}/finance/bank-accounts/${id}`, body, { params: active === undefined ? {} : { active } });
+  bankAccounts(c: string): Observable<ContaBancaria[]> { return this.http.get<ContaBancaria[]>(`${this.b(c)}/contas-bancarias`); }
+  createBankAccount(c: string, body: Record<string, unknown>): Observable<ContaBancaria> { return this.http.post<ContaBancaria>(`${this.b(c)}/contas-bancarias`, body); }
+  updateBankAccount(c: string, id: string, body: Record<string, unknown>, ativo?: boolean): Observable<ContaBancaria> {
+    return this.http.put<ContaBancaria>(`${this.b(c)}/contas-bancarias/${id}`, body, { params: ativo === undefined ? {} : { ativo } });
   }
-  statement(c: string, id: string, from: string, to: string): Observable<Statement> {
-    return this.http.get<Statement>(`${this.b(c)}/finance/bank-accounts/${id}/statement`, { params: { from, to } });
+  statement(c: string, id: string, de: string, ate: string): Observable<Extrato> {
+    return this.http.get<Extrato>(`${this.b(c)}/contas-bancarias/${id}/extrato`, { params: { de, ate } });
   }
-  reconcile(c: string, items: { type: string; id: string }[], reconciled: boolean): Observable<unknown> {
-    return this.http.post(`${this.b(c)}/finance/reconciliation`, { items, reconciled });
+  reconcile(c: string, itens: { tipo: string; id: string }[], conciliada: boolean): Observable<unknown> {
+    return this.http.post(`${this.b(c)}/conciliar`, { itens, conciliada });
   }
 
-  entries(c: string, q: Record<string, string | number | string[] | undefined>): Observable<PaginaResponse<EntrySummary>> {
+  entries(c: string, q: Record<string, string | number | string[] | undefined>): Observable<PaginaResponse<LancamentoResumo>> {
     let params = new HttpParams();
     for (const [k, v] of Object.entries(q)) {
       if (v === undefined || v === '' || v === null) continue;
       params = Array.isArray(v) ? v.reduce((p, x) => p.append(k, x), params) : params.set(k, String(v));
     }
-    return this.http.get<PaginaResponse<EntrySummary>>(`${this.b(c)}/finance/entries`, { params });
+    return this.http.get<PaginaResponse<LancamentoResumo>>(`${this.b(c)}/lancamentos`, { params });
   }
-  entry(c: string, id: string): Observable<EntryDetail> { return this.http.get<EntryDetail>(`${this.b(c)}/finance/entries/${id}`); }
-  createEntry(c: string, body: EntryRequest): Observable<EntryDetail[]> { return this.http.post<EntryDetail[]>(`${this.b(c)}/finance/entries`, body); }
-  updateEntry(c: string, id: string, body: EntryRequest): Observable<EntryDetail> { return this.http.put<EntryDetail>(`${this.b(c)}/finance/entries/${id}`, body); }
-  approve(c: string, id: string, approve: boolean, note: string | null): Observable<EntryDetail> {
-    return this.http.post<EntryDetail>(`${this.b(c)}/finance/entries/${id}/${approve ? 'approve' : 'reject'}`, { note });
+  entry(c: string, id: string): Observable<LancamentoDetalhe> { return this.http.get<LancamentoDetalhe>(`${this.b(c)}/lancamentos/${id}`); }
+  createEntry(c: string, body: LancamentoRequest): Observable<LancamentoDetalhe[]> { return this.http.post<LancamentoDetalhe[]>(`${this.b(c)}/lancamentos`, body); }
+  updateEntry(c: string, id: string, body: LancamentoRequest): Observable<LancamentoDetalhe> { return this.http.put<LancamentoDetalhe>(`${this.b(c)}/lancamentos/${id}`, body); }
+  approve(c: string, id: string, approve: boolean, observacao: string | null): Observable<LancamentoDetalhe> {
+    return this.http.post<LancamentoDetalhe>(`${this.b(c)}/lancamentos/${id}/${approve ? 'aprovar' : 'reprovar'}`, { observacao });
   }
-  cancelEntry(c: string, id: string, reason: string): Observable<EntryDetail> { return this.http.post<EntryDetail>(`${this.b(c)}/finance/entries/${id}/cancel`, { reason }); }
-  quote(c: string, id: string, date: string): Observable<Quote> { return this.http.get<Quote>(`${this.b(c)}/finance/entries/${id}/quote`, { params: { date } }); }
-  pay(c: string, id: string, body: Record<string, unknown>): Observable<EntryDetail> { return this.http.post<EntryDetail>(`${this.b(c)}/finance/entries/${id}/payments`, body); }
-  reversePayment(c: string, paymentId: string, reason: string): Observable<EntryDetail> {
-    return this.http.post<EntryDetail>(`${this.b(c)}/finance/payments/${paymentId}/reverse`, { reason });
+  cancelEntry(c: string, id: string, motivo: string): Observable<LancamentoDetalhe> { return this.http.post<LancamentoDetalhe>(`${this.b(c)}/lancamentos/${id}/cancelar`, { motivo }); }
+  quote(c: string, id: string, data: string): Observable<CalculoEncargos> { return this.http.get<CalculoEncargos>(`${this.b(c)}/lancamentos/${id}/encargos`, { params: { data } }); }
+  pay(c: string, id: string, body: Record<string, unknown>): Observable<LancamentoDetalhe> { return this.http.post<LancamentoDetalhe>(`${this.b(c)}/lancamentos/${id}/baixas`, body); }
+  reversePayment(c: string, idBaixa: string, motivo: string): Observable<LancamentoDetalhe> {
+    return this.http.post<LancamentoDetalhe>(`${this.b(c)}/baixas/${idBaixa}/estornar`, { motivo });
   }
   // fechamento mensal
-  closing(c: string): Observable<ClosingStatus> { return this.http.get<ClosingStatus>(`${this.b(c)}/finance/closing`); }
-  closingCheck(c: string, until: string): Observable<ClosingCheck> { return this.http.get<ClosingCheck>(`${this.b(c)}/finance/closing/check`, { params: { until } }); }
-  close(c: string, until: string, notes: string | null): Observable<ClosingStatus> { return this.http.post<ClosingStatus>(`${this.b(c)}/finance/closing`, { until, notes }); }
-  reopen(c: string, until: string | null, reason: string): Observable<ClosingStatus> { return this.http.post<ClosingStatus>(`${this.b(c)}/finance/closing/reopen`, { until, reason }); }
+  closing(c: string): Observable<SituacaoFechamento> { return this.http.get<SituacaoFechamento>(`${this.b(c)}/fechamento`); }
+  closingCheck(c: string, ate: string): Observable<Verificacao> { return this.http.get<Verificacao>(`${this.b(c)}/fechamento/verificar`, { params: { ate } }); }
+  close(c: string, ate: string, observacoes: string | null): Observable<SituacaoFechamento> { return this.http.post<SituacaoFechamento>(`${this.b(c)}/fechamento`, { ate, observacoes }); }
+  reopen(c: string, ate: string | null, motivo: string): Observable<SituacaoFechamento> { return this.http.post<SituacaoFechamento>(`${this.b(c)}/fechamento/reabrir`, { ate, motivo }); }
 
   // extrato OFX e conciliação
-  importStatement(c: string, accountId: string, file: File, ignoreAccountCheck = false): Observable<ImportResult> {
+  importStatement(c: string, idConta: string, arquivo: File, ignorarConferenciaConta = false): Observable<ResultadoImportacao> {
     const form = new FormData();
-    form.append('file', file);
-    return this.http.post<ImportResult>(`${this.b(c)}/finance/bank-accounts/${accountId}/statement-imports`, form, { params: { ignoreAccountCheck } });
+    form.append('arquivo', arquivo);
+    return this.http.post<ResultadoImportacao>(`${this.b(c)}/contas-bancarias/${idConta}/extratos`, form, { params: { ignorarConferenciaConta } });
   }
-  statementLines(c: string, accountId: string, status?: string): Observable<StatementLineView[]> {
-    return this.http.get<StatementLineView[]>(`${this.b(c)}/finance/bank-accounts/${accountId}/statement-lines`, { params: status ? { status } : {} });
+  statementLines(c: string, idConta: string, situacao?: string): Observable<LinhaExtrato[]> {
+    return this.http.get<LinhaExtrato[]>(`${this.b(c)}/contas-bancarias/${idConta}/linhas-extrato`, { params: situacao ? { situacao } : {} });
   }
-  matchLine(c: string, id: string, type: string, movementId: string): Observable<StatementLineView> { return this.http.post<StatementLineView>(`${this.b(c)}/finance/statement-lines/${id}/match`, { type, movementId }); }
-  unmatchLine(c: string, id: string): Observable<StatementLineView> { return this.http.post<StatementLineView>(`${this.b(c)}/finance/statement-lines/${id}/unmatch`, null); }
-  ignoreLine(c: string, id: string, note: string): Observable<StatementLineView> { return this.http.post<StatementLineView>(`${this.b(c)}/finance/statement-lines/${id}/ignore`, { note }); }
-  registerLine(c: string, id: string, body: Record<string, unknown>): Observable<StatementLineView> { return this.http.post<StatementLineView>(`${this.b(c)}/finance/statement-lines/${id}/register`, body); }
+  matchLine(c: string, id: string, tipo: string, idMovimentacao: string): Observable<LinhaExtrato> { return this.http.post<LinhaExtrato>(`${this.b(c)}/linhas-extrato/${id}/conciliar`, { tipo, idMovimentacao }); }
+  unmatchLine(c: string, id: string): Observable<LinhaExtrato> { return this.http.post<LinhaExtrato>(`${this.b(c)}/linhas-extrato/${id}/desfazer-conciliacao`, null); }
+  ignoreLine(c: string, id: string, observacao: string): Observable<LinhaExtrato> { return this.http.post<LinhaExtrato>(`${this.b(c)}/linhas-extrato/${id}/ignorar`, { observacao }); }
+  registerLine(c: string, id: string, body: Record<string, unknown>): Observable<LinhaExtrato> { return this.http.post<LinhaExtrato>(`${this.b(c)}/linhas-extrato/${id}/lancar`, body); }
 
   // retorno bancário (CNAB 240)
   processReturn(c: string, bankAccountId: string, file: File): Observable<ReturnFile> {
     const form = new FormData();
     form.append('file', file);
-    return this.http.post<ReturnFile>(`${this.b(c)}/billing/bank-returns`, form, { params: { bankAccountId } });
+    return this.http.post<ReturnFile>(`${this.billing(c)}/bank-returns`, form, { params: { bankAccountId } });
   }
-  returnFiles(c: string): Observable<ReturnFile[]> { return this.http.get<ReturnFile[]>(`${this.b(c)}/billing/bank-returns`); }
-  returnItems(c: string, fileId: string): Observable<ReturnItem[]> { return this.http.get<ReturnItem[]>(`${this.b(c)}/billing/bank-returns/${fileId}/items`); }
-  pendingReturnItems(c: string): Observable<ReturnItem[]> { return this.http.get<ReturnItem[]>(`${this.b(c)}/billing/bank-return-items/pending`); }
-  settleReturnItem(c: string, id: string, entryId: string): Observable<ReturnItem> { return this.http.post<ReturnItem>(`${this.b(c)}/billing/bank-return-items/${id}/settle`, { entryId }); }
-  ignoreReturnItem(c: string, id: string, note: string): Observable<ReturnItem> { return this.http.post<ReturnItem>(`${this.b(c)}/billing/bank-return-items/${id}/ignore`, { note }); }
+  returnFiles(c: string): Observable<ReturnFile[]> { return this.http.get<ReturnFile[]>(`${this.billing(c)}/bank-returns`); }
+  returnItems(c: string, fileId: string): Observable<ReturnItem[]> { return this.http.get<ReturnItem[]>(`${this.billing(c)}/bank-returns/${fileId}/items`); }
+  pendingReturnItems(c: string): Observable<ReturnItem[]> { return this.http.get<ReturnItem[]>(`${this.billing(c)}/bank-return-items/pending`); }
+  settleReturnItem(c: string, id: string, entryId: string): Observable<ReturnItem> { return this.http.post<ReturnItem>(`${this.billing(c)}/bank-return-items/${id}/settle`, { entryId }); }
+  ignoreReturnItem(c: string, id: string, note: string): Observable<ReturnItem> { return this.http.post<ReturnItem>(`${this.billing(c)}/bank-return-items/${id}/ignore`, { note }); }
 
-  transfers(c: string): Observable<Transfer[]> { return this.http.get<Transfer[]>(`${this.b(c)}/finance/transfers`); }
-  transfer(c: string, body: Record<string, unknown>): Observable<Transfer> { return this.http.post<Transfer>(`${this.b(c)}/finance/transfers`, body); }
-  reverseTransfer(c: string, id: string, reason: string): Observable<Transfer> { return this.http.post<Transfer>(`${this.b(c)}/finance/transfers/${id}/reverse`, { reason }); }
-  budget(c: string, year: number): Observable<{ year: number; rows: BudgetRow[] }> { return this.http.get<{ year: number; rows: BudgetRow[] }>(`${this.b(c)}/finance/budget/${year}`); }
-  saveBudget(c: string, year: number, cells: { chartAccountId: string; month: number; amount: number }[]): Observable<{ year: number; rows: BudgetRow[] }> {
-    return this.http.put<{ year: number; rows: BudgetRow[] }>(`${this.b(c)}/finance/budget/${year}`, { cells });
+  transfers(c: string): Observable<Transferencia[]> { return this.http.get<Transferencia[]>(`${this.b(c)}/transferencias`); }
+  transfer(c: string, body: Record<string, unknown>): Observable<Transferencia> { return this.http.post<Transferencia>(`${this.b(c)}/transferencias`, body); }
+  reverseTransfer(c: string, id: string, motivo: string): Observable<Transferencia> { return this.http.post<Transferencia>(`${this.b(c)}/transferencias/${id}/estornar`, { motivo }); }
+  budget(c: string, ano: number): Observable<Orcamento> { return this.http.get<Orcamento>(`${this.b(c)}/orcamento/${ano}`); }
+  saveBudget(c: string, ano: number, celulas: { idContaPlano: string; mes: number; valor: number }[]): Observable<Orcamento> {
+    return this.http.put<Orcamento>(`${this.b(c)}/orcamento/${ano}`, { celulas });
   }
 
   suppliers(search: string, page = 0, size = 20): Observable<PaginaResponse<Supplier>> {
@@ -151,14 +158,14 @@ export class FinanceApi {
       : this.http.post<Supplier>('/api/v1/suppliers', body);
   }
 
-  allocations(c: string): Observable<Allocation[]> { return this.http.get<Allocation[]>(`${this.b(c)}/billing/allocations`); }
-  previewAllocation(c: string, body: AllocationRequest): Observable<AllocationPreview> { return this.http.post<AllocationPreview>(`${this.b(c)}/billing/allocations/preview`, body); }
-  generateAllocation(c: string, body: AllocationRequest): Observable<Allocation> { return this.http.post<Allocation>(`${this.b(c)}/billing/allocations`, body); }
-  cancelAllocation(c: string, id: string, reason: string): Observable<Allocation> { return this.http.post<Allocation>(`${this.b(c)}/billing/allocations/${id}/cancel`, { reason }); }
-  delinquency(c: string, asOf?: string): Observable<Delinquency> { return this.http.get<Delinquency>(`${this.b(c)}/billing/delinquency`, { params: asOf ? { asOf } : {} }); }
-  unitDebt(c: string, unitId: string): Observable<UnitDebt> { return this.http.get<UnitDebt>(`${this.b(c)}/billing/units/${unitId}/debt`); }
-  addNote(c: string, unitId: string, body: Record<string, unknown>): Observable<Note> { return this.http.post<Note>(`${this.b(c)}/billing/units/${unitId}/notes`, body); }
-  agreements(c: string): Observable<Agreement[]> { return this.http.get<Agreement[]>(`${this.b(c)}/billing/agreements`); }
-  createAgreement(c: string, body: Record<string, unknown>): Observable<Agreement> { return this.http.post<Agreement>(`${this.b(c)}/billing/agreements`, body); }
-  cancelAgreement(c: string, id: string, reason: string): Observable<Agreement> { return this.http.post<Agreement>(`${this.b(c)}/billing/agreements/${id}/cancel`, { reason }); }
+  allocations(c: string): Observable<Allocation[]> { return this.http.get<Allocation[]>(`${this.billing(c)}/allocations`); }
+  previewAllocation(c: string, body: AllocationRequest): Observable<AllocationPreview> { return this.http.post<AllocationPreview>(`${this.billing(c)}/allocations/preview`, body); }
+  generateAllocation(c: string, body: AllocationRequest): Observable<Allocation> { return this.http.post<Allocation>(`${this.billing(c)}/allocations`, body); }
+  cancelAllocation(c: string, id: string, reason: string): Observable<Allocation> { return this.http.post<Allocation>(`${this.billing(c)}/allocations/${id}/cancel`, { motivo: reason }); }
+  delinquency(c: string, asOf?: string): Observable<Delinquency> { return this.http.get<Delinquency>(`${this.billing(c)}/delinquency`, { params: asOf ? { asOf } : {} }); }
+  unitDebt(c: string, unitId: string): Observable<UnitDebt> { return this.http.get<UnitDebt>(`${this.billing(c)}/units/${unitId}/debt`); }
+  addNote(c: string, unitId: string, body: Record<string, unknown>): Observable<Note> { return this.http.post<Note>(`${this.billing(c)}/units/${unitId}/notes`, body); }
+  agreements(c: string): Observable<Agreement[]> { return this.http.get<Agreement[]>(`${this.billing(c)}/agreements`); }
+  createAgreement(c: string, body: Record<string, unknown>): Observable<Agreement> { return this.http.post<Agreement>(`${this.billing(c)}/agreements`, body); }
+  cancelAgreement(c: string, id: string, reason: string): Observable<Agreement> { return this.http.post<Agreement>(`${this.billing(c)}/agreements/${id}/cancel`, { motivo: reason }); }
 }

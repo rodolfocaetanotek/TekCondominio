@@ -55,18 +55,18 @@ class ReportsDashboardPortalIT extends IntegrationTest {
         condo = data.condominio(org, "Condomínio Relatórios");
         token = TestData.bearer(data.login(data.adminAdministradora(org)));
         base = "/api/v1/condominios/" + condo.getId();
-        call(token, "PUT", base + "/finance/settings", Map.of("finePercent", "2", "interestMonthlyPercent", "1",
-                "billingDueDay", 10, "requirePayableApproval", false), 200);
-        bank = call(token, "POST", base + "/finance/bank-accounts", Map.of("name", "Banco", "kind", "CHECKING",
-                "openingBalance", "1000.00", "openingDate", today.minusYears(1).toString()), 201).get("id").asText();
+        call(token, "PUT", base + "/financeiro/parametros", Map.of("percentualMulta", "2", "percentualJurosMensal", "1",
+                "diaVencimento", 10, "exigeAprovacaoContasPagar", false), 200);
+        bank = call(token, "POST", base + "/financeiro/contas-bancarias", Map.of("nome", "Banco", "tipo", "CHECKING",
+                "saldoInicial", "1000.00", "dataAbertura", today.minusYears(1).toString()), 201).get("id").asText();
         unitOwner = call(token, "POST", base + "/unidades", Map.of("identificacao", "11", "tipo", "APARTMENT", "fracaoIdeal", "50"), 201).get("id").asText();
         unitOther = call(token, "POST", base + "/unidades", Map.of("identificacao", "12", "tipo", "APARTMENT", "fracaoIdeal", "50"), 201).get("id").asText();
 
-        Map<String, Object> expense = new HashMap<>(Map.of("kind", "EXPENSE", "description", "Conserto bomba",
-                "chartAccountId", ACC_MAINTENANCE, "amount", "300.00", "dueDate", today.toString()));
-        String exp = call(token, "POST", base + "/finance/entries", expense, 201).get(0).get("summary").get("id").asText();
-        call(token, "POST", base + "/finance/entries/" + exp + "/payments", Map.of("bankAccountId", bank,
-                "paidOn", today.toString(), "principal", "300.00", "method", "PIX"), 200);
+        Map<String, Object> expense = new HashMap<>(Map.of("natureza", "EXPENSE", "descricao", "Conserto bomba",
+                "idContaPlano", ACC_MAINTENANCE, "valor", "300.00", "dataVencimento", today.toString()));
+        String exp = call(token, "POST", base + "/financeiro/lancamentos", expense, 201).get(0).get("resumo").get("id").asText();
+        call(token, "POST", base + "/financeiro/lancamentos/" + exp + "/baixas", Map.of("idContaBancaria", bank,
+                "dataPagamento", today.toString(), "principal", "300.00", "formaPagamento", "PIX"), 200);
         call(token, "POST", base + "/billing/allocations", Map.of("competence", YearMonth.from(today).toString(),
                 "description", "Taxa " + YearMonth.from(today), "chartAccountId", ACC_CONDO_FEE, "method", "IDEAL_FRACTION",
                 "amount", "800.00", "dueDate", today.plusDays(5).toString()), 201);
@@ -179,7 +179,7 @@ class ReportsDashboardPortalIT extends IntegrationTest {
 
         assertThat(call(ownerToken, "GET", p + "/calendar", null, 200).get(0).get("type").asText()).isEqualTo("CHARGE");
         call(token, "GET", "/api/v1/portal/me", null, 403); // administrador não é morador
-        call(ownerToken, "GET", base + "/finance/entries", null, 403); // morador não acessa a área administrativa
+        call(ownerToken, "GET", base + "/financeiro/lancamentos", null, 403); // morador não acessa a área administrativa
     }
 
     private String activate(String email) throws Exception {

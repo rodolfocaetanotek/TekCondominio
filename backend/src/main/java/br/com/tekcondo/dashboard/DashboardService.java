@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 import br.com.tekcondo.condominio.dto.OpcaoCondominio;
 import br.com.tekcondo.condominio.entity.SituacaoCondominio;
 import br.com.tekcondo.condominio.service.CondominioService;
-import br.com.tekcondo.finance.service.FinanceQueries;
+import br.com.tekcondo.financeiro.service.ConsultasFinanceiras;
 import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.comum.exception.ApiException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -51,10 +51,10 @@ public class DashboardService {
 
     private final NamedParameterJdbcTemplate jdbc;
     private final CondominioService condominiums;
-    private final FinanceQueries queries;
+    private final ConsultasFinanceiras queries;
     private final Clock clock;
 
-    public DashboardService(NamedParameterJdbcTemplate jdbc, CondominioService condominiums, FinanceQueries queries, Clock clock) {
+    public DashboardService(NamedParameterJdbcTemplate jdbc, CondominioService condominiums, ConsultasFinanceiras queries, Clock clock) {
         this.jdbc = jdbc;
         this.condominiums = condominiums;
         this.queries = queries;
@@ -120,7 +120,7 @@ public class DashboardService {
             rate = issued12 == null || issued12.signum() == 0 ? BigDecimal.ZERO
                     : overdue.multiply(new BigDecimal("100")).divide(issued12, 2, RoundingMode.HALF_UP);
             for (UUID id : fin) {
-                balance = balance.add(queries.balances(id, today).values().stream().reduce(BigDecimal.ZERO, BigDecimal::add));
+                balance = balance.add(queries.saldos(id, today).values().stream().reduce(BigDecimal.ZERO, BigDecimal::add));
             }
             Map<YearMonth, BigDecimal[]> months = new LinkedHashMap<>();
             YearMonth last = YearMonth.from(to);

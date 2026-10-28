@@ -14,7 +14,7 @@ import { CondominiumContext } from '../../core/context/condominium-context';
 import { NotificationService } from '../../core/notify/notification.service';
 import { openForm } from '../../shared/ui/form-dialog';
 import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
-import { BankAccount, FinanceApi, ReturnItem } from '../finance/finance-api';
+import { ContaBancaria, FinanceApi, ReturnItem } from '../finance/finance-api';
 
 /**
  * Retorno de cobrança (CNAB 240): o arquivo baixado do banco dá baixa automática nas cobranças liquidadas,
@@ -29,7 +29,7 @@ import { BankAccount, FinanceApi, ReturnItem } from '../finance/finance-api';
       <div class="filters">
         <mat-form-field class="search"><mat-label>Conta de cobrança</mat-label>
           <mat-select [formControl]="account">
-            @for (a of accounts() ?? []; track a.id) { <mat-option [value]="a.id">{{ a.name }}{{ a.bankCode ? ' · banco ' + a.bankCode : '' }}</mat-option> }
+            @for (a of accounts() ?? []; track a.id) { <mat-option [value]="a.id">{{ a.nome }}{{ a.codigoBanco ? ' · banco ' + a.codigoBanco : '' }}</mat-option> }
           </mat-select></mat-form-field>
         @if (canEdit() && account.value) {
           <label class="tc-file-button"><input type="file" accept=".ret,.RET,.txt,.TXT,.cnab" (change)="upload($event)" [disabled]="busy()" />
@@ -107,8 +107,8 @@ export class BankReturnTab {
     && this.context.selected()?.situacao === 'ACTIVE');
   private readonly source = combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(filter(([c]) => !!c));
   protected readonly accounts = toSignal(toObservable(this.context.id).pipe(filter((c) => !!c),
-    switchMap((c) => this.api.bankAccounts(c!).pipe(map((list) => list.filter((a) => a.kind !== 'CASH' && a.active)),
-      catchError(() => of([] as BankAccount[]))))));
+    switchMap((c) => this.api.bankAccounts(c!).pipe(map((list) => list.filter((a) => a.tipo !== 'CASH' && a.ativo)),
+      catchError(() => of([] as ContaBancaria[]))))));
   protected readonly files = toSignal(this.source.pipe(switchMap(([c]) => this.api.returnFiles(c!).pipe(catchError(() => of([]))))));
   protected readonly pending = toSignal(this.source.pipe(switchMap(([c]) => this.api.pendingReturnItems(c!).pipe(catchError(() => of([] as ReturnItem[]))))));
 
@@ -133,12 +133,12 @@ export class BankReturnTab {
 
   settle(item: ReturnItem): void {
     const c = this.context.id()!;
-    this.api.entries(c, { kind: 'INCOME', status: ['OPEN', 'PARTIAL'], tamanho: 200, ordem: 'dueDate,asc' }).subscribe((page) =>
+    this.api.entries(c, { natureza: 'INCOME', situacao: ['OPEN', 'PARTIAL'], tamanho: 200, ordem: 'dataVencimento,asc' }).subscribe((page) =>
       openForm(this.dialog, {
         title: 'Baixar pagamento do retorno',
         intro: `Valor pago: R$ ${item.paidAmount.toFixed(2).replace('.', ',')}. Escolha a cobrança correspondente.`,
         fields: [{ key: 'entryId', label: 'Cobrança', type: 'select', required: true,
-          options: page.conteudo.map((e) => ({ value: e.id, label: `${e.unitLabel ?? '—'} · ${e.description} · venc. ${e.dueDate.split('-').reverse().join('/')} · R$ ${e.remaining.toFixed(2).replace('.', ',')}` })) }],
+          options: page.conteudo.map((e) => ({ value: e.id, label: `${e.rotuloUnidade ?? '—'} · ${e.descricao} · venc. ${e.dataVencimento.split('-').reverse().join('/')} · R$ ${e.valorAberto.toFixed(2).replace('.', ',')}` })) }],
         submit: (v) => this.api.settleReturnItem(c, item.id, v['entryId'] as string),
       }).pipe(filter((r) => !!r)).subscribe(() => {
         this.notify.success('Pagamento baixado.');

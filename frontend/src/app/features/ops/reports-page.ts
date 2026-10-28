@@ -60,7 +60,7 @@ const REPORTS = [
           }
           @if (kind.value === 'BANK_MOVEMENT') {
             <mat-form-field><mat-label>Conta</mat-label><mat-select [formControl]="bank">
-              @for (b of banks(); track b.id) { <mat-option [value]="b.id">{{ b.name }}</mat-option> }</mat-select></mat-form-field>
+              @for (b of banks(); track b.id) { <mat-option [value]="b.id">{{ b.nome }}</mat-option> }</mat-select></mat-form-field>
           }
           <button mat-flat-button class="run" (click)="run()"><mat-icon>play_arrow</mat-icon> Gerar</button>
           @if (canExport() && table()) {

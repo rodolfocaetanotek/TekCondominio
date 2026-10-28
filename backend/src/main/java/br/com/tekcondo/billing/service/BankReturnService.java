@@ -18,16 +18,16 @@ import br.com.tekcondo.billing.repository.BankReturnFileRepository;
 import br.com.tekcondo.billing.repository.BankReturnItemRepository;
 import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.condominio.service.AcessoCondominio;
-import br.com.tekcondo.finance.dto.FinanceDtos.EntryDetail;
-import br.com.tekcondo.finance.dto.FinanceDtos.PaymentRequest;
-import br.com.tekcondo.finance.entity.BankAccount;
-import br.com.tekcondo.finance.entity.EntryPayment;
-import br.com.tekcondo.finance.entity.FinancialEntry;
-import br.com.tekcondo.finance.repository.FinancialEntryRepository;
-import br.com.tekcondo.finance.service.EntryService;
-import br.com.tekcondo.finance.service.FinanceSetupService;
-import br.com.tekcondo.finance.service.LateFeeCalculator;
-import br.com.tekcondo.finance.service.PeriodLock;
+import br.com.tekcondo.financeiro.dto.FinanceiroDtos.LancamentoDetalhe;
+import br.com.tekcondo.financeiro.dto.FinanceiroDtos.BaixaRequest;
+import br.com.tekcondo.financeiro.entity.ContaBancaria;
+import br.com.tekcondo.financeiro.entity.Baixa;
+import br.com.tekcondo.financeiro.entity.Lancamento;
+import br.com.tekcondo.financeiro.repository.LancamentoRepository;
+import br.com.tekcondo.financeiro.service.LancamentoService;
+import br.com.tekcondo.financeiro.service.ConfiguracaoFinanceiraService;
+import br.com.tekcondo.financeiro.service.EncargosCalculator;
+import br.com.tekcondo.financeiro.service.BloqueioPeriodo;
 import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.integracao.banco.RetornoCnab240Parser;
 import br.com.tekcondo.integracao.banco.OfxParser;
@@ -64,16 +64,16 @@ public class BankReturnService {
 
     private final BankReturnFileRepository files;
     private final BankReturnItemRepository items;
-    private final FinancialEntryRepository entries;
-    private final EntryService entryService;
-    private final FinanceSetupService setup;
-    private final PeriodLock periodLock;
+    private final LancamentoRepository entries;
+    private final LancamentoService entryService;
+    private final ConfiguracaoFinanceiraService setup;
+    private final BloqueioPeriodo periodLock;
     private final AcessoCondominio access;
     private final AuditoriaService auditService;
     private final Clock clock;
 
-    public BankReturnService(BankReturnFileRepository files, BankReturnItemRepository items, FinancialEntryRepository entries,
-                             EntryService entryService, FinanceSetupService setup, PeriodLock periodLock, AcessoCondominio access,
+    public BankReturnService(BankReturnFileRepository files, BankReturnItemRepository items, LancamentoRepository entries,
+                             LancamentoService entryService, ConfiguracaoFinanceiraService setup, BloqueioPeriodo periodLock, AcessoCondominio access,
                              AuditoriaService auditService, Clock clock) {
         this.files = files;
         this.items = items;
@@ -90,8 +90,8 @@ public class BankReturnService {
     public FileSummary process(UUID condominiumId, UUID bankAccountId, String fileName, byte[] content) {
         Condominio condominium = access.exigirAtivo(condominiumId, Permissao.BILLING_EDIT);
         access.exigir(condominiumId, Permissao.FINANCE_EDIT);
-        BankAccount account = setup.loadBankAccount(condominiumId, bankAccountId);
-        if (!account.isActive()) {
+        ContaBancaria account = setup.carregarContaBancaria(condominiumId, bankAccountId);
+        if (!account.isAtivo()) {
             throw ApiException.regraNegocio("BANK_ACCOUNT_INACTIVE", "A conta bancária está inativa.");
         }
         String hash = OfxParser.sha256(content);
@@ -99,9 +99,9 @@ public class BankReturnService {
             throw ApiException.conflito("RETURN_ALREADY_PROCESSED", "Este arquivo de retorno já foi processado nesta conta.");
         }
         RetornoCnab240Parser.Retorno parsed = RetornoCnab240Parser.parse(content);
-        if (account.getBankCode() != null && !strip(account.getBankCode()).equals(strip(parsed.codigoBanco()))) {
+        if (account.getCodigoBanco() != null && !strip(account.getCodigoBanco()).equals(strip(parsed.codigoBanco()))) {
             throw ApiException.regraNegocio("RETURN_BANK_MISMATCH", "O retorno é do banco " + parsed.codigoBanco()
-                    + ", mas a conta " + account.getName() + " é do banco " + account.getBankCode() + ".");
+                    + ", mas a conta " + account.getNome() + " é do banco " + account.getCodigoBanco() + ".");
         }
         var user = access.usuario();
         BankReturnFile file = files.save(new BankReturnFile(condominium.getIdAdministradora(), condominiumId, bankAccountId,
@@ -114,7 +114,7 @@ public class BankReturnService {
                 if (items.alreadySettled(bankAccountId, item.getMovementCode(), item.getOccurrenceDate(), item.getOurNumber(), item.getYourNumber())) {
                     item.pending(null, "Liquidação já baixada em retorno anterior (não baixada de novo).");
                 } else {
-                    Optional<FinancialEntry> entry = locate(condominiumId, item);
+                    Optional<Lancamento> entry = locate(condominiumId, item);
                     if (entry.isEmpty()) {
                         item.pending(null, "Cobrança não localizada pelo número informado ao banco.");
                     } else {
@@ -172,8 +172,8 @@ public class BankReturnService {
                 item.getOurNumber(), item.getYourNumber())) {
             throw ApiException.conflito("RETURN_ALREADY_SETTLED", "Esta liquidação já foi baixada em outro retorno.");
         }
-        FinancialEntry entry = entryService.load(condominiumId, request.entryId());
-        BankAccount account = setup.loadBankAccount(condominiumId, item.getBankAccountId());
+        Lancamento entry = entryService.carregar(condominiumId, request.entryId());
+        ContaBancaria account = setup.carregarContaBancaria(condominiumId, item.getBankAccountId());
         settle(condominiumId, account, item, entry);
         if (item.getStatus() != BankReturnItem.Status.SETTLED) {
             throw ApiException.regraNegocio("RETURN_ITEM_NOT_SETTLED", item.getMessage());
@@ -193,12 +193,12 @@ public class BankReturnService {
 
     // ------------------------------------------------------------------
 
-    private Optional<FinancialEntry> locate(UUID condominiumId, BankReturnItem item) {
+    private Optional<Lancamento> locate(UUID condominiumId, BankReturnItem item) {
         for (String candidate : new String[]{item.getYourNumber(), item.getOurNumber()}) {
             Long number = number(candidate);
             if (number != null) {
-                Optional<FinancialEntry> found = entries.findByCondominiumIdAndCollectionNumber(condominiumId, number)
-                        .filter(e -> e.getKind() == FinancialEntry.Kind.INCOME);
+                Optional<Lancamento> found = entries.findByIdCondominioAndNumeroCobranca(condominiumId, number)
+                        .filter(e -> e.getNatureza() == Lancamento.Natureza.INCOME);
                 if (found.isPresent()) {
                     return found;
                 }
@@ -211,19 +211,19 @@ public class BankReturnService {
      * Todas as regras são verificadas ANTES da baixa: uma exceção dentro da transação a marcaria para rollback e
      * perderia o processamento do arquivo inteiro. O que não passar vira pendência com o motivo.
      */
-    private void settle(UUID condominiumId, BankAccount account, BankReturnItem item, FinancialEntry entry) {
+    private void settle(UUID condominiumId, ContaBancaria account, BankReturnItem item, Lancamento entry) {
         LocalDate today = LocalDate.now(clock);
         LocalDate date = item.settlementDate();
         if (date != null && date.isAfter(today)) {
             date = item.getOccurrenceDate();
         }
-        LocalDate closed = periodLock.closedUntil(condominiumId);
+        LocalDate closed = periodLock.fechadoAte(condominiumId);
         String problem = null;
-        if (entry.getStatus() != FinancialEntry.Status.OPEN && entry.getStatus() != FinancialEntry.Status.PARTIAL) {
-            problem = "A cobrança nº " + entry.getCollectionNumber() + " não está em aberto (" + entry.getStatus() + ").";
+        if (entry.getSituacao() != Lancamento.Situacao.OPEN && entry.getSituacao() != Lancamento.Situacao.PARTIAL) {
+            problem = "A cobrança nº " + entry.getNumeroCobranca() + " não está em aberto (" + entry.getSituacao() + ").";
         } else if (date == null || date.isAfter(today)) {
             problem = "Retorno sem data de pagamento válida.";
-        } else if (date.isBefore(account.getOpeningDate())) {
+        } else if (date.isBefore(account.getDataAbertura())) {
             problem = "Data de pagamento anterior à abertura da conta bancária.";
         } else if (closed != null && !date.isAfter(closed)) {
             problem = "Pagamento em período financeiro fechado; reabra o período para baixar.";
@@ -238,19 +238,19 @@ public class BankReturnService {
             return;
         }
         String note = "Retorno CNAB — seq. " + item.getSequence();
-        if (principal.compareTo(entry.remaining()) > 0) {
+        if (principal.compareTo(entry.valorAberto()) > 0) {
             // Pago a maior: o excedente é tratado como encargo recebido, mantendo o principal igual ao saldo do título.
-            fees = fees.add(principal.subtract(entry.remaining()));
-            principal = entry.remaining();
+            fees = fees.add(principal.subtract(entry.valorAberto()));
+            principal = entry.valorAberto();
             note += " (pago a maior)";
         }
-        LateFeeCalculator.Quote quote = LateFeeCalculator.quote(principal, entry.getDueDate(), date, entry.getFinePercent(),
-                entry.getInterestMonthlyPercent());
-        BigDecimal fine = fees.min(quote.fine());
+        EncargosCalculator.Calculo quote = EncargosCalculator.calcular(principal, entry.getDataVencimento(), date, entry.getPercentualMulta(),
+                entry.getPercentualJurosMensal());
+        BigDecimal fine = fees.min(quote.multa());
         BigDecimal interest = fees.subtract(fine);
-        EntryDetail detail = entryService.pay(condominiumId, entry.getId(), new PaymentRequest(account.getId(), date, principal, fine,
-                interest, item.getDiscount(), EntryPayment.Method.BOLETO, note));
-        item.settled(entry.getId(), detail.payments().getLast().id());
+        LancamentoDetalhe detail = entryService.baixar(condominiumId, entry.getId(), new BaixaRequest(account.getId(), date, principal, fine,
+                interest, item.getDiscount(), Baixa.FormaPagamento.BOLETO, note));
+        item.settled(entry.getId(), detail.baixas().getLast().id());
     }
 
     private BankReturnItem load(UUID condominiumId, UUID itemId) {
@@ -262,11 +262,11 @@ public class BankReturnService {
     }
 
     private ItemView toView(BankReturnItem i) {
-        FinancialEntry e = i.getEntryId() == null ? null : entries.findById(i.getEntryId()).orElse(null);
+        Lancamento e = i.getEntryId() == null ? null : entries.findById(i.getEntryId()).orElse(null);
         return new ItemView(i.getId(), i.getFileId(), i.getSequence(), i.getMovementCode(), movementLabel(i.getMovementCode()),
                 i.getOurNumber(), i.getYourNumber(), i.getDueDate(), i.getFaceValue(), i.getFees(), i.getDiscount(), i.getPaidAmount(),
                 i.getBankFee(), i.getOccurrenceDate(), i.getCreditDate(), i.getStatus(), i.getEntryId(),
-                e == null ? null : e.getDescription(), e == null || e.getUnit() == null ? null : e.getUnit().rotulo(), i.getMessage());
+                e == null ? null : e.getDescricao(), e == null || e.getUnidade() == null ? null : e.getUnidade().rotulo(), i.getMessage());
     }
 
     private static FileSummary toSummary(BankReturnFile f) {

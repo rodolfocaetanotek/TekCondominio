@@ -19,11 +19,11 @@ import br.com.tekcondo.auditoria.service.AcaoAuditoria;
 import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.condominio.service.AcessoCondominio;
-import br.com.tekcondo.finance.entity.ChartAccount;
-import br.com.tekcondo.finance.entity.FinancialEntry;
-import br.com.tekcondo.finance.repository.ChartAccountRepository;
-import br.com.tekcondo.finance.repository.FinancialEntryRepository;
-import br.com.tekcondo.finance.service.PeriodLock;
+import br.com.tekcondo.financeiro.entity.ContaPlano;
+import br.com.tekcondo.financeiro.entity.Lancamento;
+import br.com.tekcondo.financeiro.repository.ContaPlanoRepository;
+import br.com.tekcondo.financeiro.repository.LancamentoRepository;
+import br.com.tekcondo.financeiro.service.BloqueioPeriodo;
 import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.notificacao.NotificacaoService;
 import br.com.tekcondo.pessoa.entity.Vinculo;
@@ -105,17 +105,17 @@ public class ReservationService {
     private final ReservationRepository reservations;
     private final UnidadeRepository units;
     private final VinculoRepository occupancies;
-    private final FinancialEntryRepository entries;
-    private final ChartAccountRepository chartAccounts;
-    private final PeriodLock periodLock;
+    private final LancamentoRepository entries;
+    private final ContaPlanoRepository chartAccounts;
+    private final BloqueioPeriodo periodLock;
     private final AcessoCondominio access;
     private final NotificacaoService notifications;
     private final AuditoriaService auditService;
     private final Clock clock;
 
     public ReservationService(CommonAreaRepository areas, ReservationRepository reservations, UnidadeRepository units,
-                              VinculoRepository occupancies, FinancialEntryRepository entries, ChartAccountRepository chartAccounts,
-                              PeriodLock periodLock, AcessoCondominio access, NotificacaoService notifications,
+                              VinculoRepository occupancies, LancamentoRepository entries, ContaPlanoRepository chartAccounts,
+                              BloqueioPeriodo periodLock, AcessoCondominio access, NotificacaoService notifications,
                               AuditoriaService auditService, Clock clock) {
         this.areas = areas;
         this.reservations = reservations;
@@ -324,7 +324,7 @@ public class ReservationService {
 
     private boolean hasOverdueCharges(UUID condominiumId, UUID unitId) {
         LocalDate today = today();
-        return entries.findReceivablesOfUnit(condominiumId, unitId).stream().anyMatch(e -> e.isOverdue(today));
+        return entries.buscarRecebiveisDaUnidade(condominiumId, unitId).stream().anyMatch(e -> e.isVencido(today));
     }
 
     /** Gera a cobrança da taxa de uso na unidade (título a receber, com multa/juros do condomínio). */
@@ -333,19 +333,19 @@ public class ReservationService {
             return;
         }
         LocalDate due = r.getDate().isBefore(today()) ? today() : r.getDate();
-        periodLock.ensureOpen(condominium.getId(), due.withDayOfMonth(1));
-        ChartAccount account = chartAccounts.findSystemByCode(AREA_FEE_ACCOUNT_CODE).orElseThrow();
+        periodLock.exigirAberto(condominium.getId(), due.withDayOfMonth(1));
+        ContaPlano account = chartAccounts.buscarDoSistemaPorCodigo(AREA_FEE_ACCOUNT_CODE).orElseThrow();
         Unidade unit = units.findById(r.getUnitId()).orElseThrow();
         Pessoa responsible = occupancies.buscarResponsavelFinanceiroVigente(unit.getId()).map(Vinculo::getPessoa)
                 .or(() -> occupancies.buscarVigentesPorUnidades(List.of(unit.getId())).stream()
                         .filter(o -> o.getTipo() == Vinculo.Tipo.OWNER).map(Vinculo::getPessoa).findFirst())
                 .orElse(null);
         UUID by = access.usuario().idUsuario();
-        FinancialEntry entry = new FinancialEntry(condominium.getIdAdministradora(), condominium.getId(), FinancialEntry.Kind.INCOME,
-                FinancialEntry.Origin.MANUAL, by);
-        entry.details("Taxa de uso — " + areaName(r) + " em " + r.getDate().format(BR), account, null, null, unit, responsible,
+        Lancamento entry = new Lancamento(condominium.getIdAdministradora(), condominium.getId(), Lancamento.Natureza.INCOME,
+                Lancamento.Origem.MANUAL, by);
+        entry.atualizar("Taxa de uso — " + areaName(r) + " em " + r.getDate().format(BR), account, null, null, unit, responsible,
                 r.getFee(), due, due, null, "Reserva " + r.getId(), by);
-        entry.lateFees(condominium.getPercentualMulta(), condominium.getPercentualJurosMensal());
+        entry.definirEncargos(condominium.getPercentualMulta(), condominium.getPercentualJurosMensal());
         entries.save(entry);
         r.linkCharge(entry.getId());
     }
@@ -354,9 +354,9 @@ public class ReservationService {
         Instant now = Instant.now(clock);
         r.cancel(reason.trim(), now);
         if (r.getEntryId() != null) {
-            entries.findById(r.getEntryId()).filter(e -> e.getStatus() == FinancialEntry.Status.OPEN).ifPresent(e -> {
-                periodLock.ensureOpen(r.getCondominiumId(), e.getCompetence());
-                e.cancel("Reserva cancelada: " + reason.trim(), access.usuario().idUsuario(), now);
+            entries.findById(r.getEntryId()).filter(e -> e.getSituacao() == Lancamento.Situacao.OPEN).ifPresent(e -> {
+                periodLock.exigirAberto(r.getCondominiumId(), e.getCompetencia());
+                e.cancelar("Reserva cancelada: " + reason.trim(), access.usuario().idUsuario(), now);
             });
         }
         reservations.flush();

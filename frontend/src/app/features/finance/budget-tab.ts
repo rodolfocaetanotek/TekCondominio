@@ -8,7 +8,7 @@ import { catchError, combineLatest, filter, of, switchMap } from 'rxjs';
 import { CondominiumContext } from '../../core/context/condominium-context';
 import { NotificationService } from '../../core/notify/notification.service';
 import { FieldDef, openForm } from '../../shared/ui/form-dialog';
-import { BudgetRow, FinanceApi } from './finance-api';
+import { ContaOrcamento, FinanceApi } from './finance-api';
 
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -29,14 +29,14 @@ const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', '
             <tr><th>Conta</th><th class="money">Previsto</th><th class="money">Realizado</th><th class="money">Diferença</th><th>Execução</th></tr>
           </thead>
           <tbody>
-            @for (r of rows(); track r.chartAccountId) {
+            @for (r of rows(); track r.idContaPlano) {
               <tr [class.is-clickable]="canEdit()" (click)="canEdit() && edit(r)" [attr.tabindex]="canEdit() ? 0 : null" (keydown.enter)="canEdit() && edit(r)">
-                <td><span class="tc-muted">{{ r.code }}</span> {{ r.name }}</td>
-                <td class="money">{{ r.totalBudgeted | currency: 'BRL' }}</td>
-                <td class="money">{{ r.totalRealized | currency: 'BRL' }}</td>
-                <td class="money" [class.negative]="over(r)">{{ r.totalRealized - r.totalBudgeted | currency: 'BRL' }}</td>
+                <td><span class="tc-muted">{{ r.codigo }}</span> {{ r.nome }}</td>
+                <td class="money">{{ r.totalPrevisto | currency: 'BRL' }}</td>
+                <td class="money">{{ r.totalRealizado | currency: 'BRL' }}</td>
+                <td class="money" [class.negative]="over(r)">{{ r.totalRealizado - r.totalPrevisto | currency: 'BRL' }}</td>
                 <td>
-                  @if (r.totalBudgeted > 0) {
+                  @if (r.totalPrevisto > 0) {
                     <div class="exec"><div class="meter" [attr.aria-label]="pct(r) + '% executado'"><span [style.width.%]="min(pct(r), 100)" [class.over]="over(r)"></span></div>
                     <small [class.over-text]="over(r)">{{ pct(r) | number: '1.0-0' }}%{{ over(r) ? ' (acima do previsto)' : '' }}</small></div>
                   } @else { <small class="tc-muted">sem previsão</small> }
@@ -73,28 +73,28 @@ export class BudgetTab {
       switchMap(([c, y]) => this.api.budget(c!, y).pipe(catchError(() => of(null)))),
     ),
   );
-  protected readonly rows = computed(() => this.data()?.rows ?? []);
+  protected readonly rows = computed(() => this.data()?.contas ?? []);
 
-  pct(r: BudgetRow): number {
-    return r.totalBudgeted > 0 ? (r.totalRealized / r.totalBudgeted) * 100 : 0;
+  pct(r: ContaOrcamento): number {
+    return r.totalPrevisto > 0 ? (r.totalRealizado / r.totalPrevisto) * 100 : 0;
   }
 
-  over(r: BudgetRow): boolean {
-    return r.totalBudgeted > 0 && r.totalRealized > r.totalBudgeted;
+  over(r: ContaOrcamento): boolean {
+    return r.totalPrevisto > 0 && r.totalRealizado > r.totalPrevisto;
   }
 
   min(a: number, b: number): number {
     return Math.min(a, b);
   }
 
-  edit(r: BudgetRow): void {
-    const fields: FieldDef[] = MONTHS.map((m, i) => ({ key: 'm' + (i + 1), label: m, type: 'number', value: r.budgeted[i], span: 3, min: 0 }));
+  edit(r: ContaOrcamento): void {
+    const fields: FieldDef[] = MONTHS.map((m, i) => ({ key: 'm' + (i + 1), label: m, type: 'number', value: r.previsto[i], span: 3, min: 0 }));
     openForm(this.dialog, {
-      title: `Previsto ${this.year()} — ${r.code} ${r.name}`,
+      title: `Previsto ${this.year()} — ${r.codigo} ${r.nome}`,
       intro: 'Informe o valor previsto de cada mês.',
       fields,
       submit: (v) => this.api.saveBudget(this.context.id()!, this.year(), MONTHS.map((_, i) => ({
-        chartAccountId: r.chartAccountId, month: i + 1, amount: Number(v['m' + (i + 1)] ?? 0),
+        idContaPlano: r.idContaPlano, mes: i + 1, valor: Number(v['m' + (i + 1)] ?? 0),
       }))),
     }, '640px').pipe(filter((x) => !!x)).subscribe(() => {
       this.notify.success('Orçamento atualizado.');

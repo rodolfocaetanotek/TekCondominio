@@ -15,7 +15,7 @@ import br.com.tekcondo.billing.dto.BillingDtos.NoteResponse;
 import br.com.tekcondo.billing.dto.BillingDtos.UnitDebt;
 import br.com.tekcondo.billing.service.AllocationService;
 import br.com.tekcondo.billing.service.CollectionService;
-import br.com.tekcondo.finance.dto.FinanceDtos.ReasonRequest;
+import br.com.tekcondo.financeiro.dto.FinanceiroDtos.MotivoRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -61,8 +61,8 @@ public class BillingController {
     }
 
     @PostMapping("/allocations/{id}/cancel")
-    public AllocationResponse cancel(@PathVariable UUID c, @PathVariable UUID id, @Valid @RequestBody ReasonRequest request) {
-        return allocations.cancel(c, id, request.reason());
+    public AllocationResponse cancel(@PathVariable UUID c, @PathVariable UUID id, @Valid @RequestBody MotivoRequest request) {
+        return allocations.cancel(c, id, request.motivo());
     }
 
     @GetMapping("/delinquency")
@@ -97,7 +97,7 @@ public class BillingController {
     }
 
     @PostMapping("/agreements/{id}/cancel")
-    public AgreementResponse cancelAgreement(@PathVariable UUID c, @PathVariable UUID id, @Valid @RequestBody ReasonRequest request) {
-        return collection.cancelAgreement(c, id, request.reason());
+    public AgreementResponse cancelAgreement(@PathVariable UUID c, @PathVariable UUID id, @Valid @RequestBody MotivoRequest request) {
+        return collection.cancelAgreement(c, id, request.motivo());
     }
 }

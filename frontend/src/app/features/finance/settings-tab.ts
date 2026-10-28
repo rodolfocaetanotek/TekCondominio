@@ -15,7 +15,7 @@ import { NotificationService } from '../../core/notify/notification.service';
 import { FieldError } from '../../shared/forms/field-error';
 import { applyServerErrors } from '../../shared/forms/server-errors';
 import { openForm } from '../../shared/ui/form-dialog';
-import { CostCenter, FinanceApi } from './finance-api';
+import { CentroCusto, FinanceApi } from './finance-api';
 
 @Component({
   selector: 'tc-settings-tab',
@@ -27,22 +27,22 @@ import { CostCenter, FinanceApi } from './finance-api';
         <form [formGroup]="form" (ngSubmit)="save()" class="tc-grid">
           <mat-form-field class="span-6">
             <mat-label>Multa por atraso (%)</mat-label>
-            <input matInput type="number" step="0.01" min="0" max="2" formControlName="finePercent" />
+            <input matInput type="number" step="0.01" min="0" max="2" formControlName="percentualMulta" />
             <mat-hint>Máximo legal: 2% (CC, art. 1.336, §1º)</mat-hint>
-            <mat-error><tc-field-error [control]="form.controls.finePercent" /></mat-error>
+            <mat-error><tc-field-error [control]="form.controls.percentualMulta" /></mat-error>
           </mat-form-field>
           <mat-form-field class="span-6">
             <mat-label>Juros ao mês (%)</mat-label>
-            <input matInput type="number" step="0.01" min="0" formControlName="interestMonthlyPercent" />
+            <input matInput type="number" step="0.01" min="0" formControlName="percentualJurosMensal" />
             <mat-hint>Pró-rata dia; padrão 1% a.m.</mat-hint>
-            <mat-error><tc-field-error [control]="form.controls.interestMonthlyPercent" /></mat-error>
+            <mat-error><tc-field-error [control]="form.controls.percentualJurosMensal" /></mat-error>
           </mat-form-field>
           <mat-form-field class="span-6">
             <mat-label>Dia de vencimento padrão</mat-label>
-            <input matInput type="number" min="1" max="28" formControlName="billingDueDay" />
-            <mat-error><tc-field-error [control]="form.controls.billingDueDay" /></mat-error>
+            <input matInput type="number" min="1" max="28" formControlName="diaVencimento" />
+            <mat-error><tc-field-error [control]="form.controls.diaVencimento" /></mat-error>
           </mat-form-field>
-          <mat-checkbox formControlName="requirePayableApproval" class="span-6">Exigir aprovação antes de pagar despesas</mat-checkbox>
+          <mat-checkbox formControlName="exigeAprovacaoContasPagar" class="span-6">Exigir aprovação antes de pagar despesas</mat-checkbox>
           <p class="tc-muted small span-12">Novas cobranças usam estes parâmetros; cobranças já emitidas mantêm os percentuais da emissão.</p>
           @if (canEditSettings()) {
             <div class="tc-actions span-12"><button mat-flat-button type="submit" [disabled]="form.pristine">Salvar parâmetros</button></div>
@@ -55,11 +55,11 @@ import { CostCenter, FinanceApi } from './finance-api';
           @if (canEdit()) { <button mat-button (click)="editCenter()"><mat-icon>add</mat-icon> Novo</button> }
         </div>
         @for (c of centers() ?? []; track c.id) {
-          <div class="item" [class.off]="!c.active">
-            <span>{{ c.name }}</span>
+          <div class="item" [class.off]="!c.ativo">
+            <span>{{ c.nome }}</span>
             @if (canEdit()) {
               <button mat-button (click)="editCenter(c)">Editar</button>
-              <button mat-button (click)="toggleCenter(c)">{{ c.active ? 'Inativar' : 'Reativar' }}</button>
+              <button mat-button (click)="toggleCenter(c)">{{ c.ativo ? 'Inativar' : 'Reativar' }}</button>
             }
           </div>
         } @empty { <p class="tc-muted">Nenhum centro de custo (opcional).</p> }
@@ -71,9 +71,9 @@ import { CostCenter, FinanceApi } from './finance-api';
         </div>
         <div class="chart">
           @for (a of accounts() ?? []; track a.id) {
-            <div class="acc" [class.group]="!a.analytic" [class.off]="!a.active">
-              <span class="code mono">{{ a.code }}</span><span>{{ a.name }}</span>
-              @if (!a.system) { <span class="tc-chip-soft">própria</span> }
+            <div class="acc" [class.group]="!a.analitica" [class.off]="!a.ativo">
+              <span class="code mono">{{ a.codigo }}</span><span>{{ a.nome }}</span>
+              @if (!a.sistema) { <span class="tc-chip-soft">própria</span> }
             </div>
           }
         </div>
@@ -110,16 +110,16 @@ export class SettingsTab {
   protected readonly canEditSettings = computed(() => this.canEdit() && this.context.can('CONDOMINIUM_EDIT'));
 
   protected readonly form = inject(FormBuilder).nonNullable.group({
-    finePercent: [2, [Validators.required, Validators.min(0), Validators.max(2)]],
-    interestMonthlyPercent: [1, [Validators.required, Validators.min(0)]],
-    billingDueDay: [10, [Validators.required, Validators.min(1), Validators.max(28)]],
-    requirePayableApproval: [true],
+    percentualMulta: [2, [Validators.required, Validators.min(0), Validators.max(2)]],
+    percentualJurosMensal: [1, [Validators.required, Validators.min(0)]],
+    diaVencimento: [10, [Validators.required, Validators.min(1), Validators.max(28)]],
+    exigeAprovacaoContasPagar: [true],
   });
 
   protected readonly centers = toSignal(
     combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(
       filter(([c]) => !!c),
-      switchMap(([c]) => this.api.costCenters(c!).pipe(catchError(() => of([] as CostCenter[])))),
+      switchMap(([c]) => this.api.costCenters(c!).pipe(catchError(() => of([] as CentroCusto[])))),
     ),
   );
   protected readonly accounts = toSignal(toObservable(this.tick).pipe(switchMap(() => this.api.chartAccounts().pipe(catchError(() => of([]))))));
@@ -144,16 +144,16 @@ export class SettingsTab {
     });
   }
 
-  editCenter(c?: CostCenter): void {
+  editCenter(c?: CentroCusto): void {
     openForm(this.dialog, {
       title: c ? 'Editar centro de custo' : 'Novo centro de custo',
-      fields: [{ key: 'name', label: 'Nome', required: true, value: c?.name, maxLength: 80 }],
-      submit: (v) => this.api.saveCostCenter(this.context.id()!, String(v['name']), c?.id),
+      fields: [{ key: 'nome', label: 'Nome', required: true, value: c?.nome, maxLength: 80 }],
+      submit: (v) => this.api.saveCostCenter(this.context.id()!, String(v['nome']), c?.id),
     }, '420px').pipe(filter((r) => !!r)).subscribe(() => this.tick.update((t) => t + 1));
   }
 
-  toggleCenter(c: CostCenter): void {
-    this.api.saveCostCenter(this.context.id()!, c.name, c.id, !c.active).subscribe(() => this.tick.update((t) => t + 1));
+  toggleCenter(c: CentroCusto): void {
+    this.api.saveCostCenter(this.context.id()!, c.nome, c.id, !c.ativo).subscribe(() => this.tick.update((t) => t + 1));
   }
 
   newAccount(): void {
@@ -161,12 +161,12 @@ export class SettingsTab {
       title: 'Nova conta do plano de contas',
       intro: 'Contas próprias complementam o plano padrão (ex.: 2.16 Portaria terceirizada).',
       fields: [
-        { key: 'code', label: 'Código', required: true, span: 4, maxLength: 20 },
-        { key: 'name', label: 'Nome', required: true, span: 8, maxLength: 120 },
-        { key: 'nature', label: 'Natureza', type: 'select', required: true, value: 'EXPENSE',
+        { key: 'codigo', label: 'Código', required: true, span: 4, maxLength: 20 },
+        { key: 'nome', label: 'Nome', required: true, span: 8, maxLength: 120 },
+        { key: 'natureza', label: 'Natureza', type: 'select', required: true, value: 'EXPENSE',
           options: [{ value: 'INCOME', label: 'Receita' }, { value: 'EXPENSE', label: 'Despesa' }] },
       ],
-      submit: (v) => this.api.createChartAccount({ code: String(v['code']), name: String(v['name']), nature: String(v['nature']) }),
+      submit: (v) => this.api.createChartAccount({ codigo: String(v['codigo']), nome: String(v['nome']), natureza: String(v['natureza']) }),
     }).pipe(filter((r) => !!r)).subscribe(() => { this.notify.success('Conta criada.'); this.tick.update((t) => t + 1); });
   }
 }

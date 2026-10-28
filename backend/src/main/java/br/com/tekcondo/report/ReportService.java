@@ -18,12 +18,12 @@ import br.com.tekcondo.billing.dto.BillingDtos;
 import br.com.tekcondo.billing.service.CollectionService;
 import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.condominio.service.AcessoCondominio;
-import br.com.tekcondo.finance.dto.FinanceDtos;
-import br.com.tekcondo.finance.entity.BankAccount;
-import br.com.tekcondo.finance.repository.BankAccountRepository;
-import br.com.tekcondo.finance.service.BudgetService;
-import br.com.tekcondo.finance.service.FinanceQueries;
-import br.com.tekcondo.finance.service.TreasuryService;
+import br.com.tekcondo.financeiro.dto.FinanceiroDtos;
+import br.com.tekcondo.financeiro.entity.ContaBancaria;
+import br.com.tekcondo.financeiro.repository.ContaBancariaRepository;
+import br.com.tekcondo.financeiro.service.OrcamentoService;
+import br.com.tekcondo.financeiro.service.ConsultasFinanceiras;
+import br.com.tekcondo.financeiro.service.TesourariaService;
 import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.administradora.repository.AdministradoraRepository;
 import br.com.tekcondo.report.ReportTable.Column;
@@ -56,19 +56,19 @@ public class ReportService {
     private final NamedParameterJdbcTemplate jdbc;
     private final AcessoCondominio access;
     private final CollectionService collection;
-    private final BudgetService budget;
-    private final TreasuryService treasury;
+    private final OrcamentoService budget;
+    private final TesourariaService treasury;
     private final ContractService contracts;
-    private final FinanceQueries queries;
-    private final BankAccountRepository bankAccounts;
+    private final ConsultasFinanceiras queries;
+    private final ContaBancariaRepository bankAccounts;
     private final AdministradoraRepository organizations;
     private final ReportExporter exporter;
     private final AuditoriaService auditService;
     private final Clock clock;
 
     public ReportService(NamedParameterJdbcTemplate jdbc, AcessoCondominio access, CollectionService collection,
-                         BudgetService budget, TreasuryService treasury, ContractService contracts, FinanceQueries queries,
-                         BankAccountRepository bankAccounts, AdministradoraRepository organizations, ReportExporter exporter,
+                         OrcamentoService budget, TesourariaService treasury, ContractService contracts, ConsultasFinanceiras queries,
+                         ContaBancariaRepository bankAccounts, AdministradoraRepository organizations, ReportExporter exporter,
                          AuditoriaService auditService, Clock clock) {
         this.jdbc = jdbc;
         this.access = access;
@@ -148,13 +148,13 @@ public class ReportService {
     private ReportTable balanceSheet(UUID condominiumId, String period, LocalDate from, LocalDate to) {
         List<List<Object>> rows = new ArrayList<>();
         BigDecimal[] t = {BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO};
-        for (BankAccount b : bankAccounts.findByCondominiumIdOrderByNameAsc(condominiumId)) {
-            BigDecimal opening = queries.balanceBefore(b.getId(), b.getOpeningBalance(), from);
-            List<FinanceDtos.StatementLine> lines = queries.movements(b.getId(), opening, from, to);
-            BigDecimal in = lines.stream().map(FinanceDtos.StatementLine::amount).filter(a -> a.signum() > 0).reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal out = lines.stream().map(FinanceDtos.StatementLine::amount).filter(a -> a.signum() < 0).reduce(BigDecimal.ZERO, BigDecimal::add).negate();
+        for (ContaBancaria b : bankAccounts.findByIdCondominioOrderByNomeAsc(condominiumId)) {
+            BigDecimal opening = queries.saldoAntes(b.getId(), b.getSaldoInicial(), from);
+            List<FinanceiroDtos.Movimentacao> lines = queries.movimentacoes(b.getId(), opening, from, to);
+            BigDecimal in = lines.stream().map(FinanceiroDtos.Movimentacao::valor).filter(a -> a.signum() > 0).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal out = lines.stream().map(FinanceiroDtos.Movimentacao::valor).filter(a -> a.signum() < 0).reduce(BigDecimal.ZERO, BigDecimal::add).negate();
             BigDecimal closing = opening.add(in).subtract(out);
-            rows.add(row(b.getName(), opening, in, out, closing));
+            rows.add(row(b.getNome(), opening, in, out, closing));
             t[0] = t[0].add(opening);
             t[1] = t[1].add(in);
             t[2] = t[2].add(out);
@@ -181,8 +181,8 @@ public class ReportService {
             BigDecimal[] v = months.get(YearMonth.from(rs.getDate("m").toLocalDate()));
             if (v != null) v["INCOME".equals(rs.getString("kind")) ? 0 : 1] = rs.getBigDecimal("total");
         });
-        BigDecimal balance = bankAccounts.findByCondominiumIdOrderByNameAsc(condominiumId).stream()
-                .map(b -> queries.balanceBefore(b.getId(), b.getOpeningBalance(), from)).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal balance = bankAccounts.findByIdCondominioOrderByNomeAsc(condominiumId).stream()
+                .map(b -> queries.saldoAntes(b.getId(), b.getSaldoInicial(), from)).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal startBalance = balance;
         List<List<Object>> rows = new ArrayList<>();
         BigDecimal tin = BigDecimal.ZERO;
@@ -287,16 +287,16 @@ public class ReportService {
     }
 
     private ReportTable budget(UUID condominiumId, String condoName, int year) {
-        FinanceDtos.Budget b = budget.budget(condominiumId, year);
+        FinanceiroDtos.Orcamento b = budget.orcamento(condominiumId, year);
         List<List<Object>> rows = new ArrayList<>();
         BigDecimal tb = BigDecimal.ZERO;
         BigDecimal tr = BigDecimal.ZERO;
-        for (FinanceDtos.BudgetRow r : b.rows()) {
-            if (r.totalBudgeted().signum() == 0 && r.totalRealized().signum() == 0) continue;
-            BigDecimal pct = r.totalBudgeted().signum() == 0 ? null
-                    : r.totalRealized().multiply(new BigDecimal("100")).divide(r.totalBudgeted(), 2, java.math.RoundingMode.HALF_UP);
-            rows.add(row(r.code() + " " + r.name(), r.nature() == br.com.tekcondo.finance.entity.ChartAccount.Nature.INCOME ? "Receita" : "Despesa",
-                    r.totalBudgeted(), r.totalRealized(), r.totalRealized().subtract(r.totalBudgeted()), pct));
+        for (FinanceiroDtos.ContaOrcamento r : b.contas()) {
+            if (r.totalPrevisto().signum() == 0 && r.totalRealizado().signum() == 0) continue;
+            BigDecimal pct = r.totalPrevisto().signum() == 0 ? null
+                    : r.totalRealizado().multiply(new BigDecimal("100")).divide(r.totalPrevisto(), 2, java.math.RoundingMode.HALF_UP);
+            rows.add(row(r.codigo() + " " + r.nome(), r.natureza() == br.com.tekcondo.financeiro.entity.ContaPlano.Natureza.INCOME ? "Receita" : "Despesa",
+                    r.totalPrevisto(), r.totalRealizado(), r.totalRealizado().subtract(r.totalPrevisto()), pct));
         }
         return new ReportTable("Orçamento previsto × realizado " + year, condoName,
                 List.of(Column.text("account", "Conta"), Column.text("nature", "Natureza"), Column.money("budgeted", "Previsto"),
@@ -308,17 +308,17 @@ public class ReportService {
         if (bankAccountId == null) {
             throw ApiException.requisicaoInvalida("BANK_ACCOUNT_REQUIRED", "Selecione a conta bancária.");
         }
-        FinanceDtos.Statement s = treasury.statement(condominiumId, bankAccountId, from, to);
+        FinanceiroDtos.Extrato s = treasury.extrato(condominiumId, bankAccountId, from, to);
         List<List<Object>> rows = new ArrayList<>();
-        rows.add(row(from, "Saldo anterior", null, s.openingBalance(), ""));
-        for (FinanceDtos.StatementLine l : s.lines()) {
-            rows.add(row(l.date(), l.description(), l.amount(), l.balance(), l.reconciled() ? "Sim" : "Não"));
+        rows.add(row(from, "Saldo anterior", null, s.saldoInicial(), ""));
+        for (FinanceiroDtos.Movimentacao l : s.movimentacoes()) {
+            rows.add(row(l.data(), l.descricao(), l.valor(), l.saldo(), l.conciliada() ? "Sim" : "Não"));
         }
-        return new ReportTable("Movimentação da conta " + s.bankAccountName(), period,
+        return new ReportTable("Movimentação da conta " + s.nomeContaBancaria(), period,
                 List.of(Column.date("date", "Data"), Column.text("description", "Histórico"), Column.money("amount", "Valor"),
                         Column.money("balance", "Saldo"), Column.text("reconciled", "Conciliado")),
-                rows, row(to, "Saldo final", null, s.closingBalance(), ""),
-                List.of("Saldo conciliado em " + BR.format(to) + ": " + money(s.reconciledBalance())));
+                rows, row(to, "Saldo final", null, s.saldoFinal(), ""),
+                List.of("Saldo conciliado em " + BR.format(to) + ": " + money(s.saldoConciliado())));
     }
 
     private ReportTable bySupplier(String period, MapSqlParameterSource params) {

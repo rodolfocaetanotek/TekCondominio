@@ -11,8 +11,8 @@ import br.com.tekcondo.billing.entity.Agreement;
 import br.com.tekcondo.billing.entity.Allocation;
 import br.com.tekcondo.billing.entity.CollectionNote;
 import br.com.tekcondo.billing.service.AllocationCalculator;
-import br.com.tekcondo.finance.dto.FinanceDtos.EntrySummary;
-import br.com.tekcondo.finance.entity.FinancialEntry;
+import br.com.tekcondo.financeiro.dto.FinanceiroDtos.LancamentoResumo;
+import br.com.tekcondo.financeiro.entity.Lancamento;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
@@ -64,7 +64,7 @@ public final class BillingDtos {
     }
 
     public record DebtLine(UUID entryId, String description, LocalDate competence, LocalDate dueDate, BigDecimal amount,
-                           BigDecimal paid, BigDecimal remaining, FinancialEntry.Status status, long daysLate,
+                           BigDecimal paid, BigDecimal remaining, Lancamento.Situacao status, long daysLate,
                            BigDecimal fine, BigDecimal interest, BigDecimal updatedTotal) {
     }
 
@@ -102,6 +102,6 @@ public final class BillingDtos {
     public record AgreementResponse(UUID id, UUID unitId, String unitLabel, BigDecimal originalAmount, BigDecimal chargesAmount,
                                     BigDecimal discount, BigDecimal totalAmount, int installments, LocalDate firstDueDate,
                                     Agreement.Status status, long paidInstallments, String notes, String cancelReason,
-                                    Instant createdAt, List<EntrySummary> installmentEntries) {
+                                    Instant createdAt, List<LancamentoResumo> installmentEntries) {
     }
 }

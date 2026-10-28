@@ -10,7 +10,7 @@ import java.util.Map;
 
 import br.com.tekcondo.announcement.AnnouncementRepository;
 import br.com.tekcondo.condominio.entity.Condominio;
-import br.com.tekcondo.finance.repository.FinancialEntryRepository;
+import br.com.tekcondo.financeiro.repository.LancamentoRepository;
 import br.com.tekcondo.acesso.entity.Usuario;
 import br.com.tekcondo.jobs.DailyRemindersJob;
 import br.com.tekcondo.notificacao.NotificacaoService;
@@ -48,7 +48,7 @@ class OperationsIT extends IntegrationTest {
     @Autowired
     ContractRepository contractRepository;
     @Autowired
-    FinancialEntryRepository entryRepository;
+    LancamentoRepository entryRepository;
     @Autowired
     AnnouncementRepository announcementRepository;
     @Autowired
