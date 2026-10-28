@@ -1,0 +1,67 @@
+.narrow {
+  max-width: 980px;
+}
+
+.back {
+  margin: -8px 0 8px -12px;
+}
+
+form {
+  display: grid;
+  gap: 16px;
+}
+
+.tc-card .tc-section-title {
+  margin-top: 0;
+}
+
+.tc-status.big {
+  font: var(--mat-sys-label-large);
+  padding: 4px 14px;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--tc-radius);
+  margin-bottom: 16px;
+
+  > div {
+    flex: 1;
+    display: grid;
+    gap: 2px;
+  }
+
+  &.warn {
+    background: var(--mat-sys-tertiary-container);
+    color: var(--mat-sys-on-tertiary-container);
+  }
+
+  &.error {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+}
+
+.footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 0;
+  background: var(--mat-sys-surface-container-lowest);
+  border-top: 1px solid var(--mat-sys-outline-variant);
+
+  .meta {
+    font: var(--mat-sys-body-small);
+    margin-right: 8px;
+  }
+}
+
+.danger-text {
+  --mat-button-text-label-text-color: var(--mat-sys-error);
+}

@@ -1,0 +1,135 @@
+.container {
+  height: 100vh;
+  background: transparent;
+}
+
+.sidenav {
+  width: 256px;
+  border-right: 1px solid var(--mat-sys-outline-variant);
+  background: var(--mat-sys-surface-container-low);
+  padding: 8px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 12px 20px;
+
+  strong {
+    display: block;
+    font: var(--mat-sys-title-large);
+    letter-spacing: -0.02em;
+    color: var(--mat-sys-primary);
+  }
+
+  span {
+    font: var(--mat-sys-label-small);
+    color: var(--mat-sys-on-surface-variant);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+}
+
+mat-nav-list a {
+  border-radius: 999px;
+  margin-bottom: 2px;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  gap: 8px;
+  background: color-mix(in srgb, var(--mat-sys-surface-container-lowest) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.context .org {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: var(--mat-sys-title-small);
+  color: var(--mat-sys-on-surface);
+
+  mat-icon {
+    color: var(--mat-sys-primary);
+  }
+}
+
+.user-btn {
+  .avatar {
+    display: inline-grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin-right: 8px;
+    background: var(--mat-sys-tertiary-container);
+    color: var(--mat-sys-on-tertiary-container);
+    font: var(--mat-sys-label-large);
+  }
+
+  @media (max-width: 600px) {
+    .user-name {
+      display: none;
+    }
+  }
+}
+
+.menu-header {
+  height: auto;
+  padding-block: 8px;
+  line-height: 1.4;
+}
+
+main:focus {
+  outline: none;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  z-index: 10;
+  padding: 8px 16px;
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+
+  &:focus {
+    left: 8px;
+    top: 8px;
+  }
+}
+
+.group-title {
+  margin: 14px 16px 4px;
+  font: var(--mat-sys-label-small);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.context {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.condo-select {
+  width: min(320px, 46vw);
+  --mat-form-field-container-height: 40px;
+  --mat-form-field-container-vertical-padding: 8px;
+  font: var(--mat-sys-body-medium);
+}
+
+.org.compact {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+
+  @media (max-width: 720px) {
+    display: none;
+  }
+}

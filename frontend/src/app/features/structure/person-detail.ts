@@ -1,0 +1,186 @@
+import { Component, computed, inject, input, signal } from '@angular/core';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { RouterLink } from '@angular/router';
+import { catchError, combineLatest, filter, of, switchMap } from 'rxjs';
+import { toProblem } from '../../core/api/api.models';
+import { AuthService } from '../../core/auth/auth.service';
+import { CondominiumContext } from '../../core/context/condominium-context';
+import { NotificationService } from '../../core/notify/notification.service';
+import { DocPipe } from '../../shared/format/doc.pipe';
+import { ConfirmDialog, ConfirmDialogData } from '../../shared/ui/confirm-dialog';
+import { EmptyState } from '../../shared/ui/empty-state';
+import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
+import { PageHeader } from '../../shared/ui/page-header';
+import { PersonDialog } from './person-dialog';
+import { Occupancy, OCCUPANCY_ROLE_LABELS, PersonDetail as Person } from './structure.models';
+import { StructureService } from './structure.service';
+
+@Component({
+  selector: 'tc-person-detail',
+  imports: [RouterLink, MatButtonModule, MatIconModule, MatProgressBarModule, PageHeader, EmptyState, DocPipe, IsoDatePipe],
+  template: `
+    <div class="tc-page narrow">
+      <a mat-button routerLink="/pessoas" class="back"><mat-icon>arrow_back</mat-icon> Pessoas</a>
+      @if (error(); as message) {
+        <section class="tc-card"><tc-empty-state icon="error" title="Não foi possível abrir" [description]="message" /></section>
+      } @else if (person(); as p) {
+        <tc-page-header [eyebrow]="p.kind === 'COMPANY' ? 'Pessoa jurídica' : 'Pessoa física'" [title]="p.name"
+          [subtitle]="p.document ? (p.document | doc: 'cpfCnpj') : 'Sem documento informado'">
+          <span class="tc-status big" [class.is-active]="p.active" [class.is-inactive]="!p.active">{{ p.active ? 'Ativa' : 'Inativa' }}</span>
+          @if (canEdit()) {
+            <button mat-stroked-button (click)="edit(p)"><mat-icon>edit</mat-icon> Editar</button>
+          }
+        </tc-page-header>
+
+        <div class="layout">
+          <section class="tc-table-card">
+            <h2 class="tc-section-title pad">Vínculos com unidades</h2>
+            @for (o of p.occupancies; track o.id) {
+              <div class="occ" [class.ended]="!o.current">
+                <div class="who">
+                  <strong>{{ o.unitLabel }}</strong>
+                  <span class="tc-muted">{{ roleLabel(o) }} · {{ o.startDate | isoDate }}{{ o.current ? ' até hoje' : ' a ' + (o.endDate | isoDate) }}</span>
+                </div>
+                @if (o.financialResponsible) {
+                  <span class="tc-chip-soft">Resp. financeiro</span>
+                }
+                @if (o.condominiumId === context.id()) {
+                  <a mat-button [routerLink]="['/unidades', o.unitId]">Ver unidade</a>
+                }
+              </div>
+            } @empty {
+              <tc-empty-state icon="link_off" title="Sem vínculos" description="Vincule a pessoa a uma unidade pela ficha da unidade." />
+            }
+          </section>
+
+          <aside class="side">
+            <section class="tc-card">
+              <h2 class="tc-section-title">Contato</h2>
+              <dl>
+                <dt>E-mail</dt><dd>{{ p.email ?? '—' }}</dd>
+                <dt>Telefone</dt><dd>{{ p.phone ? (p.phone | doc: 'phone') : '—' }}</dd>
+                <dt>Alternativo</dt><dd>{{ p.secondaryPhone ? (p.secondaryPhone | doc: 'phone') : '—' }}</dd>
+              </dl>
+              @if (p.notes) {
+                <p class="tc-muted small">{{ p.notes }}</p>
+              }
+            </section>
+            <section class="tc-card">
+              <h2 class="tc-section-title">Portal do morador</h2>
+              @if (p.portalUser) {
+                <p class="small"><mat-icon inline>verified</mat-icon> Possui acesso ao portal.</p>
+              } @else {
+                <p class="tc-muted small">Permite consultar cobranças, comunicados e documentos da(s) sua(s) unidade(s).</p>
+              }
+              @if (auth.can('USER_MANAGE') && p.active) {
+                <button mat-stroked-button (click)="grantPortal(p)" [disabled]="busy()">
+                  <mat-icon>forward_to_inbox</mat-icon>{{ p.portalUser ? 'Atualizar acesso / reenviar convite' : 'Conceder acesso ao portal' }}
+                </button>
+              }
+              @if (canEdit()) {
+                <button mat-button class="toggle" (click)="toggle(p)" [disabled]="busy()">{{ p.active ? 'Inativar cadastro' : 'Reativar cadastro' }}</button>
+              }
+            </section>
+          </aside>
+        </div>
+      } @else {
+        <mat-progress-bar mode="indeterminate" />
+      }
+    </div>
+  `,
+  styles: `
+    .narrow { max-width: 1080px; }
+    .back { margin: -8px 0 8px -12px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 16px; align-items: start; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+    .side { display: grid; gap: 16px; }
+    .pad { padding: 16px 20px 4px; margin: 0; }
+    .occ { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--mat-sys-outline-variant); }
+    .occ.ended { opacity: .65; }
+    .who { flex: 1; display: grid; }
+    dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; }
+    dt { color: var(--mat-sys-on-surface-variant); }
+    dd { margin: 0; word-break: break-word; }
+    .small { font: var(--mat-sys-body-small); }
+    .toggle { margin-top: 8px; display: block; }
+    .tc-section-title { margin-top: 0; }
+    .tc-status.big { font: var(--mat-sys-label-large); padding: 4px 14px; align-self: center; }
+  `,
+})
+export class PersonDetail {
+  protected readonly auth = inject(AuthService);
+  protected readonly context = inject(CondominiumContext);
+  private readonly service = inject(StructureService);
+  private readonly dialog = inject(MatDialog);
+  private readonly notify = inject(NotificationService);
+
+  readonly id = input.required<string>();
+  private readonly tick = signal(0);
+  protected readonly busy = signal(false);
+  protected readonly error = signal<string | null>(null);
+  protected readonly canEdit = computed(() => this.context.canAny('PEOPLE_EDIT'));
+
+  protected readonly person = toSignal(
+    combineLatest([toObservable(this.id), toObservable(this.tick)]).pipe(
+      switchMap(([id]) =>
+        this.service.person(id).pipe(
+          catchError((err: unknown) => {
+            this.error.set(toProblem(err).detail);
+            return of(null);
+          }),
+        ),
+      ),
+    ),
+    { initialValue: null },
+  );
+
+  roleLabel(o: Occupancy): string {
+    return OCCUPANCY_ROLE_LABELS[o.role];
+  }
+
+  edit(p: Person): void {
+    this.dialog
+      .open(PersonDialog, { data: { person: p }, width: '680px', maxWidth: '95vw' })
+      .afterClosed()
+      .pipe(filter((r) => !!r))
+      .subscribe(() => this.reload('Cadastro atualizado.'));
+  }
+
+  toggle(p: Person): void {
+    this.run(this.service.setPersonActive(p.id, !p.active), p.active ? 'Cadastro inativado.' : 'Cadastro reativado.');
+  }
+
+  grantPortal(p: Person): void {
+    this.dialog
+      .open<ConfirmDialog, ConfirmDialogData, string | true>(ConfirmDialog, {
+        data: { title: 'Acesso ao portal', message: `Enviar convite de acesso ao portal para ${p.email ?? 'o e-mail cadastrado'}?`, confirmLabel: 'Enviar convite' },
+        width: '440px',
+      })
+      .afterClosed()
+      .pipe(filter((r) => r === true))
+      .subscribe(() => this.run(this.service.grantPortalAccess(p.id), 'Acesso concedido. Convite enviado por e-mail.'));
+  }
+
+  private run(call$: ReturnType<StructureService['person']>, message: string): void {
+    this.busy.set(true);
+    call$.subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.reload(message);
+      },
+      error: (err: unknown) => {
+        this.busy.set(false);
+        this.notify.error(toProblem(err).detail);
+      },
+    });
+  }
+
+  private reload(message: string): void {
+    this.notify.success(message);
+    this.tick.update((t) => t + 1);
+  }
+}

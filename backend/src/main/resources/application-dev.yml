@@ -1,0 +1,12 @@
+# Perfil de desenvolvimento local. Não usar em produção.
+tekcondo:
+  mail:
+    provider: ${TEKCONDO_MAIL_PROVIDER:file}
+  security:
+    allow-ephemeral-jwt-secret: true
+    refresh-cookie-secure: false
+    cors-allowed-origins: ${TEKCONDO_CORS_ORIGINS:http://localhost:4200}
+
+logging:
+  level:
+    br.com.tekcondo: DEBUG

@@ -1,0 +1,16 @@
+tekcondo:
+  jobs:
+    enabled: false
+  storage:
+    dir: target/test-storage
+  mail:
+    provider: file
+    outbox-dir: target/test-outbox
+  security:
+    jwt-secret: test-secret-only-for-automated-tests-0123456789
+    refresh-cookie-secure: false
+    max-failed-logins: 3
+logging:
+  level:
+    root: WARN
+    br.com.tekcondo: INFO

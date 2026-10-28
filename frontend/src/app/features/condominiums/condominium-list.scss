@@ -1,0 +1,28 @@
+.filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+
+  .search {
+    flex: 1 1 320px;
+  }
+
+  .status {
+    flex: 0 1 200px;
+  }
+}
+
+mat-progress-bar.idle {
+  visibility: hidden;
+}
+
+.name {
+  display: block;
+  font-weight: 600;
+}
+
+.sub {
+  display: block;
+  margin-top: 2px;
+}

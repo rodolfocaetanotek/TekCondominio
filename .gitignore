@@ -1,0 +1,22 @@
+# Segredos e ambiente
+.env
+
+# Ferramentas portáteis baixadas localmente (JDK/Maven)
+.tools/
+
+# Backend
+backend/target/
+backend/.local-dev/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# IDEs / SO
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+backend/.local-dev-e2e/

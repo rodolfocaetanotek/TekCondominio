@@ -1,0 +1,60 @@
+# Ambiente local completo: PostgreSQL + API + frontend (nginx).
+# Uso: copie .env.example para .env, preencha os segredos e execute `docker compose up -d --build`.
+# Acesse http://localhost:8081 (app) — a API fica acessível apenas através do nginx.
+name: tekcondo
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tekcondo
+      POSTGRES_USER: ${TEKCONDO_DB_USER:?defina TEKCONDO_DB_USER no .env}
+      POSTGRES_PASSWORD: ${TEKCONDO_DB_PASSWORD:?defina TEKCONDO_DB_PASSWORD no .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d tekcondo"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      TEKCONDO_DB_URL: jdbc:postgresql://db:5432/tekcondo
+      TEKCONDO_DB_USER: ${TEKCONDO_DB_USER}
+      TEKCONDO_DB_PASSWORD: ${TEKCONDO_DB_PASSWORD}
+      TEKCONDO_JWT_SECRET: ${TEKCONDO_JWT_SECRET:?defina TEKCONDO_JWT_SECRET no .env}
+      TEKCONDO_COOKIE_SECURE: ${TEKCONDO_COOKIE_SECURE:-false}
+      TEKCONDO_SWAGGER_ENABLED: ${TEKCONDO_SWAGGER_ENABLED:-true}
+      TEKCONDO_STORAGE_DIR: /data/storage
+      TEKCONDO_PUBLIC_URL: ${TEKCONDO_PUBLIC_URL:-http://localhost:8081}
+      TEKCONDO_MAIL_PROVIDER: ${TEKCONDO_MAIL_PROVIDER:-smtp}
+      TEKCONDO_MAIL_FROM: ${TEKCONDO_MAIL_FROM:-}
+      TEKCONDO_SMTP_HOST: ${TEKCONDO_SMTP_HOST:-}
+      TEKCONDO_SMTP_PORT: ${TEKCONDO_SMTP_PORT:-587}
+      TEKCONDO_SMTP_USER: ${TEKCONDO_SMTP_USER:-}
+      TEKCONDO_SMTP_PASSWORD: ${TEKCONDO_SMTP_PASSWORD:-}
+      TEKCONDO_BOOTSTRAP_ADMIN_EMAIL: ${TEKCONDO_BOOTSTRAP_ADMIN_EMAIL:-}
+      TEKCONDO_BOOTSTRAP_ADMIN_PASSWORD: ${TEKCONDO_BOOTSTRAP_ADMIN_PASSWORD:-}
+
+    volumes:
+      - storage:/data/storage
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8081:80"
+
+volumes:
+  pgdata:
+  storage:

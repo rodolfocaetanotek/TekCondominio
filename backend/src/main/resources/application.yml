@@ -1,0 +1,90 @@
+spring:
+  mail:
+    host: ${TEKCONDO_SMTP_HOST:}
+    port: ${TEKCONDO_SMTP_PORT:587}
+    username: ${TEKCONDO_SMTP_USER:}
+    password: ${TEKCONDO_SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${TEKCONDO_SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${TEKCONDO_SMTP_STARTTLS:true}
+  application:
+    name: tekcondo-backend
+  profiles:
+    default: dev
+  datasource:
+    url: ${TEKCONDO_DB_URL:jdbc:postgresql://localhost:5432/tekcondo}
+    username: ${TEKCONDO_DB_USER:tekcondo}
+    password: ${TEKCONDO_DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: ${TEKCONDO_DB_POOL_SIZE:10}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: UTC
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
+  mvc:
+    problemdetails:
+      enabled: false
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: ${TEKCONDO_PORT:8080}
+  forward-headers-strategy: framework
+  error:
+    include-stacktrace: never
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+tekcondo:
+  security:
+    # Segredo HMAC do JWT (mín. 32 bytes). OBRIGATÓRIO via variável de ambiente fora do perfil dev.
+    jwt-secret: ${TEKCONDO_JWT_SECRET:}
+    access-token-ttl: ${TEKCONDO_ACCESS_TOKEN_TTL:PT15M}
+    refresh-token-ttl: ${TEKCONDO_REFRESH_TOKEN_TTL:P7D}
+    refresh-cookie-secure: ${TEKCONDO_COOKIE_SECURE:true}
+    max-failed-logins: ${TEKCONDO_MAX_FAILED_LOGINS:5}
+    lockout-duration: ${TEKCONDO_LOCKOUT_DURATION:PT15M}
+    cors-allowed-origins: ${TEKCONDO_CORS_ORIGINS:}
+  app:
+    public-url: ${TEKCONDO_PUBLIC_URL:http://localhost:4200}
+  jobs:
+    reminders-cron: ${TEKCONDO_JOBS_REMINDERS_CRON:0 0 7 * * *}
+  storage:
+    dir: ${TEKCONDO_STORAGE_DIR:.local-dev/storage}
+  mail:
+    provider: ${TEKCONDO_MAIL_PROVIDER:smtp}
+    from: ${TEKCONDO_MAIL_FROM:Tek Condomínio <nao-responda@tekcondo.local>}
+  bootstrap:
+    # Cria o administrador da plataforma na primeira execução, se informado. Nunca versionar valores reais.
+    admin-email: ${TEKCONDO_BOOTSTRAP_ADMIN_EMAIL:}
+    admin-password: ${TEKCONDO_BOOTSTRAP_ADMIN_PASSWORD:}
+    admin-name: ${TEKCONDO_BOOTSTRAP_ADMIN_NAME:Administrador da Plataforma}

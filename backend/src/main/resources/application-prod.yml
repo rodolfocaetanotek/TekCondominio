@@ -1,0 +1,19 @@
+# Produção: todos os segredos devem vir de variáveis de ambiente (ver .env.example).
+spring:
+  datasource:
+    url: ${TEKCONDO_DB_URL}
+    username: ${TEKCONDO_DB_USER}
+    password: ${TEKCONDO_DB_PASSWORD}
+
+springdoc:
+  swagger-ui:
+    enabled: ${TEKCONDO_SWAGGER_ENABLED:false}
+  api-docs:
+    enabled: ${TEKCONDO_SWAGGER_ENABLED:false}
+
+logging:
+  structured:
+    format:
+      console: ecs
+  level:
+    root: INFO

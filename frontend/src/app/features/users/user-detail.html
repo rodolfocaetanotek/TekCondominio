@@ -1,0 +1,103 @@
+<div class="tc-page narrow">
+  <a mat-button routerLink="/usuarios" class="back"><mat-icon>arrow_back</mat-icon> Usuários</a>
+
+  @if (loadError(); as message) {
+    <section class="tc-card">
+      <tc-empty-state icon="error" title="Não foi possível abrir o usuário" [description]="message">
+        <a mat-stroked-button routerLink="/usuarios">Voltar à lista</a>
+      </tc-empty-state>
+    </section>
+  } @else if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Carregando" />
+  } @else if (user(); as u) {
+    <tc-page-header eyebrow="Usuário" [title]="u.name" [subtitle]="u.email">
+      @if (u.pendingInvite && u.active) {
+        <span class="tc-status is-pending big">Convite pendente</span>
+      }
+      <span class="tc-status big" [class.is-active]="u.active" [class.is-inactive]="!u.active">{{ u.active ? 'Ativo' : 'Inativo' }}</span>
+    </tc-page-header>
+
+    @if (busy()) {
+      <mat-progress-bar mode="indeterminate" class="bar" />
+    }
+    @if (actionError(); as message) {
+      <div class="banner" role="alert"><mat-icon>error</mat-icon><span>{{ message }}</span></div>
+    }
+
+    <div class="layout">
+      <section class="tc-card">
+        <h2 class="tc-section-title">Papéis e acessos</h2>
+        @if (u.assignments.length === 0) {
+          <p class="tc-muted">Nenhum papel atribuído — o usuário não acessa nenhuma funcionalidade.</p>
+        } @else {
+          <ul class="assignments">
+            @for (a of u.assignments; track a.id) {
+              <li>
+                <mat-icon aria-hidden="true">{{ a.scope === 'ORGANIZATION' ? 'domain' : 'apartment' }}</mat-icon>
+                <div class="what">
+                  <strong>{{ a.roleName }}</strong>
+                  <span class="tc-muted">{{ a.scope === 'ORGANIZATION' ? 'Toda a administradora' : a.condominiumName }}</span>
+                </div>
+                @if (canManage()) {
+                  <button mat-icon-button (click)="removeAssignment(a)" [disabled]="busy()"
+                    [attr.aria-label]="'Remover ' + a.roleName" matTooltip="Remover papel">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                }
+              </li>
+            }
+          </ul>
+        }
+
+        @if (canManage()) {
+          <h3 class="tc-section-title add-title">Atribuir papel</h3>
+          <tc-role-fields [roleCode]="roleCode" [condominiumId]="condominiumId" />
+          <div class="tc-actions">
+            <button mat-stroked-button (click)="addAssignment()" [disabled]="busy()"><mat-icon>add</mat-icon> Atribuir</button>
+          </div>
+        }
+      </section>
+
+      <aside class="side">
+        <section class="tc-card">
+          <h2 class="tc-section-title">Dados</h2>
+          <mat-form-field class="full">
+            <mat-label>Nome</mat-label>
+            <input matInput [formControl]="name" maxlength="150" />
+            <mat-error><tc-field-error [control]="name" /></mat-error>
+          </mat-form-field>
+          @if (canManage()) {
+            <div class="tc-actions">
+              <button mat-stroked-button (click)="saveName()" [disabled]="busy() || name.pristine">Salvar nome</button>
+            </div>
+          }
+          <dl>
+            <dt>Cadastro</dt>
+            <dd>{{ u.createdAt | date: 'dd/MM/yyyy HH:mm' }}</dd>
+            <dt>Último acesso</dt>
+            <dd>{{ u.lastLoginAt ? (u.lastLoginAt | date: 'dd/MM/yyyy HH:mm') : 'Nunca acessou' }}</dd>
+          </dl>
+        </section>
+
+        @if (canManage()) {
+          <section class="tc-card">
+            <h2 class="tc-section-title">Acesso</h2>
+            <div class="stack">
+              @if (u.pendingInvite && u.active) {
+                <button mat-stroked-button (click)="resendInvite()" [disabled]="busy()"><mat-icon>forward_to_inbox</mat-icon> Reenviar convite</button>
+              }
+              @if (!isSelf()) {
+                <button mat-button (click)="toggleActive()" [disabled]="busy()" [class.danger-text]="u.active">
+                  <mat-icon>{{ u.active ? 'person_off' : 'person_check' }}</mat-icon>
+                  {{ u.active ? 'Desativar usuário' : 'Reativar usuário' }}
+                </button>
+              } @else {
+                <p class="tc-muted small">Você não pode desativar o próprio usuário.</p>
+              }
+            </div>
+          </section>
+        }
+      </aside>
+    </div>
+  }
+</div>

@@ -1,0 +1,224 @@
+@use '@angular/material' as mat;
+
+// Identidade visual Tek Condomínio: verde-petróleo (confiança, gestão) + terracota (acolhimento, moradia).
+// Tema Material 3 com modo claro/escuro automático conforme o sistema operacional.
+$font-stack: 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+html {
+  color-scheme: light dark;
+  @include mat.theme((
+    color: (
+      primary: mat.$cyan-palette,
+      tertiary: mat.$orange-palette,
+      theme-type: color-scheme,
+    ),
+    typography: (
+      plain-family: $font-stack,
+      brand-family: $font-stack,
+    ),
+    density: 0,
+  ));
+
+  --tc-radius: 14px;
+  --tc-gap: 16px;
+  --tc-content-max: 1240px;
+  --tc-success: light-dark(#1b6e3a, #8fd6a4);
+  --tc-success-container: light-dark(#d6f2df, #154a28);
+  --tc-danger: var(--mat-sys-error);
+  --tc-danger-container: var(--mat-sys-error-container);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+  background: var(--mat-sys-surface-container-lowest);
+  color: var(--mat-sys-on-surface);
+}
+
+a {
+  color: var(--mat-sys-primary);
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+// ---------- utilidades de layout ----------
+.tc-page {
+  max-width: var(--tc-content-max);
+  margin: 0 auto;
+  padding: 24px;
+
+  @media (max-width: 600px) {
+    padding: 16px;
+  }
+}
+
+.tc-card {
+  background: var(--mat-sys-surface);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--tc-radius);
+  padding: 20px;
+}
+
+.tc-grid {
+  display: grid;
+  gap: 0 var(--tc-gap);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+
+  > * {
+    grid-column: span 12;
+  }
+
+  @media (min-width: 720px) {
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-5 { grid-column: span 5; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-9 { grid-column: span 9; }
+  }
+}
+
+.tc-section-title {
+  font: var(--mat-sys-title-medium);
+  margin: 8px 0 16px;
+  color: var(--mat-sys-on-surface);
+}
+
+.tc-muted {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.tc-spacer {
+  flex: 1 1 auto;
+}
+
+.tc-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+// ---------- chips de status ----------
+.tc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font: var(--mat-sys-label-medium);
+  white-space: nowrap;
+
+  &::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  &.is-active {
+    color: var(--tc-success);
+    background: var(--tc-success-container);
+  }
+
+  &.is-pending {
+    color: var(--mat-sys-on-tertiary-container);
+    background: var(--mat-sys-tertiary-container);
+  }
+
+  &.is-inactive {
+    color: var(--mat-sys-on-surface-variant);
+    background: var(--mat-sys-surface-container-high);
+  }
+}
+
+// ---------- tabelas ----------
+.tc-table-card {
+  background: var(--mat-sys-surface);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--tc-radius);
+  overflow: hidden;
+
+  .table-scroll {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+  }
+
+  tr.is-clickable {
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--mat-sys-surface-container);
+      outline: none;
+    }
+  }
+}
+
+.mono {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.92em;
+}
+
+// Foco visível para navegação por teclado
+:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+.cdk-visually-hidden,
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+// ---------- alertas em formulários/diálogos ----------
+.tc-alert {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}
+
+.tc-chip-soft {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font: var(--mat-sys-label-small);
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+.money {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.money.negative {
+  color: var(--mat-sys-error);
+}
+
+.money.positive {
+  color: var(--tc-success);
+}

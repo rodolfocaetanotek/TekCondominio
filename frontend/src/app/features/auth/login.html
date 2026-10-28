@@ -1,0 +1,68 @@
+<div class="login">
+  <section class="hero" aria-hidden="true">
+    <div class="hero-inner">
+      <div class="logo">
+        <img src="favicon.svg" alt="" width="44" height="44" />
+        <span>Tek Condomínio</span>
+      </div>
+      <h2>Administração condominial clara, segura e em um só lugar.</h2>
+      <ul>
+        <li><mat-icon>apartment</mat-icon> Condomínios, unidades e moradores</li>
+        <li><mat-icon>account_balance</mat-icon> Financeiro e cobrança com rastreabilidade</li>
+        <li><mat-icon>verified_user</mat-icon> Acesso por perfil e trilha de auditoria</li>
+      </ul>
+    </div>
+  </section>
+
+  <main class="panel">
+    <form class="card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      @if (loading()) {
+        <mat-progress-bar mode="indeterminate" class="bar" aria-label="Entrando" />
+      }
+      <h1>Entrar</h1>
+      <p class="tc-muted">Acesse com o e-mail e a senha cadastrados pela sua administradora.</p>
+
+      @if (expirada()) {
+        <p class="notice" role="status"><mat-icon>schedule</mat-icon> Sua sessão expirou. Entre novamente.</p>
+      }
+      @if (error(); as message) {
+        <p class="alert" role="alert"><mat-icon>error</mat-icon> {{ message }}</p>
+      }
+
+      <mat-form-field>
+        <mat-label>E-mail</mat-label>
+        <input matInput type="email" formControlName="email" autocomplete="username" required />
+        <mat-icon matPrefix>mail</mat-icon>
+        <mat-error><tc-field-error [control]="form.controls.email" /></mat-error>
+      </mat-form-field>
+
+      <mat-form-field>
+        <mat-label>Senha</mat-label>
+        <input
+          matInput
+          [type]="showPassword() ? 'text' : 'password'"
+          formControlName="password"
+          autocomplete="current-password"
+          required
+        />
+        <mat-icon matPrefix>lock</mat-icon>
+        <button
+          mat-icon-button
+          matSuffix
+          type="button"
+          (click)="showPassword.set(!showPassword())"
+          [attr.aria-label]="showPassword() ? 'Ocultar senha' : 'Mostrar senha'"
+          [attr.aria-pressed]="showPassword()"
+        >
+          <mat-icon>{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+        </button>
+        <mat-error><tc-field-error [control]="form.controls.password" /></mat-error>
+      </mat-form-field>
+
+      <button mat-flat-button type="submit" class="submit" [disabled]="loading()">
+        {{ loading() ? 'Entrando…' : 'Entrar' }}
+      </button>
+      <a mat-button routerLink="/esqueci-senha" class="forgot">Esqueci minha senha</a>
+    </form>
+  </main>
+</div>

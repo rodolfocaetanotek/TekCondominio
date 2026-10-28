@@ -1,0 +1,105 @@
+<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+
+<mat-sidenav-container class="container">
+  <mat-sidenav
+    #drawer
+    class="sidenav"
+    [mode]="isHandset() ? 'over' : 'side'"
+    [opened]="!isHandset()"
+    [attr.role]="isHandset() ? 'dialog' : 'navigation'"
+    aria-label="Menu principal"
+  >
+    <div class="brand">
+      <img src="favicon.svg" alt="" width="34" height="34" />
+      <div>
+        <strong>Tek Condomínio</strong>
+        <span>Gestão de Condomínios</span>
+      </div>
+    </div>
+
+    @for (group of nav(); track group.title) {
+      @if (group.title) {
+        <p class="group-title">{{ group.title }}</p>
+      }
+      <mat-nav-list>
+        @for (item of group.items; track item.link) {
+          <a
+            mat-list-item
+            [routerLink]="item.link"
+            routerLinkActive="is-active"
+            [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+            #rla="routerLinkActive"
+            [activated]="rla.isActive"
+            [attr.aria-current]="rla.isActive ? 'page' : null"
+            (click)="isHandset() && drawer.close()"
+          >
+            <mat-icon matListItemIcon aria-hidden="true">{{ item.icon }}</mat-icon>
+            <span matListItemTitle>{{ item.label }}</span>
+          </a>
+        }
+      </mat-nav-list>
+    }
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <mat-toolbar class="topbar">
+      @if (isHandset()) {
+        <button mat-icon-button (click)="drawer.toggle()" aria-label="Abrir menu">
+          <mat-icon>menu</mat-icon>
+        </button>
+      }
+      <div class="context">
+        @if (showSelector()) {
+          <mat-form-field class="condo-select" subscriptSizing="dynamic">
+            <mat-icon matPrefix aria-hidden="true">apartment</mat-icon>
+            <mat-select
+              [value]="context.id()"
+              (valueChange)="context.select($event)"
+              aria-label="Condomínio selecionado"
+              panelWidth="auto"
+            >
+              @for (o of context.options(); track o.id) {
+                <mat-option [value]="o.id">{{ o.name }}{{ o.status === 'INACTIVE' ? ' (inativo)' : '' }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+        @if (auth.user()?.organizationName; as org) {
+          <span class="org" [class.compact]="showSelector()"><mat-icon aria-hidden="true">domain</mat-icon>{{ org }}</span>
+        } @else if (auth.user()?.platformAdmin) {
+          <span class="org"><mat-icon aria-hidden="true">shield_person</mat-icon>Administração da plataforma</span>
+        }
+      </div>
+      <span class="tc-spacer"></span>
+      @if (auth.isOrganizationMember()) {
+        <tc-notification-bell />
+      }
+      <button mat-button class="user-btn" [matMenuTriggerFor]="userMenu" aria-label="Menu do usuário">
+        <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+        <span class="user-name">{{ auth.user()?.name }}</span>
+        <mat-icon iconPositionEnd>expand_more</mat-icon>
+      </button>
+      <mat-menu #userMenu="matMenu" xPosition="before">
+        <div class="menu-header" mat-menu-item disabled>
+          <span>
+            <strong>{{ auth.user()?.name }}</strong><br />
+            <small>{{ auth.user()?.email }}</small>
+          </span>
+        </div>
+        <mat-divider />
+        <button mat-menu-item (click)="changePassword()">
+          <mat-icon>key</mat-icon>
+          <span>Alterar senha</span>
+        </button>
+        <button mat-menu-item (click)="auth.logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Sair</span>
+        </button>
+      </mat-menu>
+    </mat-toolbar>
+
+    <main id="conteudo" tabindex="-1">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

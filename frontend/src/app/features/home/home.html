@@ -1,0 +1,74 @@
+<div class="tc-page">
+  <tc-page-header [eyebrow]="auth.user()?.organizationName" [title]="'Olá, ' + firstName()" subtitle="Indicadores calculados a partir dos dados registrados." />
+
+  <div class="filters">
+    <mat-form-field class="scope">
+      <mat-label>Condomínios</mat-label>
+      <mat-select [formControl]="scope">
+        <mat-option value="">Todos os condomínios</mat-option>
+        @for (o of context.options(); track o.id) { <mat-option [value]="o.id">{{ o.name }}</mat-option> }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field><mat-label>Período de</mat-label><input matInput type="date" [formControl]="from" /></mat-form-field>
+    <mat-form-field><mat-label>até</mat-label><input matInput type="date" [formControl]="to" /></mat-form-field>
+  </div>
+
+  @if (data() === undefined) {
+    <mat-progress-bar mode="indeterminate" />
+  } @else if (data(); as d) {
+    <section class="kpis" aria-label="Indicadores">
+      <a class="kpi tc-card" routerLink="/condominios"><span class="label">Condomínios ativos</span><span class="value">{{ d.condominiums }}</span></a>
+      <a class="kpi tc-card" routerLink="/unidades"><span class="label">Unidades</span><span class="value">{{ d.units }}</span></a>
+      <a class="kpi tc-card" routerLink="/pessoas"><span class="label">Moradores e proprietários</span><span class="value">{{ d.residents }}</span></a>
+      @if (d.finance) {
+        <div class="kpi tc-card"><span class="label">Saldo consolidado (hoje)</span><span class="value">{{ d.balance | currency: 'BRL' }}</span></div>
+        <div class="kpi tc-card"><span class="label">Receitas no período</span><span class="value">{{ d.income | currency: 'BRL' }}</span></div>
+        <div class="kpi tc-card"><span class="label">Despesas no período</span><span class="value">{{ d.expense | currency: 'BRL' }}</span>
+          <span class="sub">Resultado {{ result() | currency: 'BRL' }}</span></div>
+        <a class="kpi tc-card" routerLink="/financeiro"><span class="label">A receber em aberto</span><span class="value">{{ d.receivablesOpen | currency: 'BRL' }}</span>
+          <span class="sub">{{ d.chargesIssued }} cobrança(s) emitida(s) no período</span></a>
+        <a class="kpi tc-card" routerLink="/financeiro"><span class="label">A pagar em aberto</span><span class="value">{{ d.payablesOpen | currency: 'BRL' }}</span></a>
+        <a class="kpi tc-card alert" routerLink="/cobranca"><span class="label">Inadimplência</span>
+          <span class="value">{{ d.delinquencyRate | number: '1.1-1' }}%</span>
+          <span class="sub"><mat-icon inline aria-hidden="true">warning</mat-icon> {{ d.overdueAmount | currency: 'BRL' }} vencido · {{ d.overdueCharges }} cobrança(s)</span></a>
+      }
+    </section>
+
+    <div class="cols">
+      @if (d.finance) {
+        <section class="tc-card chart">
+          <h2 class="tc-section-title">Receitas × despesas — últimos 12 meses</h2>
+          <tc-monthly-chart [points]="d.series" />
+        </section>
+        <section class="tc-card">
+          <h2 class="tc-section-title">Contas a pagar nos próximos 7 dias</h2>
+          @for (p of d.payablesDueSoon; track p.id) {
+            <a class="line" [routerLink]="['/financeiro/lancamentos', p.id]" (click)="context.select(p.condominiumId)">
+              <span><strong>{{ p.description }}</strong><br /><small class="tc-muted">{{ p.condominiumName }} · {{ p.dueDate | isoDate }}{{ p.approval === 'PENDING' ? ' · aguardando aprovação' : '' }}</small></span>
+              <span class="money">{{ p.amount | currency: 'BRL' }}</span>
+            </a>
+          } @empty { <p class="tc-muted">Nada a pagar nos próximos dias.</p> }
+        </section>
+      }
+      <section class="tc-card">
+        <h2 class="tc-section-title">Ocorrências pendentes</h2>
+        @for (o of d.recentOccurrences; track o.id) {
+          <a class="line" [routerLink]="['/ocorrencias', o.id]" (click)="context.select(o.condominiumId)">
+            <span><strong>{{ o.title }}</strong><br /><small class="tc-muted">{{ o.condominiumName }} · {{ o.when | date: 'dd/MM HH:mm' }}</small></span>
+            <span class="tc-status is-pending">{{ o.status | label: 'occurrenceStatus' }}</span>
+          </a>
+        } @empty { <p class="tc-muted">Nenhuma ocorrência pendente.</p> }
+      </section>
+      <section class="tc-card">
+        <h2 class="tc-section-title">Comunicados recentes</h2>
+        @for (a of d.recentAnnouncements; track a.id) {
+          <a class="line" routerLink="/comunicados" (click)="context.select(a.condominiumId)">
+            <span><strong>{{ a.title }}</strong><br /><small class="tc-muted">{{ a.condominiumName }} · {{ a.when | date: 'dd/MM/yyyy' }}</small></span>
+          </a>
+        } @empty { <p class="tc-muted">Nenhum comunicado.</p> }
+      </section>
+    </div>
+  } @else {
+    <p class="tc-muted">Não foi possível carregar os indicadores.</p>
+  }
+</div>
