@@ -9,7 +9,7 @@ deve ser homologado antes do uso em produção.
 | Item | Detalhe |
 |---|---|
 | Código | `integration/bank/OfxParser.java`, `finance/service/StatementImportService.java`, `StatementMatcher.java` |
-| Endpoint | `POST /api/v1/condominiums/{c}/finance/bank-accounts/{a}/statement-imports` (multipart `file`) |
+| Endpoint | `POST /api/v1/condominios/{c}/finance/bank-accounts/{a}/statement-imports` (multipart `file`) |
 | Formatos | OFX 1.x (SGML) e 2.x (XML); charset 1252 ou UTF-8; valor com ponto ou vírgula decimal |
 | Idempotência | hash SHA-256 do arquivo por conta (409 se repetido); `FITID` único por conta (extratos sobrepostos não duplicam) |
 | Conferência | o número da conta no arquivo (`ACCTID`) é comparado ao cadastro. Se divergir, responde 422, a menos que `ignoreAccountCheck=true`. |
@@ -22,7 +22,7 @@ deve ser homologado antes do uso em produção.
 | Item | Detalhe |
 |---|---|
 | Código | `integration/bank/Cnab240ReturnParser.java`, `billing/service/BankReturnService.java` |
-| Endpoint | `POST /api/v1/condominiums/{c}/billing/bank-returns?bankAccountId=…` (multipart `file`) |
+| Endpoint | `POST /api/v1/condominios/{c}/billing/bank-returns?bankAccountId=…` (multipart `file`) |
 | Layout | registro 0 (header), segmentos T e U (detalhe), FEBRABAN v10. Posições usadas: T 16-17 (movimento), 38-57 (nosso nº), 59-73 (seu nº), 74-81 (vencimento), 82-96 (valor), 199-213 (tarifa); U 18-32 (juros/multa), 33-47 (desconto), 48-62 (abatimento), 78-92 (pago), 138-145 (ocorrência), 146-153 (crédito). |
 | Identificação | `financial_entry.collection_number` (sequência do banco de dados), procurado primeiro no "seu número" e depois no nosso número. **Ao registrar o boleto no banco, informe esse número no campo "seu número/número do documento".** Ele aparece em cada título (`collectionNumber` na API). |
 | Baixa | liquidação (movimentos 06 e 17); data = data de crédito (ou ocorrência). Multa até o valor calculado pelo título e o restante como juros. Pagamento a maior é registrado como encargo. Forma de pagamento BOLETO. |

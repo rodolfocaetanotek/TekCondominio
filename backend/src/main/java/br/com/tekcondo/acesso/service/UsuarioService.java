@@ -14,8 +14,8 @@ import java.util.stream.Collectors;
 
 import br.com.tekcondo.auditoria.service.AcaoAuditoria;
 import br.com.tekcondo.auditoria.service.AuditoriaService;
-import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.condominium.repository.CondominiumRepository;
+import br.com.tekcondo.condominio.entity.Condominio;
+import br.com.tekcondo.condominio.repository.CondominioRepository;
 import br.com.tekcondo.acesso.autorizacao.AcessoService;
 import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.acesso.dto.UsuarioDtos;
@@ -52,7 +52,7 @@ public class UsuarioService {
     private final PapelRepository papelRepository;
     private final PapelUsuarioRepository papelUsuarioRepository;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final CondominiumRepository condominioRepository;
+    private final CondominioRepository condominioRepository;
     private final SenhaService senhaService;
     private final AcessoService acessoService;
     private final UsuarioAtualProvider usuarioAtualProvider;
@@ -61,7 +61,7 @@ public class UsuarioService {
 
     public UsuarioService(UsuarioRepository usuarioRepository, PapelRepository papelRepository,
                                  PapelUsuarioRepository papelUsuarioRepository, RefreshTokenRepository refreshTokenRepository,
-                                 CondominiumRepository condominioRepository, SenhaService senhaService,
+                                 CondominioRepository condominioRepository, SenhaService senhaService,
                                  AcessoService acessoService, UsuarioAtualProvider usuarioAtualProvider,
                                  AuditoriaService auditoriaService, Clock clock) {
         this.usuarioRepository = usuarioRepository;
@@ -247,7 +247,7 @@ public class UsuarioService {
                 throw ApiException.regraNegocio("ROLE_SCOPE_MISMATCH",
                         "Informe o condomínio para o papel \"" + papel.getNome() + "\".");
             }
-            condominioRepository.findByIdAndOrganizationId(idCondominio, idAdministradora)
+            condominioRepository.findByIdAndIdAdministradora(idCondominio, idAdministradora)
                     .orElseThrow(() -> ApiException.naoEncontrado("Condomínio"));
         }
     }
@@ -307,8 +307,8 @@ public class UsuarioService {
         }
         Set<UUID> desejados = new HashSet<>(ids);
         return condominioRepository.findAllById(desejados).stream()
-                .filter(c -> c.getOrganizationId().equals(idAdministradora))
-                .collect(Collectors.toMap(Condominium::getId, Condominium::getName, (a, b) -> a));
+                .filter(c -> c.getIdAdministradora().equals(idAdministradora))
+                .collect(Collectors.toMap(Condominio::getId, Condominio::getNome, (a, b) -> a));
     }
 
 }

@@ -10,7 +10,7 @@ import { formatCpfCnpj, formatPhone } from '../../shared/format/br-format';
 import { MaskDirective } from '../../shared/format/mask.directive';
 import { FieldError } from '../../shared/forms/field-error';
 import { applyServerErrors } from '../../shared/forms/server-errors';
-import { PersonDetail, PersonKind } from './structure.models';
+import { PessoaDetalhe, TipoPessoa } from './structure.models';
 import { StructureService } from './structure.service';
 import { DialogClose } from '../../shared/ui/dialog-close';
 
@@ -28,20 +28,20 @@ import { DialogClose } from '../../shared/ui/dialog-close';
         <div class="tc-grid">
           <mat-form-field class="span-8">
             <mat-label>Nome / razão social</mat-label>
-            <input matInput formControlName="name" required maxlength="150" cdkFocusInitial />
-            <mat-error><tc-field-error [control]="form.controls.name" /></mat-error>
+            <input matInput formControlName="nome" required maxlength="150" cdkFocusInitial />
+            <mat-error><tc-field-error [control]="form.controls.nome" /></mat-error>
           </mat-form-field>
           <mat-form-field class="span-4">
             <mat-label>Tipo</mat-label>
-            <mat-select formControlName="kind">
+            <mat-select formControlName="tipo">
               <mat-option value="INDIVIDUAL">Pessoa física</mat-option>
               <mat-option value="COMPANY">Pessoa jurídica</mat-option>
             </mat-select>
           </mat-form-field>
           <mat-form-field class="span-6">
-            <mat-label>{{ form.controls.kind.value === 'COMPANY' ? 'CNPJ' : 'CPF' }}</mat-label>
-            <input matInput formControlName="document" tcMask="cpfCnpj" class="mono" />
-            <mat-error><tc-field-error [control]="form.controls.document" /></mat-error>
+            <mat-label>{{ form.controls.tipo.value === 'COMPANY' ? 'CNPJ' : 'CPF' }}</mat-label>
+            <input matInput formControlName="documento" tcMask="cpfCnpj" class="mono" />
+            <mat-error><tc-field-error [control]="form.controls.documento" /></mat-error>
           </mat-form-field>
           <mat-form-field class="span-6">
             <mat-label>E-mail</mat-label>
@@ -51,17 +51,17 @@ import { DialogClose } from '../../shared/ui/dialog-close';
           </mat-form-field>
           <mat-form-field class="span-6">
             <mat-label>Telefone</mat-label>
-            <input matInput type="tel" formControlName="phone" tcMask="phone" />
-            <mat-error><tc-field-error [control]="form.controls.phone" /></mat-error>
+            <input matInput type="tel" formControlName="telefone" tcMask="phone" />
+            <mat-error><tc-field-error [control]="form.controls.telefone" /></mat-error>
           </mat-form-field>
           <mat-form-field class="span-6">
             <mat-label>Telefone alternativo</mat-label>
-            <input matInput type="tel" formControlName="secondaryPhone" tcMask="phone" />
-            <mat-error><tc-field-error [control]="form.controls.secondaryPhone" /></mat-error>
+            <input matInput type="tel" formControlName="telefoneSecundario" tcMask="phone" />
+            <mat-error><tc-field-error [control]="form.controls.telefoneSecundario" /></mat-error>
           </mat-form-field>
           <mat-form-field>
             <mat-label>Observações</mat-label>
-            <textarea matInput formControlName="notes" rows="2" maxlength="500"></textarea>
+            <textarea matInput formControlName="observacoes" rows="2" maxlength="500"></textarea>
           </mat-form-field>
         </div>
         <p class="tc-muted small">Colete somente os dados necessários à administração do condomínio (LGPD).</p>
@@ -75,20 +75,20 @@ import { DialogClose } from '../../shared/ui/dialog-close';
   styles: `.small { font: var(--mat-sys-body-small); }`,
 })
 export class PersonDialog {
-  protected readonly data = inject<{ person?: PersonDetail }>(MAT_DIALOG_DATA);
-  private readonly ref = inject(MatDialogRef<PersonDialog, PersonDetail>);
+  protected readonly data = inject<{ person?: PessoaDetalhe }>(MAT_DIALOG_DATA);
+  private readonly ref = inject(MatDialogRef<PersonDialog, PessoaDetalhe>);
   private readonly service = inject(StructureService);
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
   private readonly p = this.data.person;
   protected readonly form = inject(FormBuilder).nonNullable.group({
-    name: [this.p?.name ?? '', [Validators.required, Validators.maxLength(150)]],
-    kind: [this.p?.kind ?? ('INDIVIDUAL' as PersonKind)],
-    document: [formatCpfCnpj(this.p?.document)],
+    nome: [this.p?.nome ?? '', [Validators.required, Validators.maxLength(150)]],
+    tipo: [this.p?.tipo ?? ('INDIVIDUAL' as TipoPessoa)],
+    documento: [formatCpfCnpj(this.p?.documento)],
     email: [this.p?.email ?? '', [Validators.email]],
-    phone: [formatPhone(this.p?.phone)],
-    secondaryPhone: [formatPhone(this.p?.secondaryPhone)],
-    notes: [this.p?.notes ?? ''],
+    telefone: [formatPhone(this.p?.telefone)],
+    telefoneSecundario: [formatPhone(this.p?.telefoneSecundario)],
+    observacoes: [this.p?.observacoes ?? ''],
   });
 
   save(): void {
@@ -100,8 +100,8 @@ export class PersonDialog {
     const blank = (s: string) => s.trim() || null;
     this.service
       .savePerson(
-        { name: v.name.trim(), kind: v.kind, document: blank(v.document), email: blank(v.email), phone: blank(v.phone),
-          secondaryPhone: blank(v.secondaryPhone), notes: blank(v.notes), version: this.p?.version },
+        { nome: v.nome.trim(), tipo: v.tipo, documento: blank(v.documento), email: blank(v.email), telefone: blank(v.telefone),
+          telefoneSecundario: blank(v.telefoneSecundario), observacoes: blank(v.observacoes), versao: this.p?.versao },
         this.p?.id,
       )
       .subscribe({
@@ -110,7 +110,7 @@ export class PersonDialog {
           this.saving.set(false);
           const problem = toProblem(err);
           if (problem.codigo === 'PERSON_DOCUMENT_TAKEN' || problem.codigo === 'DOCUMENT_KIND_MISMATCH') {
-            this.form.controls.document.setErrors({ server: problem.detail });
+            this.form.controls.documento.setErrors({ server: problem.detail });
             return;
           }
           const rest = problem.codigo === 'VALIDATION_ERROR' ? applyServerErrors(this.form, problem) : [problem.detail];

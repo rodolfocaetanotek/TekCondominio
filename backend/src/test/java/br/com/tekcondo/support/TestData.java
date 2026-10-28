@@ -2,9 +2,9 @@ package br.com.tekcondo.support;
 
 import java.util.UUID;
 
-import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.condominium.entity.CondominiumType;
-import br.com.tekcondo.condominium.repository.CondominiumRepository;
+import br.com.tekcondo.condominio.entity.Condominio;
+import br.com.tekcondo.condominio.entity.TipoCondominio;
+import br.com.tekcondo.condominio.repository.CondominioRepository;
 import br.com.tekcondo.acesso.entity.Papel;
 import br.com.tekcondo.acesso.entity.Usuario;
 import br.com.tekcondo.acesso.entity.PapelUsuario;
@@ -33,14 +33,14 @@ public class TestData {
     private final UsuarioRepository usuarioRepository;
     private final PapelRepository papelRepository;
     private final PapelUsuarioRepository papelUsuarioRepository;
-    private final CondominiumRepository condominioRepository;
+    private final CondominioRepository condominioRepository;
     private final PasswordEncoder passwordEncoder;
     private final ObjectMapper objectMapper;
     private final MockMvc mvc;
 
     public TestData(AdministradoraRepository administradoraRepository, UsuarioRepository usuarioRepository,
                     PapelRepository papelRepository, PapelUsuarioRepository papelUsuarioRepository,
-                    CondominiumRepository condominioRepository, PasswordEncoder passwordEncoder,
+                    CondominioRepository condominioRepository, PasswordEncoder passwordEncoder,
                     ObjectMapper objectMapper, MockMvc mvc) {
         this.administradoraRepository = administradoraRepository;
         this.usuarioRepository = usuarioRepository;
@@ -77,9 +77,9 @@ public class TestData {
         return usuario;
     }
 
-    public Condominium condominium(Administradora org, String nome) {
-        Condominium c = new Condominium(org.getId(), null);
-        c.updateDetails(nome, null, null, CondominiumType.RESIDENTIAL, null, null, null, null);
+    public Condominio condominio(Administradora administradora, String nome) {
+        Condominio c = new Condominio(administradora.getId(), null);
+        c.atualizarDados(nome, null, null, TipoCondominio.RESIDENTIAL, null, null, null, null);
         return condominioRepository.save(c);
     }
 

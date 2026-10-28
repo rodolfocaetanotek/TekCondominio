@@ -32,7 +32,7 @@ export function openEntryForm(dialog: MatDialog, api: FinanceApi, structure: Str
           ? { key: 'supplierId', label: 'Fornecedor', type: 'select', value: existing?.supplierId ?? null, span: 6,
               options: [{ value: null, label: '—' }, ...suppliers.filter((x) => x.active).map((x) => ({ value: x.id, label: x.name }))] }
           : { key: 'unitId', label: 'Unidade', type: 'select', value: existing?.unitId ?? null, span: 6,
-              options: [{ value: null, label: '— (receita geral)' }, ...units.map((u) => ({ value: u.id, label: u.label }))] },
+              options: [{ value: null, label: '— (receita geral)' }, ...units.map((u) => ({ value: u.id, label: u.rotulo }))] },
         { key: 'documentNumber', label: kind === 'EXPENSE' ? 'Nº da nota/boleto' : 'Documento', value: s?.documentNumber, span: 6, maxLength: 40 },
         { key: 'costCenterId', label: 'Centro de custo', type: 'select', value: existing?.costCenterId ?? null, span: 6,
           options: [{ value: null, label: '—' }, ...centers.filter((x) => x.active).map((x) => ({ value: x.id, label: x.name }))] },

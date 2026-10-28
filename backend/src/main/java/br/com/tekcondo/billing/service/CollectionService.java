@@ -29,8 +29,8 @@ import br.com.tekcondo.billing.entity.Agreement;
 import br.com.tekcondo.billing.entity.CollectionNote;
 import br.com.tekcondo.billing.repository.AgreementRepository;
 import br.com.tekcondo.billing.repository.CollectionNoteRepository;
-import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.condominium.service.CondominiumAccess;
+import br.com.tekcondo.condominio.entity.Condominio;
+import br.com.tekcondo.condominio.service.AcessoCondominio;
 import br.com.tekcondo.finance.entity.ChartAccount;
 import br.com.tekcondo.finance.entity.FinancialEntry;
 import br.com.tekcondo.finance.repository.ChartAccountRepository;
@@ -39,12 +39,12 @@ import br.com.tekcondo.finance.service.EntryService;
 import br.com.tekcondo.finance.service.LateFeeCalculator;
 import br.com.tekcondo.finance.service.PeriodLock;
 import br.com.tekcondo.acesso.autorizacao.Permissao;
-import br.com.tekcondo.people.entity.Occupancy;
-import br.com.tekcondo.people.entity.Person;
-import br.com.tekcondo.people.repository.OccupancyRepository;
+import br.com.tekcondo.pessoa.entity.Vinculo;
+import br.com.tekcondo.pessoa.entity.Pessoa;
+import br.com.tekcondo.pessoa.repository.VinculoRepository;
 import br.com.tekcondo.comum.exception.ApiException;
-import br.com.tekcondo.structure.entity.Unit;
-import br.com.tekcondo.structure.repository.UnitRepository;
+import br.com.tekcondo.estrutura.entity.Unidade;
+import br.com.tekcondo.estrutura.repository.UnidadeRepository;
 import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -64,17 +64,17 @@ public class CollectionService {
     private final AgreementRepository agreements;
     private final CollectionNoteRepository notes;
     private final ChartAccountRepository chartAccounts;
-    private final UnitRepository units;
-    private final OccupancyRepository occupancies;
+    private final UnidadeRepository units;
+    private final VinculoRepository occupancies;
     private final EntryService entryService;
     private final PeriodLock periodLock;
-    private final CondominiumAccess access;
+    private final AcessoCondominio access;
     private final AuditoriaService auditService;
     private final Clock clock;
 
     public CollectionService(FinancialEntryRepository entries, AgreementRepository agreements, CollectionNoteRepository notes,
-                             ChartAccountRepository chartAccounts, UnitRepository units, OccupancyRepository occupancies,
-                             EntryService entryService, PeriodLock periodLock, CondominiumAccess access, AuditoriaService auditService,
+                             ChartAccountRepository chartAccounts, UnidadeRepository units, VinculoRepository occupancies,
+                             EntryService entryService, PeriodLock periodLock, AcessoCondominio access, AuditoriaService auditService,
                              Clock clock) {
         this.entries = entries;
         this.agreements = agreements;
@@ -93,12 +93,12 @@ public class CollectionService {
 
     @Transactional(readOnly = true)
     public DelinquencyReport delinquency(UUID condominiumId, LocalDate asOfParam) {
-        access.require(condominiumId, Permissao.BILLING_VIEW);
+        access.exigir(condominiumId, Permissao.BILLING_VIEW);
         LocalDate asOf = asOfParam == null ? LocalDate.now(clock) : asOfParam;
         List<FinancialEntry> overdue = entries.findAll(overdueReceivables(condominiumId, asOf));
         Map<UUID, List<FinancialEntry>> byUnit = overdue.stream().collect(Collectors.groupingBy(e -> e.getUnit().getId(),
                 LinkedHashMap::new, Collectors.toList()));
-        Map<UUID, Person> responsible = responsibles(byUnit.keySet());
+        Map<UUID, Pessoa> responsible = responsibles(byUnit.keySet());
         List<DelinquencyRow> rows = new ArrayList<>();
         BigDecimal totalPrincipal = BigDecimal.ZERO;
         BigDecimal totalCharges = BigDecimal.ZERO;
@@ -112,12 +112,12 @@ public class CollectionService {
                 charges = charges.add(q.fine()).add(q.interest());
                 oldest = oldest == null || entry.getDueDate().isBefore(oldest) ? entry.getDueDate() : oldest;
             }
-            Unit unit = e.getValue().getFirst().getUnit();
-            Person p = responsible.get(e.getKey());
+            Unidade unit = e.getValue().getFirst().getUnit();
+            Pessoa p = responsible.get(e.getKey());
             LocalDate lastContact = notes.findByCondominiumIdAndUnitIdOrderByContactDateDescCreatedAtDesc(condominiumId, e.getKey())
                     .stream().findFirst().map(CollectionNote::getContactDate).orElse(null);
-            rows.add(new DelinquencyRow(e.getKey(), unit.label(), p == null ? null : p.getName(), p == null ? null : p.getEmail(),
-                    p == null ? null : p.getPhone(), e.getValue().size(), principal, charges, principal.add(charges), oldest,
+            rows.add(new DelinquencyRow(e.getKey(), unit.rotulo(), p == null ? null : p.getNome(), p == null ? null : p.getEmail(),
+                    p == null ? null : p.getTelefone(), e.getValue().size(), principal, charges, principal.add(charges), oldest,
                     java.time.temporal.ChronoUnit.DAYS.between(oldest, asOf), lastContact));
             totalPrincipal = totalPrincipal.add(principal);
             totalCharges = totalCharges.add(charges);
@@ -128,18 +128,18 @@ public class CollectionService {
         BigDecimal rate = issued.signum() == 0 ? BigDecimal.ZERO
                 : totalPrincipal.multiply(HUNDRED).divide(issued, 2, RoundingMode.HALF_UP);
         return new DelinquencyReport(asOf, totalPrincipal, totalCharges, totalPrincipal.add(totalCharges), issued, rate,
-                rows.size(), units.countByCondominiumIdAndActiveTrue(condominiumId), rows);
+                rows.size(), units.countByIdCondominioAndAtivoTrue(condominiumId), rows);
     }
 
     /** Demonstrativo de débitos da unidade, com valores atualizados (multa e juros) até a data. */
     @Transactional(readOnly = true)
     public UnitDebt unitDebt(UUID condominiumId, UUID unitId, LocalDate asOfParam) {
-        access.require(condominiumId, Permissao.BILLING_VIEW);
-        Unit unit = units.findByIdAndCondominiumId(unitId, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
+        access.exigir(condominiumId, Permissao.BILLING_VIEW);
+        Unidade unit = units.findByIdAndIdCondominio(unitId, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
         return buildUnitDebt(condominiumId, unit, asOfParam == null ? LocalDate.now(clock) : asOfParam);
     }
 
-    public UnitDebt buildUnitDebt(UUID condominiumId, Unit unit, LocalDate asOf) {
+    public UnitDebt buildUnitDebt(UUID condominiumId, Unidade unit, LocalDate asOf) {
         List<DebtLine> lines = new ArrayList<>();
         BigDecimal principal = BigDecimal.ZERO;
         BigDecimal charges = BigDecimal.ZERO;
@@ -158,27 +158,27 @@ public class CollectionService {
                 charges = charges.add(q.fine()).add(q.interest());
             }
         }
-        Person p = responsibles(Set.of(unit.getId())).get(unit.getId());
+        Pessoa p = responsibles(Set.of(unit.getId())).get(unit.getId());
         List<NoteResponse> history = notes.findByCondominiumIdAndUnitIdOrderByContactDateDescCreatedAtDesc(condominiumId, unit.getId())
                 .stream().map(NoteResponse::from).toList();
         List<AgreementResponse> unitAgreements = agreements.findByCondominiumIdOrderByCreatedAtDesc(condominiumId).stream()
                 .filter(a -> a.getUnitId().equals(unit.getId())).map(a -> toResponse(a, unit)).toList();
-        return new UnitDebt(unit.getId(), unit.label(), p == null ? null : p.getName(), asOf, principal, charges,
+        return new UnitDebt(unit.getId(), unit.rotulo(), p == null ? null : p.getNome(), asOf, principal, charges,
                 principal.add(charges), lines, history, unitAgreements);
     }
 
     @Transactional
     public NoteResponse addNote(UUID condominiumId, UUID unitId, NoteRequest request) {
-        Condominium condominium = access.require(condominiumId, Permissao.BILLING_EDIT);
-        units.findByIdAndCondominiumId(unitId, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
+        Condominio condominium = access.exigir(condominiumId, Permissao.BILLING_EDIT);
+        units.findByIdAndIdCondominio(unitId, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
         if (request.entryId() != null) {
             FinancialEntry e = entryService.load(condominiumId, request.entryId());
             if (e.getUnit() == null || !e.getUnit().getId().equals(unitId)) {
                 throw ApiException.regraNegocio("ENTRY_NOT_OF_UNIT", "A cobrança informada não pertence a esta unidade.");
             }
         }
-        var user = access.user();
-        CollectionNote note = notes.save(new CollectionNote(condominium.getOrganizationId(), condominiumId, unitId,
+        var user = access.usuario();
+        CollectionNote note = notes.save(new CollectionNote(condominium.getIdAdministradora(), condominiumId, unitId,
                 request.entryId(), request.contactType(), request.contactDate(), request.note().trim(), user.idUsuario(), user.nome()));
         auditService.registrar(AcaoAuditoria.COLLECTION_NOTE_ADDED, "Unit", unitId, Map.of("type", request.contactType().name()));
         return NoteResponse.from(note);
@@ -188,15 +188,15 @@ public class CollectionService {
 
     @Transactional(readOnly = true)
     public List<AgreementResponse> agreements(UUID condominiumId) {
-        access.require(condominiumId, Permissao.BILLING_VIEW);
+        access.exigir(condominiumId, Permissao.BILLING_VIEW);
         return agreements.findByCondominiumIdOrderByCreatedAtDesc(condominiumId).stream()
                 .map(a -> toResponse(a, units.findById(a.getUnitId()).orElse(null))).toList();
     }
 
     @Transactional
     public AgreementResponse createAgreement(UUID condominiumId, AgreementRequest request) {
-        Condominium condominium = access.requireActive(condominiumId, Permissao.BILLING_EDIT);
-        Unit unit = units.findByIdAndCondominiumId(request.unitId(), condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
+        Condominio condominium = access.exigirAtivo(condominiumId, Permissao.BILLING_EDIT);
+        Unidade unit = units.findByIdAndIdCondominio(request.unitId(), condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
         LocalDate today = LocalDate.now(clock);
         if (request.firstDueDate().isBefore(today)) {
             throw ApiException.regraNegocio("FIRST_DUE_IN_PAST", "O vencimento da 1ª parcela não pode estar no passado.");
@@ -222,9 +222,9 @@ public class CollectionService {
             }
         }
         BigDecimal discount = request.discount() == null ? BigDecimal.ZERO : request.discount();
-        Person responsible = responsibles(Set.of(unit.getId())).get(unit.getId());
-        UUID by = access.user().idUsuario();
-        Agreement agreement = agreements.save(new Agreement(condominium.getOrganizationId(), condominiumId, unit.getId(),
+        Pessoa responsible = responsibles(Set.of(unit.getId())).get(unit.getId());
+        UUID by = access.usuario().idUsuario();
+        Agreement agreement = agreements.save(new Agreement(condominium.getIdAdministradora(), condominiumId, unit.getId(),
                 responsible == null ? null : responsible.getId(), principal, charges, discount, request.installments(),
                 request.firstDueDate(), blank(request.notes()), by));
         originals.forEach(e -> {
@@ -237,18 +237,18 @@ public class CollectionService {
         BigDecimal last = agreement.getTotalAmount().subtract(installment.multiply(BigDecimal.valueOf(request.installments() - 1L)));
         String ref = agreement.getId().toString().substring(0, 8).toUpperCase();
         for (int i = 0; i < request.installments(); i++) {
-            FinancialEntry e = new FinancialEntry(condominium.getOrganizationId(), condominiumId, FinancialEntry.Kind.INCOME,
+            FinancialEntry e = new FinancialEntry(condominium.getIdAdministradora(), condominiumId, FinancialEntry.Kind.INCOME,
                     FinancialEntry.Origin.AGREEMENT, by);
             LocalDate due = request.firstDueDate().plusMonths(i);
             e.details("Acordo " + ref + " — parcela " + (i + 1) + "/" + request.installments(), account, null, null, unit,
                     responsible, i == request.installments() - 1 ? last : installment, due, due, null, null, by);
-            e.lateFees(condominium.getFinePercent(), condominium.getInterestMonthlyPercent());
+            e.lateFees(condominium.getPercentualMulta(), condominium.getPercentualJurosMensal());
             e.linkAgreement(agreement.getId());
             e.recurrence(agreement.getId(), i + 1, request.installments());
             entries.save(e);
         }
         entries.flush();
-        auditService.registrar(AcaoAuditoria.AGREEMENT_CREATED, "Agreement", agreement.getId(), Map.of("unit", unit.label(),
+        auditService.registrar(AcaoAuditoria.AGREEMENT_CREATED, "Agreement", agreement.getId(), Map.of("unit", unit.rotulo(),
                 "original", principal.toPlainString(), "charges", charges.toPlainString(), "discount", discount.toPlainString(),
                 "total", agreement.getTotalAmount().toPlainString(), "installments", request.installments()));
         return toResponse(agreement, unit);
@@ -257,7 +257,7 @@ public class CollectionService {
     /** Cancela acordo sem parcelas pagas: as parcelas são canceladas e os débitos originais voltam a ficar em aberto. */
     @Transactional
     public AgreementResponse cancelAgreement(UUID condominiumId, UUID id, String reason) {
-        access.require(condominiumId, Permissao.BILLING_EDIT);
+        access.exigir(condominiumId, Permissao.BILLING_EDIT);
         Agreement agreement = agreements.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Acordo"));
         List<FinancialEntry> parcels = entries.findByAgreementId(id);
         if (parcels.stream().anyMatch(e -> e.getPaidAmount().signum() > 0)) {
@@ -265,7 +265,7 @@ public class CollectionService {
                     "O acordo possui parcelas pagas e não pode ser cancelado. Registre o descumprimento no histórico de cobrança.");
         }
         periodLock.ensureOpen(condominiumId, parcels.stream().map(FinancialEntry::getCompetence).toArray(LocalDate[]::new));
-        UUID by = access.user().idUsuario();
+        UUID by = access.usuario().idUsuario();
         Instant now = Instant.now(clock);
         agreement.cancel(reason.trim(), by, now);
         parcels.forEach(e -> e.cancel("Acordo cancelado: " + reason.trim(), by, now));
@@ -284,7 +284,7 @@ public class CollectionService {
     private static Specification<FinancialEntry> overdueReceivables(UUID condominiumId, LocalDate asOf) {
         return (root, query, cb) -> {
             if (query != null && query.getResultType() != Long.class) {
-                root.fetch("unit").fetch("building", JoinType.LEFT);
+                root.fetch("unit").fetch("bloco", JoinType.LEFT);
             }
             return cb.and(cb.equal(root.get("condominiumId"), condominiumId),
                     cb.equal(root.get("kind"), FinancialEntry.Kind.INCOME),
@@ -303,26 +303,26 @@ public class CollectionService {
                 cb.between(root.get("dueDate"), from, to));
     }
 
-    private Map<UUID, Person> responsibles(Set<UUID> unitIds) {
+    private Map<UUID, Pessoa> responsibles(Set<UUID> unitIds) {
         if (unitIds.isEmpty()) {
             return Map.of();
         }
-        Map<UUID, Person> result = new java.util.HashMap<>();
-        occupancies.findCurrentByUnits(unitIds).stream()
-                .collect(Collectors.groupingBy(o -> o.getUnit().getId()))
-                .forEach((unitId, occ) -> occ.stream().filter(Occupancy::isFinancialResponsible).findFirst()
-                        .or(() -> occ.stream().filter(o -> o.getRole() == Occupancy.Role.OWNER).findFirst())
-                        .ifPresent(o -> result.put(unitId, o.getPerson())));
+        Map<UUID, Pessoa> result = new java.util.HashMap<>();
+        occupancies.buscarVigentesPorUnidades(unitIds).stream()
+                .collect(Collectors.groupingBy(o -> o.getUnidade().getId()))
+                .forEach((unitId, occ) -> occ.stream().filter(Vinculo::isResponsavelFinanceiro).findFirst()
+                        .or(() -> occ.stream().filter(o -> o.getTipo() == Vinculo.Tipo.OWNER).findFirst())
+                        .ifPresent(o -> result.put(unitId, o.getPessoa())));
         return result;
     }
 
-    private AgreementResponse toResponse(Agreement a, Unit unit) {
+    private AgreementResponse toResponse(Agreement a, Unidade unit) {
         LocalDate today = LocalDate.now(clock);
         List<FinancialEntry> parcels = entries.findByAgreementId(a.getId());
         long paid = parcels.stream().filter(e -> e.getStatus() == FinancialEntry.Status.PAID).count();
         Agreement.Status status = a.getStatus() == Agreement.Status.ACTIVE && !parcels.isEmpty() && paid == parcels.size()
                 ? Agreement.Status.COMPLETED : a.getStatus();
-        return new AgreementResponse(a.getId(), a.getUnitId(), unit == null ? null : unit.label(), a.getOriginalAmount(),
+        return new AgreementResponse(a.getId(), a.getUnitId(), unit == null ? null : unit.rotulo(), a.getOriginalAmount(),
                 a.getChargesAmount(), a.getDiscount(), a.getTotalAmount(), a.getInstallments(), a.getFirstDueDate(), status,
                 paid, a.getNotes(), a.getCancelReason(), a.getCreatedAt(),
                 parcels.stream().sorted(Comparator.comparing(FinancialEntry::getDueDate))

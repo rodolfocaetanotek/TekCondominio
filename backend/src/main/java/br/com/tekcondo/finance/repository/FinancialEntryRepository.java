@@ -25,7 +25,7 @@ public interface FinancialEntryRepository extends JpaRepository<FinancialEntry, 
     List<FinancialEntry> findByAgreementId(UUID agreementId);
 
     @Query("""
-            select e from FinancialEntry e left join fetch e.unit u left join fetch u.building
+            select e from FinancialEntry e left join fetch e.unit u left join fetch u.bloco
             where e.condominiumId = :condominiumId and e.kind = br.com.tekcondo.finance.entity.FinancialEntry.Kind.INCOME
               and e.unit.id = :unitId order by e.dueDate
             """)

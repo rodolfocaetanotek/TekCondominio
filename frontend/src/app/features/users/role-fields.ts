@@ -43,7 +43,7 @@ import { UserService } from './user.service';
           <mat-label>Condomínio</mat-label>
           <mat-select [formControl]="condominiumId()" required>
             @for (c of condominiums(); track c.id) {
-              <mat-option [value]="c.id">{{ c.name }}</mat-option>
+              <mat-option [value]="c.id">{{ c.nome }}</mat-option>
             } @empty {
               <mat-option disabled>Nenhum condomínio ativo</mat-option>
             }
@@ -63,7 +63,7 @@ export class RoleFields {
   });
   protected readonly condominiums = toSignal(
     inject(CondominiumService)
-      .list({ page: 0, size: 100, status: 'ACTIVE', sort: 'name,asc' })
+      .list({ page: 0, size: 100, status: 'ACTIVE', sort: 'nome,asc' })
       .pipe(
         map((p) => p.conteudo),
         catchError(() => of([])),

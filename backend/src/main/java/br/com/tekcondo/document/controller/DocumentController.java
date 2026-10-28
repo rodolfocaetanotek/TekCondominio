@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/api/v1/condominiums/{c}/documents")
+@RequestMapping("/api/v1/condominios/{c}/documents")
 @Tag(name = "Documentos e anexos")
 public class DocumentController {
 

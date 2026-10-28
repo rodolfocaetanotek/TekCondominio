@@ -66,7 +66,7 @@ export class BudgetTab {
   private readonly notify = inject(NotificationService);
   protected readonly year = signal(new Date().getFullYear());
   private readonly tick = signal(0);
-  protected readonly canEdit = computed(() => this.context.can('FINANCE_EDIT') && this.context.selected()?.status === 'ACTIVE');
+  protected readonly canEdit = computed(() => this.context.can('FINANCE_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   private readonly data = toSignal(
     combineLatest([toObservable(this.context.id), toObservable(this.year), toObservable(this.tick)]).pipe(
       filter(([c]) => !!c),

@@ -111,7 +111,7 @@ export class OccurrenceDetailPage {
   protected readonly error = signal<string | null>(null);
   protected readonly message = new FormControl('', { nonNullable: true, validators: [Validators.required] });
   protected readonly internal = new FormControl(false, { nonNullable: true });
-  protected readonly canEdit = computed(() => this.context.can('OCCURRENCE_EDIT') && this.context.selected()?.status === 'ACTIVE');
+  protected readonly canEdit = computed(() => this.context.can('OCCURRENCE_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   protected readonly o = toSignal(combineLatest([toObservable(this.context.id), toObservable(this.id), toObservable(this.tick)]).pipe(
     filter(([c]) => !!c),
     switchMap(([c, id]) => this.api.occurrence(c!, id).pipe(catchError((err: unknown) => { this.error.set(toProblem(err).detail); return of(null); })))));

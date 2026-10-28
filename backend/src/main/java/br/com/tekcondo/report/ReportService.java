@@ -16,8 +16,8 @@ import br.com.tekcondo.auditoria.service.AcaoAuditoria;
 import br.com.tekcondo.auditoria.service.AuditoriaService;
 import br.com.tekcondo.billing.dto.BillingDtos;
 import br.com.tekcondo.billing.service.CollectionService;
-import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.condominium.service.CondominiumAccess;
+import br.com.tekcondo.condominio.entity.Condominio;
+import br.com.tekcondo.condominio.service.AcessoCondominio;
 import br.com.tekcondo.finance.dto.FinanceDtos;
 import br.com.tekcondo.finance.entity.BankAccount;
 import br.com.tekcondo.finance.repository.BankAccountRepository;
@@ -54,7 +54,7 @@ public class ReportService {
             "CANCELLED", "Cancelado", "RENEGOTIATED", "Renegociado", "GENERATED", "Gerado");
 
     private final NamedParameterJdbcTemplate jdbc;
-    private final CondominiumAccess access;
+    private final AcessoCondominio access;
     private final CollectionService collection;
     private final BudgetService budget;
     private final TreasuryService treasury;
@@ -66,7 +66,7 @@ public class ReportService {
     private final AuditoriaService auditService;
     private final Clock clock;
 
-    public ReportService(NamedParameterJdbcTemplate jdbc, CondominiumAccess access, CollectionService collection,
+    public ReportService(NamedParameterJdbcTemplate jdbc, AcessoCondominio access, CollectionService collection,
                          BudgetService budget, TreasuryService treasury, ContractService contracts, FinanceQueries queries,
                          BankAccountRepository bankAccounts, AdministradoraRepository organizations, ReportExporter exporter,
                          AuditoriaService auditService, Clock clock) {
@@ -86,36 +86,36 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public ReportTable build(UUID condominiumId, Kind kind, Params p) {
-        Condominium c = access.require(condominiumId, Permissao.REPORT_VIEW);
+        Condominio c = access.exigir(condominiumId, Permissao.REPORT_VIEW);
         LocalDate to = p.to() == null ? LocalDate.now(clock) : p.to();
         LocalDate from = p.from() == null ? to.withDayOfMonth(1) : p.from();
         if (from.isAfter(to)) {
             throw ApiException.requisicaoInvalida("INVALID_PERIOD", "A data inicial deve ser anterior à final.");
         }
-        String period = c.getName() + " · " + BR.format(from) + " a " + BR.format(to);
+        String period = c.getNome() + " · " + BR.format(from) + " a " + BR.format(to);
         var params = new MapSqlParameterSource("c", condominiumId).addValue("from", Date.valueOf(from)).addValue("to", Date.valueOf(to));
         return switch (kind) {
             case INCOME_EXPENSE -> incomeExpense(period, params);
             case BALANCE_SHEET -> balanceSheet(condominiumId, period, from, to);
             case CASH_FLOW -> cashFlow(condominiumId, period, from, to, params);
-            case DELINQUENCY -> delinquency(condominiumId, c.getName(), to);
+            case DELINQUENCY -> delinquency(condominiumId, c.getNome(), to);
             case PAYABLES -> entries(period, params, "EXPENSE");
             case RECEIVABLES -> entries(period, params, "INCOME");
             case PAYMENTS -> payments(period, params);
             case ALLOCATIONS -> allocations(period, params);
-            case BUDGET -> budget(condominiumId, c.getName(), p.year() == null ? to.getYear() : p.year());
+            case BUDGET -> budget(condominiumId, c.getNome(), p.year() == null ? to.getYear() : p.year());
             case BANK_MOVEMENT -> bankMovement(condominiumId, period, p.bankAccountId(), from, to);
             case EXPENSES_BY_SUPPLIER -> bySupplier(period, params);
             case OCCURRENCES -> occurrences(period, params);
-            case CONTRACTS -> contracts(condominiumId, c.getName());
+            case CONTRACTS -> contracts(condominiumId, c.getNome());
         };
     }
 
     @Transactional
     public Exported export(UUID condominiumId, Kind kind, Params p, ReportExporter.Format format) {
-        Condominium c = access.require(condominiumId, Permissao.REPORT_EXPORT);
+        Condominio c = access.exigir(condominiumId, Permissao.REPORT_EXPORT);
         ReportTable table = build(condominiumId, kind, p);
-        String orgName = organizations.findById(c.getOrganizationId()).map(o -> o.getNome()).orElse(null);
+        String orgName = organizations.findById(c.getIdAdministradora()).map(o -> o.getNome()).orElse(null);
         auditService.registrar(AcaoAuditoria.REPORT_EXPORTED, "Report", condominiumId, Map.of("report", kind.name(),
                 "format", format.name(), "rows", table.rows().size()));
         String file = kind.name().toLowerCase().replace('_', '-') + "-" + LocalDate.now(clock) + "." + format.extension;

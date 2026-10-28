@@ -17,7 +17,7 @@ import { TransferTab } from './transfer-tab';
   imports: [MatTabsModule, PageHeader, CondominiumRequired, EntryList, BankTab, ReconciliationTab, TransferTab, BudgetTab, ClosingTab, InsightsTab, SettingsTab],
   template: `
     <div class="tc-page">
-      <tc-page-header eyebrow="Financeiro" title="Gestão financeira" [subtitle]="context.selected()?.name" />
+      <tc-page-header eyebrow="Financeiro" title="Gestão financeira" [subtitle]="context.selected()?.nome" />
       @if (!context.id()) {
         <tc-condominium-required />
       } @else {

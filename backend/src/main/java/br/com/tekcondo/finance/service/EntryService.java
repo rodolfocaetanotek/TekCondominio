@@ -13,8 +13,8 @@ import java.util.UUID;
 
 import br.com.tekcondo.auditoria.service.AcaoAuditoria;
 import br.com.tekcondo.auditoria.service.AuditoriaService;
-import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.condominium.service.CondominiumAccess;
+import br.com.tekcondo.condominio.entity.Condominio;
+import br.com.tekcondo.condominio.service.AcessoCondominio;
 import br.com.tekcondo.finance.dto.FinanceDtos.EntryDetail;
 import br.com.tekcondo.finance.dto.FinanceDtos.EntryRequest;
 import br.com.tekcondo.finance.dto.FinanceDtos.EntrySummary;
@@ -29,12 +29,12 @@ import br.com.tekcondo.finance.entity.FinancialEntry;
 import br.com.tekcondo.finance.repository.EntryPaymentRepository;
 import br.com.tekcondo.finance.repository.FinancialEntryRepository;
 import br.com.tekcondo.acesso.autorizacao.Permissao;
-import br.com.tekcondo.people.entity.Person;
-import br.com.tekcondo.people.repository.PersonRepository;
+import br.com.tekcondo.pessoa.entity.Pessoa;
+import br.com.tekcondo.pessoa.repository.PessoaRepository;
 import br.com.tekcondo.comum.exception.ApiException;
 import br.com.tekcondo.comum.web.PaginaResponse;
-import br.com.tekcondo.structure.entity.Unit;
-import br.com.tekcondo.structure.repository.UnitRepository;
+import br.com.tekcondo.estrutura.entity.Unidade;
+import br.com.tekcondo.estrutura.repository.UnidadeRepository;
 import br.com.tekcondo.supplier.entity.Supplier;
 import br.com.tekcondo.supplier.repository.SupplierRepository;
 import jakarta.persistence.criteria.JoinType;
@@ -53,17 +53,17 @@ public class EntryService {
     private final FinancialEntryRepository entries;
     private final EntryPaymentRepository payments;
     private final SupplierRepository suppliers;
-    private final UnitRepository units;
-    private final PersonRepository people;
+    private final UnidadeRepository units;
+    private final PessoaRepository people;
     private final FinanceSetupService setup;
     private final PeriodLock periodLock;
-    private final CondominiumAccess access;
+    private final AcessoCondominio access;
     private final AuditoriaService auditService;
     private final Clock clock;
 
     public EntryService(FinancialEntryRepository entries, EntryPaymentRepository payments, SupplierRepository suppliers,
-                        UnitRepository units, PersonRepository people, FinanceSetupService setup,
-                        PeriodLock periodLock, CondominiumAccess access, AuditoriaService auditService, Clock clock) {
+                        UnidadeRepository units, PessoaRepository people, FinanceSetupService setup,
+                        PeriodLock periodLock, AcessoCondominio access, AuditoriaService auditService, Clock clock) {
         this.entries = entries;
         this.payments = payments;
         this.suppliers = suppliers;
@@ -83,7 +83,7 @@ public class EntryService {
 
     @Transactional(readOnly = true)
     public PaginaResponse<EntrySummary> list(UUID condominiumId, Filter f, Pageable pageable) {
-        access.require(condominiumId, Permissao.FINANCE_VIEW);
+        access.exigir(condominiumId, Permissao.FINANCE_VIEW);
         LocalDate today = LocalDate.now(clock);
         Specification<FinancialEntry> spec = (root, query, cb) -> {
             List<Predicate> p = new ArrayList<>();
@@ -108,7 +108,7 @@ public class EntryService {
             if (query != null && query.getResultType() != Long.class) {
                 root.fetch("chartAccount");
                 root.fetch("supplier", JoinType.LEFT);
-                root.fetch("unit", JoinType.LEFT).fetch("building", JoinType.LEFT);
+                root.fetch("unit", JoinType.LEFT).fetch("bloco", JoinType.LEFT);
                 root.fetch("person", JoinType.LEFT);
             }
             return cb.and(p.toArray(Predicate[]::new));
@@ -118,21 +118,21 @@ public class EntryService {
 
     @Transactional(readOnly = true)
     public EntryDetail get(UUID condominiumId, UUID id) {
-        access.require(condominiumId, Permissao.FINANCE_VIEW);
+        access.exigir(condominiumId, Permissao.FINANCE_VIEW);
         return detail(load(condominiumId, id));
     }
 
     /** Cria o lançamento (ou a série, quando {@code repeat} > 1: parcelas mensais da mesma despesa/receita). */
     @Transactional
     public List<EntryDetail> create(UUID condominiumId, EntryRequest request) {
-        Condominium condominium = access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
-        UUID userId = access.user().idUsuario();
+        Condominio condominium = access.exigirAtivo(condominiumId, Permissao.FINANCE_EDIT);
+        UUID userId = access.usuario().idUsuario();
         int repeat = request.repeat() == null ? 1 : request.repeat();
         UUID group = repeat > 1 ? UUID.randomUUID() : null;
         Refs refs = resolve(condominiumId, request);
         List<FinancialEntry> created = new ArrayList<>();
         for (int i = 0; i < repeat; i++) {
-            FinancialEntry entry = new FinancialEntry(condominium.getOrganizationId(), condominiumId, request.kind(),
+            FinancialEntry entry = new FinancialEntry(condominium.getIdAdministradora(), condominiumId, request.kind(),
                     repeat > 1 ? FinancialEntry.Origin.RECURRENCE : FinancialEntry.Origin.MANUAL, userId);
             LocalDate due = request.dueDate().plusMonths(i);
             LocalDate competence = (request.competence() == null ? request.dueDate() : request.competence()).plusMonths(i);
@@ -144,9 +144,9 @@ public class EntryService {
             if (group != null) {
                 entry.recurrence(group, i + 1, repeat);
             }
-            entry.requireApproval(request.kind() == FinancialEntry.Kind.EXPENSE && condominium.isRequirePayableApproval());
+            entry.requireApproval(request.kind() == FinancialEntry.Kind.EXPENSE && condominium.isExigeAprovacaoContasPagar());
             if (request.kind() == FinancialEntry.Kind.INCOME && refs.unit != null) {
-                entry.lateFees(condominium.getFinePercent(), condominium.getInterestMonthlyPercent());
+                entry.lateFees(condominium.getPercentualMulta(), condominium.getPercentualJurosMensal());
             }
             ensureNoDuplicateDocument(condominiumId, entry);
             periodLock.ensureOpen(condominiumId, entry.getCompetence());
@@ -160,7 +160,7 @@ public class EntryService {
 
     @Transactional
     public EntryDetail update(UUID condominiumId, UUID id, EntryRequest request) {
-        Condominium condominium = access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
+        Condominio condominium = access.exigirAtivo(condominiumId, Permissao.FINANCE_EDIT);
         FinancialEntry entry = load(condominiumId, id);
         if (request.version() == null || !request.version().equals(entry.getVersion())) {
             throw ApiException.versaoObsoleta();
@@ -174,9 +174,9 @@ public class EntryService {
         Refs refs = resolve(condominiumId, request);
         entry.details(request.description(), refs.account, refs.costCenter, refs.supplier, refs.unit, refs.person,
                 request.amount(), request.dueDate(), request.competence() == null ? request.dueDate() : request.competence(),
-                blank(request.documentNumber()), blank(request.notes()), access.user().idUsuario());
+                blank(request.documentNumber()), blank(request.notes()), access.usuario().idUsuario());
         // Despesa já aprovada cujo valor mudou volta para aprovação.
-        if (entry.getKind() == FinancialEntry.Kind.EXPENSE && condominium.isRequirePayableApproval()
+        if (entry.getKind() == FinancialEntry.Kind.EXPENSE && condominium.isExigeAprovacaoContasPagar()
                 && entry.getApproval() == FinancialEntry.Approval.APPROVED && previousAmount.compareTo(request.amount()) != 0) {
             entry.requireApproval(true);
         }
@@ -188,15 +188,15 @@ public class EntryService {
 
     @Transactional
     public EntryDetail approve(UUID condominiumId, UUID id, boolean approved, String note) {
-        access.requireActive(condominiumId, Permissao.FINANCE_APPROVE);
+        access.exigirAtivo(condominiumId, Permissao.FINANCE_APPROVE);
         FinancialEntry entry = load(condominiumId, id);
         if (approved) {
-            entry.approve(access.user().idUsuario(), Instant.now(clock), blank(note));
+            entry.approve(access.usuario().idUsuario(), Instant.now(clock), blank(note));
         } else {
             if (note == null || note.isBlank()) {
                 throw ApiException.requisicaoInvalida("REASON_REQUIRED", "Informe o motivo da reprovação.");
             }
-            entry.reject(access.user().idUsuario(), Instant.now(clock), note.trim());
+            entry.reject(access.usuario().idUsuario(), Instant.now(clock), note.trim());
         }
         entries.flush();
         auditService.registrar(approved ? AcaoAuditoria.ENTRY_APPROVED : AcaoAuditoria.ENTRY_REJECTED, ENTITY, id,
@@ -206,10 +206,10 @@ public class EntryService {
 
     @Transactional
     public EntryDetail cancel(UUID condominiumId, UUID id, String reason) {
-        access.require(condominiumId, Permissao.FINANCE_CANCEL);
+        access.exigir(condominiumId, Permissao.FINANCE_CANCEL);
         FinancialEntry entry = load(condominiumId, id);
         periodLock.ensureOpen(condominiumId, entry.getCompetence());
-        entry.cancel(reason.trim(), access.user().idUsuario(), Instant.now(clock));
+        entry.cancel(reason.trim(), access.usuario().idUsuario(), Instant.now(clock));
         entries.flush();
         auditService.registrar(AcaoAuditoria.ENTRY_CANCELLED, ENTITY, id, Map.of("reason", reason.trim(),
                 "amount", entry.getAmount().toPlainString()));
@@ -218,7 +218,7 @@ public class EntryService {
 
     @Transactional(readOnly = true)
     public PaymentQuote quote(UUID condominiumId, UUID id, LocalDate date) {
-        access.require(condominiumId, Permissao.FINANCE_VIEW);
+        access.exigir(condominiumId, Permissao.FINANCE_VIEW);
         FinancialEntry entry = load(condominiumId, id);
         LateFeeCalculator.Quote q = LateFeeCalculator.quote(entry.remaining(), entry.getDueDate(),
                 date == null ? LocalDate.now(clock) : date, entry.getFinePercent(), entry.getInterestMonthlyPercent());
@@ -228,7 +228,7 @@ public class EntryService {
     /** Baixa total ou parcial. Concorrência protegida pela versão do título (duas baixas simultâneas → 409). */
     @Transactional
     public EntryDetail pay(UUID condominiumId, UUID id, PaymentRequest request) {
-        access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
+        access.exigirAtivo(condominiumId, Permissao.FINANCE_EDIT);
         FinancialEntry entry = load(condominiumId, id);
         if (request.paidOn().isAfter(LocalDate.now(clock))) {
             throw ApiException.regraNegocio("FUTURE_PAYMENT", "A data do pagamento não pode ser futura.");
@@ -241,10 +241,10 @@ public class EntryService {
         if (request.paidOn().isBefore(bankAccount.getOpeningDate())) {
             throw ApiException.regraNegocio("PAYMENT_BEFORE_OPENING", "A data é anterior à abertura da conta bancária.");
         }
-        entry.registerPayment(request.principal(), access.user().idUsuario());
+        entry.registerPayment(request.principal(), access.usuario().idUsuario());
         EntryPayment payment = payments.save(new EntryPayment(entry, bankAccount, request.paidOn(), request.principal(),
                 zero(request.fine()), zero(request.interest()), zero(request.discount()), request.method(),
-                blank(request.notes()), access.user().idUsuario()));
+                blank(request.notes()), access.usuario().idUsuario()));
         entries.flush();
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("paymentId", payment.getId().toString());
@@ -258,13 +258,13 @@ public class EntryService {
 
     @Transactional
     public EntryDetail reversePayment(UUID condominiumId, UUID paymentId, String reason) {
-        access.require(condominiumId, Permissao.FINANCE_CANCEL);
+        access.exigir(condominiumId, Permissao.FINANCE_CANCEL);
         EntryPayment payment = payments.findInCondominium(paymentId, condominiumId)
                 .orElseThrow(() -> ApiException.naoEncontrado("Baixa"));
         periodLock.ensureOpen(condominiumId, payment.getPaidOn());
-        payment.reverse(reason.trim(), access.user().idUsuario(), Instant.now(clock));
+        payment.reverse(reason.trim(), access.usuario().idUsuario(), Instant.now(clock));
         FinancialEntry entry = payment.getEntry();
-        entry.reversePayment(payment.getPrincipal(), access.user().idUsuario());
+        entry.reversePayment(payment.getPrincipal(), access.usuario().idUsuario());
         entries.flush();
         auditService.registrar(AcaoAuditoria.PAYMENT_REVERSED, ENTITY, entry.getId(), Map.of("paymentId", paymentId.toString(),
                 "total", payment.getTotal().toPlainString(), "reason", reason.trim()));
@@ -277,18 +277,18 @@ public class EntryService {
         return entries.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Lançamento"));
     }
 
-    private record Refs(ChartAccount account, CostCenter costCenter, Supplier supplier, Unit unit, Person person) {
+    private record Refs(ChartAccount account, CostCenter costCenter, Supplier supplier, Unidade unit, Pessoa person) {
     }
 
     private Refs resolve(UUID condominiumId, EntryRequest r) {
         ChartAccount account = setup.analyticAccount(r.chartAccountId(), r.kind() == FinancialEntry.Kind.INCOME
                 ? ChartAccount.Nature.INCOME : ChartAccount.Nature.EXPENSE);
         CostCenter costCenter = r.costCenterId() == null ? null : setup.loadCostCenter(condominiumId, r.costCenterId());
-        Supplier supplier = r.supplierId() == null ? null : suppliers.findByIdAndOrganizationId(r.supplierId(), access.organizationId())
+        Supplier supplier = r.supplierId() == null ? null : suppliers.findByIdAndOrganizationId(r.supplierId(), access.idAdministradora())
                 .orElseThrow(() -> ApiException.naoEncontrado("Fornecedor"));
-        Unit unit = r.unitId() == null ? null : units.findByIdAndCondominiumId(r.unitId(), condominiumId)
+        Unidade unit = r.unitId() == null ? null : units.findByIdAndIdCondominio(r.unitId(), condominiumId)
                 .orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
-        Person person = r.personId() == null ? null : people.findByIdAndOrganizationId(r.personId(), access.organizationId())
+        Pessoa person = r.personId() == null ? null : people.findByIdAndIdAdministradora(r.personId(), access.idAdministradora())
                 .orElseThrow(() -> ApiException.naoEncontrado("Pessoa"));
         if (r.kind() == FinancialEntry.Kind.INCOME && supplier != null) {
             throw ApiException.regraNegocio("SUPPLIER_ON_INCOME", "Receitas não são vinculadas a fornecedor.");
@@ -308,7 +308,7 @@ public class EntryService {
         String installment = e.getInstallment() == null ? null : e.getInstallment() + "/" + e.getInstallments();
         return new EntrySummary(e.getId(), e.getKind(), e.getDescription(), e.getChartAccount().getCode(),
                 e.getChartAccount().getName(), e.getSupplier() == null ? null : e.getSupplier().getName(),
-                e.getUnit() == null ? null : e.getUnit().label(), e.getPerson() == null ? null : e.getPerson().getName(),
+                e.getUnit() == null ? null : e.getUnit().rotulo(), e.getPerson() == null ? null : e.getPerson().getNome(),
                 e.getAmount(), e.getPaidAmount(), e.remaining(), e.getDueDate(), e.getCompetence(), e.getStatus(),
                 e.getApproval(), e.isOverdue(today), installment, e.getDocumentNumber(), e.getCollectionNumber());
     }

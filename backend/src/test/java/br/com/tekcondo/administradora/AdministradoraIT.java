@@ -45,8 +45,8 @@ class AdministradoraIT extends IntegrationTest {
         mvc.perform(get("/api/v1/auth/perfil").header("Authorization", token))
                 .andExpect(jsonPath("$.nomeAdministradora").value("Administradora Horizonte"))
                 .andExpect(jsonPath("$.permissoesAdministradora", hasItem("CONDOMINIUM_CREATE")));
-        mvc.perform(post("/api/v1/condominiums").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
-                        .content(data.json(Map.of("name", "Primeiro Condomínio", "type", "COMMERCIAL"))))
+        mvc.perform(post("/api/v1/condominios").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                        .content(data.json(Map.of("nome", "Primeiro Condomínio", "tipo", "COMMERCIAL"))))
                 .andExpect(status().isCreated());
     }
 

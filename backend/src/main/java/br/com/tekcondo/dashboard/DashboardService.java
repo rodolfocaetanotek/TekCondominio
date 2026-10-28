@@ -14,9 +14,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import br.com.tekcondo.condominium.dto.CondominiumOption;
-import br.com.tekcondo.condominium.entity.CondominiumStatus;
-import br.com.tekcondo.condominium.service.CondominiumService;
+import br.com.tekcondo.condominio.dto.OpcaoCondominio;
+import br.com.tekcondo.condominio.entity.SituacaoCondominio;
+import br.com.tekcondo.condominio.service.CondominioService;
 import br.com.tekcondo.finance.service.FinanceQueries;
 import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.comum.exception.ApiException;
@@ -50,11 +50,11 @@ public class DashboardService {
     }
 
     private final NamedParameterJdbcTemplate jdbc;
-    private final CondominiumService condominiums;
+    private final CondominioService condominiums;
     private final FinanceQueries queries;
     private final Clock clock;
 
-    public DashboardService(NamedParameterJdbcTemplate jdbc, CondominiumService condominiums, FinanceQueries queries, Clock clock) {
+    public DashboardService(NamedParameterJdbcTemplate jdbc, CondominioService condominiums, FinanceQueries queries, Clock clock) {
         this.jdbc = jdbc;
         this.condominiums = condominiums;
         this.queries = queries;
@@ -66,20 +66,20 @@ public class DashboardService {
         LocalDate today = LocalDate.now(clock);
         LocalDate to = toParam == null ? today : toParam;
         LocalDate from = fromParam == null ? to.withDayOfMonth(1) : fromParam;
-        List<CondominiumOption> options = condominiums.accessible();
+        List<OpcaoCondominio> options = condominiums.acessiveis();
         if (condominiumId != null) {
             options = options.stream().filter(o -> o.id().equals(condominiumId)).toList();
             if (options.isEmpty()) {
                 throw ApiException.naoEncontrado("Condomínio");
             }
         }
-        Map<UUID, String> names = options.stream().collect(Collectors.toMap(CondominiumOption::id, CondominiumOption::name));
+        Map<UUID, String> names = options.stream().collect(Collectors.toMap(OpcaoCondominio::id, OpcaoCondominio::nome));
         Set<UUID> all = names.keySet();
         Set<UUID> fin = ids(options, Permissao.FINANCE_VIEW);
         Set<UUID> occ = ids(options, Permissao.OCCURRENCE_VIEW);
         Set<UUID> ann = ids(options, Permissao.ANNOUNCEMENT_VIEW);
 
-        long condoCount = options.stream().filter(o -> o.status() == CondominiumStatus.ACTIVE).count();
+        long condoCount = options.stream().filter(o -> o.situacao() == SituacaoCondominio.ACTIVE).count();
         long units = count("select count(*) from unit where active and condominium_id in (:ids)", all);
         long residents = count("""
                 select count(distinct o.person_id) from unit_occupancy o join unit u on u.id = o.unit_id
@@ -172,8 +172,8 @@ public class DashboardService {
                 overdue, overdueCount, issued, rate, series, dueSoon, occurrences, announcements);
     }
 
-    private static Set<UUID> ids(List<CondominiumOption> options, Permissao permission) {
-        return options.stream().filter(o -> o.permissions().contains(permission)).map(CondominiumOption::id).collect(Collectors.toSet());
+    private static Set<UUID> ids(List<OpcaoCondominio> options, Permissao permission) {
+        return options.stream().filter(o -> o.permissoes().contains(permission)).map(OpcaoCondominio::id).collect(Collectors.toSet());
     }
 
     private long count(String sql, Set<UUID> ids) {

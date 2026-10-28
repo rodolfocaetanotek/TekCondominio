@@ -82,7 +82,7 @@ export class InsightsTab {
   private readonly http = inject(HttpClient);
   private readonly condo = toObservable(this.context.id).pipe(filter((c) => !!c));
   protected readonly projection = toSignal(this.condo.pipe(switchMap((c) =>
-    this.http.get<CashProjection>(`/api/v1/condominiums/${c}/insights/cash-projection`).pipe(catchError(() => of(null))))));
+    this.http.get<CashProjection>(`/api/v1/condominios/${c}/insights/cash-projection`).pipe(catchError(() => of(null))))));
   protected readonly anomalies = toSignal(this.condo.pipe(switchMap((c) =>
-    this.http.get<Anomaly[]>(`/api/v1/condominiums/${c}/insights/expense-anomalies`).pipe(catchError(() => of([] as Anomaly[]))))));
+    this.http.get<Anomaly[]>(`/api/v1/condominios/${c}/insights/expense-anomalies`).pipe(catchError(() => of([] as Anomaly[]))))));
 }

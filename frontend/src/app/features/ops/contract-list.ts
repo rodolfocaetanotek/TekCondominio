@@ -26,7 +26,7 @@ import { Contract, OpsApi } from './ops-api';
     IsoDatePipe, LabelPipe, Attachments],
   template: `
     <div class="tc-page narrow">
-      <tc-page-header eyebrow="Fornecedores" title="Contratos" [subtitle]="context.selected()?.name">
+      <tc-page-header eyebrow="Fornecedores" title="Contratos" [subtitle]="context.selected()?.nome">
         @if (canEdit()) { <button mat-flat-button (click)="edit()"><mat-icon>contract</mat-icon> Novo contrato</button> }
       </tc-page-header>
       @if (!context.id()) {
@@ -87,7 +87,7 @@ export class ContractList {
   private readonly notify = inject(NotificationService);
   private readonly tick = signal(0);
   protected readonly history = signal<Record<string, Contract['history']>>({});
-  protected readonly canEdit = computed(() => this.context.can('SUPPLIER_EDIT') && this.context.selected()?.status === 'ACTIVE');
+  protected readonly canEdit = computed(() => this.context.can('SUPPLIER_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   protected readonly list = toSignal(combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(
     filter(([c]) => !!c), switchMap(([c]) => this.api.contracts(c!).pipe(catchError(() => of([] as Contract[]))))));
 

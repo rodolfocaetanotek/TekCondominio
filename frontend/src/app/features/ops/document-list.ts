@@ -26,7 +26,7 @@ import { Doc, OpsApi } from './ops-api';
     EmptyState, CondominiumRequired, LabelPipe],
   template: `
     <div class="tc-page">
-      <tc-page-header eyebrow="Arquivo" title="Documentos" [subtitle]="context.selected()?.name" />
+      <tc-page-header eyebrow="Arquivo" title="Documentos" [subtitle]="context.selected()?.nome" />
       @if (!context.id()) {
         <tc-condominium-required />
       } @else {

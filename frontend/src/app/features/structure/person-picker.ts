@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { catchError, debounceTime, distinctUntilChanged, map, of, startWith, switchMap } from 'rxjs';
 import { DocPipe } from '../../shared/format/doc.pipe';
-import { PersonSummary } from './structure.models';
+import { PessoaResumo } from './structure.models';
 import { StructureService } from './structure.service';
 
 /** Busca de pessoa por nome, e-mail ou CPF/CNPJ (autocomplete no servidor). */
@@ -22,8 +22,8 @@ import { StructureService } from './structure.service';
       <mat-autocomplete #auto="matAutocomplete" [displayWith]="display" (optionSelected)="picked.emit($event.option.value)">
         @for (p of results(); track p.id) {
           <mat-option [value]="p">
-            <span>{{ p.name }}</span>
-            <small class="tc-muted"> · {{ p.document ? (p.document | doc: (p.document.length === 14 ? 'cnpj' : 'cpf')) : (p.email ?? 'sem documento') }}</small>
+            <span>{{ p.nome }}</span>
+            <small class="tc-muted"> · {{ p.documento ? (p.documento | doc: (p.documento.length === 14 ? 'cnpj' : 'cpf')) : (p.email ?? 'sem documento') }}</small>
           </mat-option>
         }
       </mat-autocomplete>
@@ -34,8 +34,8 @@ import { StructureService } from './structure.service';
 export class PersonPicker {
   private readonly service = inject(StructureService);
   readonly label = input('Pessoa');
-  readonly picked = output<PersonSummary>();
-  protected readonly term = new FormControl<string | PersonSummary>('', { nonNullable: true });
+  readonly picked = output<PessoaResumo>();
+  protected readonly term = new FormControl<string | PessoaResumo>('', { nonNullable: true });
 
   protected readonly results = toSignal(
     this.term.valueChanges.pipe(
@@ -52,8 +52,8 @@ export class PersonPicker {
             ),
       ),
     ),
-    { initialValue: [] as PersonSummary[] },
+    { initialValue: [] as PessoaResumo[] },
   );
 
-  display = (p: PersonSummary | string | null): string => (p && typeof p === 'object' ? p.name : (p ?? ''));
+  display = (p: PessoaResumo | string | null): string => (p && typeof p === 'object' ? p.nome : (p ?? ''));
 }

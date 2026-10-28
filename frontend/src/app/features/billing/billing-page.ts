@@ -26,7 +26,7 @@ import { BankReturnTab } from './bank-return-tab';
     EmptyState, IsoDatePipe, LabelPipe, BankReturnTab],
   template: `
     <div class="tc-page">
-      <tc-page-header eyebrow="Cobrança" title="Cobrança condominial" [subtitle]="context.selected()?.name">
+      <tc-page-header eyebrow="Cobrança" title="Cobrança condominial" [subtitle]="context.selected()?.nome">
         @if (canEdit()) {
           <button mat-flat-button (click)="generate()"><mat-icon>request_quote</mat-icon> Gerar cobranças</button>
         }
@@ -150,7 +150,7 @@ export class BillingPage {
   private readonly dialog = inject(MatDialog);
   private readonly notify = inject(NotificationService);
   private readonly tick = signal(0);
-  protected readonly canEdit = computed(() => this.context.can('BILLING_EDIT') && this.context.selected()?.status === 'ACTIVE');
+  protected readonly canEdit = computed(() => this.context.can('BILLING_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   private readonly source = combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(filter(([c]) => !!c));
 
   protected readonly allocations = toSignal(this.source.pipe(switchMap(([c]) => this.api.allocations(c!).pipe(catchError(() => of([] as Allocation[]))))));

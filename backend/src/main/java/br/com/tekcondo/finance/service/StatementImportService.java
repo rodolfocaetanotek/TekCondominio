@@ -14,8 +14,8 @@ import java.util.UUID;
 
 import br.com.tekcondo.auditoria.service.AcaoAuditoria;
 import br.com.tekcondo.auditoria.service.AuditoriaService;
-import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.condominium.service.CondominiumAccess;
+import br.com.tekcondo.condominio.entity.Condominio;
+import br.com.tekcondo.condominio.service.AcessoCondominio;
 import br.com.tekcondo.finance.dto.FinanceDtos.EntryDetail;
 import br.com.tekcondo.finance.dto.FinanceDtos.EntryRequest;
 import br.com.tekcondo.finance.dto.FinanceDtos.PaymentRequest;
@@ -84,13 +84,13 @@ public class StatementImportService {
     private final FinanceQueries queries;
     private final EntryService entryService;
     private final PeriodLock periodLock;
-    private final CondominiumAccess access;
+    private final AcessoCondominio access;
     private final AuditoriaService auditService;
     private final Clock clock;
 
     public StatementImportService(StatementImportRepository imports, StatementLineRepository lines, EntryPaymentRepository payments,
                                   BankTransferRepository transfers, FinanceSetupService setup, FinanceQueries queries,
-                                  EntryService entryService, PeriodLock periodLock, CondominiumAccess access,
+                                  EntryService entryService, PeriodLock periodLock, AcessoCondominio access,
                                   AuditoriaService auditService, Clock clock) {
         this.imports = imports;
         this.lines = lines;
@@ -107,7 +107,7 @@ public class StatementImportService {
 
     @Transactional
     public ImportResult importOfx(UUID condominiumId, UUID accountId, String fileName, byte[] content, boolean ignoreAccountCheck) {
-        Condominium condominium = access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
+        Condominio condominium = access.exigirAtivo(condominiumId, Permissao.FINANCE_EDIT);
         BankAccount account = setup.loadBankAccount(condominiumId, accountId);
         if (!account.isActive()) {
             throw ApiException.regraNegocio("BANK_ACCOUNT_INACTIVE", "A conta bancária está inativa.");
@@ -124,8 +124,8 @@ public class StatementImportService {
             throw ApiException.regraNegocio("STATEMENT_ACCOUNT_MISMATCH", "O extrato é da conta " + statement.idConta()
                     + ", diferente da conta cadastrada (" + account.getAccountNumber() + "). Confira o arquivo.");
         }
-        var user = access.user();
-        StatementImport imp = imports.save(new StatementImport(condominium.getOrganizationId(), condominiumId, accountId,
+        var user = access.usuario();
+        StatementImport imp = imports.save(new StatementImport(condominium.getIdAdministradora(), condominiumId, accountId,
                 safeName(fileName), hash, statement.inicio(), statement.fim(), statement.transacoes().size(), user.idUsuario(), user.nome()));
         Set<String> existing = lines.existingFitIds(accountId, statement.transacoes().stream().map(OfxParser.Transacao::fitId).toList());
         int created = 0;
@@ -133,7 +133,7 @@ public class StatementImportService {
             if (existing.contains(t.fitId())) {
                 continue;
             }
-            lines.save(new StatementLine(condominium.getOrganizationId(), condominiumId, accountId, imp.getId(), t.fitId(),
+            lines.save(new StatementLine(condominium.getIdAdministradora(), condominiumId, accountId, imp.getId(), t.fitId(),
                     t.dataLancamento(), t.valor(), t.tipo(), t.historico()));
             created++;
         }
@@ -153,7 +153,7 @@ public class StatementImportService {
 
     @Transactional(readOnly = true)
     public List<ImportSummary> imports(UUID condominiumId, UUID accountId) {
-        access.require(condominiumId, Permissao.FINANCE_VIEW);
+        access.exigir(condominiumId, Permissao.FINANCE_VIEW);
         setup.loadBankAccount(condominiumId, accountId);
         return imports.findTop20ByBankAccountIdOrderByCreatedAtDesc(accountId).stream()
                 .map(i -> new ImportSummary(i.getId(), i.getFileName(), i.getPeriodStart(), i.getPeriodEnd(), i.getLinesTotal(),
@@ -162,7 +162,7 @@ public class StatementImportService {
 
     @Transactional(readOnly = true)
     public List<LineView> lines(UUID condominiumId, UUID accountId, StatementLine.Status status) {
-        access.require(condominiumId, Permissao.FINANCE_VIEW);
+        access.exigir(condominiumId, Permissao.FINANCE_VIEW);
         setup.loadBankAccount(condominiumId, accountId);
         List<StatementLine> list = lines.findByAccount(accountId, status);
         List<Candidate> candidates = list.stream().anyMatch(l -> l.getStatus() == StatementLine.Status.UNMATCHED)
@@ -177,7 +177,7 @@ public class StatementImportService {
 
     @Transactional
     public LineView match(UUID condominiumId, UUID lineId, MatchRequest request) {
-        access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
+        access.exigirAtivo(condominiumId, Permissao.FINANCE_EDIT);
         StatementLine line = load(condominiumId, lineId);
         Candidate candidate = openCandidates(line.getBankAccountId(), line.getPostedOn(), line.getPostedOn(), MANUAL_TOLERANCE_DAYS)
                 .stream().filter(c -> c.type().equals(request.type()) && c.id().equals(request.movementId())).findFirst()
@@ -193,10 +193,10 @@ public class StatementImportService {
 
     @Transactional
     public LineView unmatch(UUID condominiumId, UUID lineId) {
-        access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
+        access.exigirAtivo(condominiumId, Permissao.FINANCE_EDIT);
         StatementLine line = load(condominiumId, lineId);
         periodLock.ensureOpen(condominiumId, line.getPostedOn());
-        UUID by = access.user().idUsuario();
+        UUID by = access.usuario().idUsuario();
         Instant now = Instant.now(clock);
         if (line.getPaymentId() != null) {
             payments.findAllInCondominium(List.of(line.getPaymentId()), condominiumId).forEach(p -> {
@@ -217,10 +217,10 @@ public class StatementImportService {
 
     @Transactional
     public LineView ignore(UUID condominiumId, UUID lineId, IgnoreRequest request) {
-        access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
+        access.exigirAtivo(condominiumId, Permissao.FINANCE_EDIT);
         StatementLine line = load(condominiumId, lineId);
         periodLock.ensureOpen(condominiumId, line.getPostedOn());
-        line.ignore(request.note().trim(), access.user().idUsuario(), Instant.now(clock));
+        line.ignore(request.note().trim(), access.usuario().idUsuario(), Instant.now(clock));
         auditService.registrar(AcaoAuditoria.RECONCILIATION_CHANGED, "StatementLine", lineId, Map.of("ignored", request.note().trim()));
         return toView(line, List.of());
     }
@@ -272,7 +272,7 @@ public class StatementImportService {
 
     private void apply(UUID condominiumId, StatementLine line, Candidate c) {
         periodLock.ensureOpen(condominiumId, line.getPostedOn(), c.date());
-        UUID by = access.user().idUsuario();
+        UUID by = access.usuario().idUsuario();
         Instant now = Instant.now(clock);
         if ("PAYMENT".equals(c.type())) {
             payments.findAllInCondominium(List.of(c.id()), condominiumId).forEach(p -> p.reconcile(true, by, now));

@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/condominiums/{c}/visitors")
+@RequestMapping("/api/v1/condominios/{c}/visitors")
 @Tag(name = "Portaria — visitantes, prestadores e entregas")
 public class VisitorController {
 

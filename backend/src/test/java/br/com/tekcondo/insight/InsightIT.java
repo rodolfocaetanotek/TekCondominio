@@ -5,7 +5,7 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
 
-import br.com.tekcondo.condominium.entity.Condominium;
+import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.support.IntegrationTest;
 import br.com.tekcondo.support.TestData;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,7 +28,7 @@ class InsightIT extends IntegrationTest {
     @Autowired
     ObjectMapper objectMapper;
 
-    Condominium condo;
+    Condominio condo;
     String token;
     String base;
     String bank;
@@ -37,9 +37,9 @@ class InsightIT extends IntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         var org = data.administradora();
-        condo = data.condominium(org, "Condomínio Indicadores");
+        condo = data.condominio(org, "Condomínio Indicadores");
         token = TestData.bearer(data.login(data.adminAdministradora(org)));
-        base = "/api/v1/condominiums/" + condo.getId();
+        base = "/api/v1/condominios/" + condo.getId();
         bank = call("POST", base + "/finance/bank-accounts", Map.of("name", "Conta", "kind", "CHECKING", "openingBalance", "1000.00",
                 "openingDate", today.minusYears(1).toString()), 201).get("id").asText();
     }

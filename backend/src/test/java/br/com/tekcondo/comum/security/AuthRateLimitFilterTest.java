@@ -53,7 +53,7 @@ class AuthRateLimitFilterTest {
         assertThat(post("/api/v1/auth/login", "10.0.0.1")).isEqualTo(429);
         assertThat(post("/api/v1/auth/senha/esqueci", "10.0.0.1")).isEqualTo(429); // mesma janela para os endpoints de autenticação
         assertThat(post("/api/v1/auth/login", "10.0.0.2")).isEqualTo(200);           // outro IP não é afetado
-        assertThat(post("/api/v1/condominiums", "10.0.0.1")).isEqualTo(200);         // demais rotas não são limitadas aqui
+        assertThat(post("/api/v1/condominios", "10.0.0.1")).isEqualTo(200);         // demais rotas não são limitadas aqui
 
         clock.agora = clock.agora.plus(Duration.ofMinutes(5));
         assertThat(post("/api/v1/auth/login", "10.0.0.1")).isEqualTo(200);

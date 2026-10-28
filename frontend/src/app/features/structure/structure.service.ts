@@ -3,108 +3,112 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { PaginaResponse } from '../../core/api/api.models';
 import {
-  Building,
-  FractionSummary,
-  ImportResult,
-  Occupancy,
-  OccupancyRole,
-  PersonDetail,
-  PersonRequest,
-  PersonSummary,
-  Unit,
-  UnitRequest,
+  Bloco,
+  PessoaDetalhe,
+  PessoaRequest,
+  PessoaResumo,
+  ResultadoImportacao,
+  ResumoFracoes,
+  TipoVinculo,
+  Unidade,
+  UnidadeRequest,
+  Vinculo,
 } from './structure.models';
 
 @Injectable({ providedIn: 'root' })
 export class StructureService {
   private readonly http = inject(HttpClient);
 
-  private base(condominiumId: string): string {
-    return `/api/v1/condominiums/${condominiumId}`;
+  private base(idCondominio: string): string {
+    return `/api/v1/condominios/${idCondominio}`;
   }
 
-  buildings(c: string): Observable<Building[]> {
-    return this.http.get<Building[]>(`${this.base(c)}/buildings`);
+  buildings(c: string): Observable<Bloco[]> {
+    return this.http.get<Bloco[]>(`${this.base(c)}/blocos`);
   }
 
-  saveBuilding(c: string, body: { name: string; description: string | null }, id?: string): Observable<Building> {
+  saveBuilding(c: string, body: { nome: string; descricao: string | null }, id?: string): Observable<Bloco> {
     return id
-      ? this.http.put<Building>(`${this.base(c)}/buildings/${id}`, body)
-      : this.http.post<Building>(`${this.base(c)}/buildings`, body);
+      ? this.http.put<Bloco>(`${this.base(c)}/blocos/${id}`, body)
+      : this.http.post<Bloco>(`${this.base(c)}/blocos`, body);
   }
 
-  setBuildingActive(c: string, id: string, active: boolean): Observable<Building> {
-    return this.http.post<Building>(`${this.base(c)}/buildings/${id}/${active ? 'activate' : 'deactivate'}`, null);
+  setBuildingActive(c: string, id: string, active: boolean): Observable<Bloco> {
+    return this.http.post<Bloco>(`${this.base(c)}/blocos/${id}/${active ? 'ativar' : 'desativar'}`, null);
   }
 
-  units(c: string, q: { search?: string; buildingId?: string; active?: string; page: number; size: number }): Observable<PaginaResponse<Unit>> {
+  units(c: string, q: { search?: string; buildingId?: string; active?: string; page: number; size: number }): Observable<PaginaResponse<Unidade>> {
     let params = new HttpParams().set('pagina', q.page).set('tamanho', q.size);
-    if (q.search) params = params.set('search', q.search);
-    if (q.buildingId) params = params.set('buildingId', q.buildingId);
-    if (q.active) params = params.set('active', q.active);
-    return this.http.get<PaginaResponse<Unit>>(`${this.base(c)}/units`, { params });
+    if (q.search) params = params.set('busca', q.search);
+    if (q.buildingId) params = params.set('idBloco', q.buildingId);
+    if (q.active) params = params.set('ativo', q.active);
+    return this.http.get<PaginaResponse<Unidade>>(`${this.base(c)}/unidades`, { params });
   }
 
-  unit(c: string, id: string): Observable<Unit> {
-    return this.http.get<Unit>(`${this.base(c)}/units/${id}`);
+  unit(c: string, id: string): Observable<Unidade> {
+    return this.http.get<Unidade>(`${this.base(c)}/unidades/${id}`);
   }
 
-  saveUnit(c: string, body: UnitRequest, id?: string): Observable<Unit> {
-    return id ? this.http.put<Unit>(`${this.base(c)}/units/${id}`, body) : this.http.post<Unit>(`${this.base(c)}/units`, body);
+  saveUnit(c: string, body: UnidadeRequest, id?: string): Observable<Unidade> {
+    return id
+      ? this.http.put<Unidade>(`${this.base(c)}/unidades/${id}`, body)
+      : this.http.post<Unidade>(`${this.base(c)}/unidades`, body);
   }
 
-  setUnitActive(c: string, id: string, active: boolean): Observable<Unit> {
-    return this.http.post<Unit>(`${this.base(c)}/units/${id}/${active ? 'activate' : 'deactivate'}`, null);
+  setUnitActive(c: string, id: string, active: boolean): Observable<Unidade> {
+    return this.http.post<Unidade>(`${this.base(c)}/unidades/${id}/${active ? 'ativar' : 'desativar'}`, null);
   }
 
-  fractionSummary(c: string): Observable<FractionSummary> {
-    return this.http.get<FractionSummary>(`${this.base(c)}/units/fraction-summary`);
+  fractionSummary(c: string): Observable<ResumoFracoes> {
+    return this.http.get<ResumoFracoes>(`${this.base(c)}/unidades/resumo-fracoes`);
   }
 
-  importUnits(c: string, file: File, dryRun: boolean): Observable<ImportResult> {
+  importUnits(c: string, file: File, simulacao: boolean): Observable<ResultadoImportacao> {
     const form = new FormData();
-    form.append('file', file);
-    return this.http.post<ImportResult>(`${this.base(c)}/units/import`, form, { params: { dryRun } });
+    form.append('arquivo', file);
+    return this.http.post<ResultadoImportacao>(`${this.base(c)}/unidades/importar`, form, { params: { simulacao } });
   }
 
-  occupancies(c: string, unitId: string): Observable<Occupancy[]> {
-    return this.http.get<Occupancy[]>(`${this.base(c)}/units/${unitId}/occupancies`);
+  occupancies(c: string, idUnidade: string): Observable<Vinculo[]> {
+    return this.http.get<Vinculo[]>(`${this.base(c)}/unidades/${idUnidade}/vinculos`);
   }
 
-  addOccupancy(c: string, body: { unitId: string; personId: string; role: OccupancyRole; financialResponsible: boolean; startDate: string }): Observable<Occupancy> {
-    return this.http.post<Occupancy>(`${this.base(c)}/occupancies`, body);
+  addOccupancy(c: string, body: { idUnidade: string; idPessoa: string; tipo: TipoVinculo; responsavelFinanceiro: boolean; dataInicio: string }): Observable<Vinculo> {
+    return this.http.post<Vinculo>(`${this.base(c)}/vinculos`, body);
   }
 
-  endOccupancy(c: string, id: string, endDate: string, reason: string | null): Observable<Occupancy> {
-    return this.http.post<Occupancy>(`${this.base(c)}/occupancies/${id}/end`, { endDate, reason });
+  endOccupancy(c: string, id: string, dataFim: string, motivo: string | null): Observable<Vinculo> {
+    return this.http.post<Vinculo>(`${this.base(c)}/vinculos/${id}/encerrar`, { dataFim, motivo });
   }
 
-  makeFinancialResponsible(c: string, id: string): Observable<Occupancy> {
-    return this.http.post<Occupancy>(`${this.base(c)}/occupancies/${id}/financial-responsible`, null);
+  makeFinancialResponsible(c: string, id: string): Observable<Vinculo> {
+    return this.http.post<Vinculo>(`${this.base(c)}/vinculos/${id}/responsavel-financeiro`, null);
   }
 
   // ---------- pessoas
-  people(q: { search?: string; active?: string; condominiumId?: string; page: number; size: number }): Observable<PaginaResponse<PersonSummary>> {
+  people(q: { search?: string; active?: string; condominiumId?: string; page: number; size: number }): Observable<PaginaResponse<PessoaResumo>> {
     let params = new HttpParams().set('pagina', q.page).set('tamanho', q.size);
-    if (q.search) params = params.set('search', q.search);
-    if (q.active) params = params.set('active', q.active);
-    if (q.condominiumId) params = params.set('condominiumId', q.condominiumId);
-    return this.http.get<PaginaResponse<PersonSummary>>('/api/v1/people', { params });
+    if (q.search) params = params.set('busca', q.search);
+    if (q.active) params = params.set('ativo', q.active);
+    if (q.condominiumId) params = params.set('idCondominio', q.condominiumId);
+    return this.http.get<PaginaResponse<PessoaResumo>>('/api/v1/pessoas', { params });
   }
 
-  person(id: string): Observable<PersonDetail> {
-    return this.http.get<PersonDetail>(`/api/v1/people/${id}`);
+  person(id: string): Observable<PessoaDetalhe> {
+    return this.http.get<PessoaDetalhe>(`/api/v1/pessoas/${id}`);
   }
 
-  savePerson(body: PersonRequest, id?: string): Observable<PersonDetail> {
-    return id ? this.http.put<PersonDetail>(`/api/v1/people/${id}`, body) : this.http.post<PersonDetail>('/api/v1/people', body);
+  savePerson(body: PessoaRequest, id?: string): Observable<PessoaDetalhe> {
+    return id
+      ? this.http.put<PessoaDetalhe>(`/api/v1/pessoas/${id}`, body)
+      : this.http.post<PessoaDetalhe>('/api/v1/pessoas', body);
   }
 
-  setPersonActive(id: string, active: boolean): Observable<PersonDetail> {
-    return this.http.post<PersonDetail>(`/api/v1/people/${id}/${active ? 'activate' : 'deactivate'}`, null);
+  setPersonActive(id: string, active: boolean): Observable<PessoaDetalhe> {
+    return this.http.post<PessoaDetalhe>(`/api/v1/pessoas/${id}/${active ? 'ativar' : 'desativar'}`, null);
   }
 
-  grantPortalAccess(id: string): Observable<PersonDetail> {
-    return this.http.post<PersonDetail>(`/api/v1/people/${id}/portal-access`, null);
+  grantPortalAccess(id: string): Observable<PessoaDetalhe> {
+    return this.http.post<PessoaDetalhe>(`/api/v1/pessoas/${id}/acesso-portal`, null);
   }
 }

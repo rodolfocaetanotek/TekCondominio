@@ -134,7 +134,7 @@
               panelWidth="auto"
             >
               @for (o of context.options(); track o.id) {
-                <mat-option [value]="o.id">{{ o.name }}{{ o.status === 'INACTIVE' ? ' (inativo)' : '' }}</mat-option>
+                <mat-option [value]="o.id">{{ o.nome }}{{ o.situacao === 'INACTIVE' ? ' (inativo)' : '' }}</mat-option>
               }
             </mat-select>
           </mat-form-field>

@@ -21,7 +21,7 @@ import { Announcement, OpsApi } from './ops-api';
   imports: [DatePipe, MatButtonModule, MatIconModule, PageHeader, EmptyState, CondominiumRequired],
   template: `
     <div class="tc-page narrow">
-      <tc-page-header eyebrow="Comunicação" title="Comunicados" [subtitle]="context.selected()?.name">
+      <tc-page-header eyebrow="Comunicação" title="Comunicados" [subtitle]="context.selected()?.nome">
         @if (canEdit()) { <button mat-flat-button (click)="publish()"><mat-icon>campaign</mat-icon> Novo comunicado</button> }
       </tc-page-header>
       @if (!context.id()) {
@@ -69,7 +69,7 @@ export class AnnouncementList {
   private readonly dialog = inject(MatDialog);
   private readonly notify = inject(NotificationService);
   private readonly tick = signal(0);
-  protected readonly canEdit = computed(() => this.context.can('ANNOUNCEMENT_EDIT') && this.context.selected()?.status === 'ACTIVE');
+  protected readonly canEdit = computed(() => this.context.can('ANNOUNCEMENT_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   protected readonly list = toSignal(combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(
     filter(([c]) => !!c), switchMap(([c]) => this.api.announcements(c!).pipe(catchError(() => of([] as Announcement[]))))));
 
@@ -84,8 +84,8 @@ export class AnnouncementList {
           { key: 'body', label: 'Mensagem', type: 'textarea', required: true, maxLength: 8000 },
           { key: 'audience', label: 'Público', type: 'select', value: 'ALL', span: 4,
             options: [{ value: 'ALL', label: 'Todos' }, { value: 'BUILDING', label: 'Um bloco' }, { value: 'UNIT', label: 'Uma unidade' }] },
-          { key: 'buildingId', label: 'Bloco (se público = bloco)', type: 'select', value: null, span: 4, options: [{ value: null, label: '—' }, ...buildings.map((b) => ({ value: b.id, label: b.name }))] },
-          { key: 'unitId', label: 'Unidade (se público = unidade)', type: 'select', value: null, span: 4, options: [{ value: null, label: '—' }, ...units.map((u) => ({ value: u.id, label: u.label }))] },
+          { key: 'buildingId', label: 'Bloco (se público = bloco)', type: 'select', value: null, span: 4, options: [{ value: null, label: '—' }, ...buildings.map((b) => ({ value: b.id, label: b.nome }))] },
+          { key: 'unitId', label: 'Unidade (se público = unidade)', type: 'select', value: null, span: 4, options: [{ value: null, label: '—' }, ...units.map((u) => ({ value: u.id, label: u.rotulo }))] },
           { key: 'expiresOn', label: 'Exibir até', type: 'date', span: 6 },
           { key: 'pinned', label: 'Fixar no topo', type: 'checkbox' },
           { key: 'sendEmail', label: 'Enviar também por e-mail', type: 'checkbox' },

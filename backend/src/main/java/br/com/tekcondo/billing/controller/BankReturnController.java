@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/api/v1/condominiums/{c}/billing")
+@RequestMapping("/api/v1/condominios/{c}/billing")
 @Tag(name = "Cobrança — retorno bancário (CNAB 240)")
 public class BankReturnController {
 

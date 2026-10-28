@@ -10,8 +10,8 @@ import java.util.UUID;
 
 import br.com.tekcondo.auditoria.service.AcaoAuditoria;
 import br.com.tekcondo.auditoria.service.AuditoriaService;
-import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.condominium.service.CondominiumAccess;
+import br.com.tekcondo.condominio.entity.Condominio;
+import br.com.tekcondo.condominio.service.AcessoCondominio;
 import br.com.tekcondo.finance.dto.FinanceDtos.BankAccountRequest;
 import br.com.tekcondo.finance.dto.FinanceDtos.BankAccountResponse;
 import br.com.tekcondo.finance.dto.FinanceDtos.ChartAccountRequest;
@@ -33,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class FinanceSetupService {
 
-    private final CondominiumAccess access;
+    private final AcessoCondominio access;
     private final AcessoService accessService;
     private final ChartAccountRepository chartAccounts;
     private final CostCenterRepository costCenters;
@@ -42,7 +42,7 @@ public class FinanceSetupService {
     private final AuditoriaService auditService;
     private final Clock clock;
 
-    public FinanceSetupService(CondominiumAccess access, AcessoService accessService, ChartAccountRepository chartAccounts,
+    public FinanceSetupService(AcessoCondominio access, AcessoService accessService, ChartAccountRepository chartAccounts,
                                CostCenterRepository costCenters, BankAccountRepository bankAccounts,
                                FinanceQueries queries, AuditoriaService auditService, Clock clock) {
         this.access = access;
@@ -59,17 +59,17 @@ public class FinanceSetupService {
 
     @Transactional(readOnly = true)
     public Settings settings(UUID condominiumId) {
-        Condominium c = access.require(condominiumId, Permissao.FINANCE_VIEW);
-        return new Settings(c.getFinePercent(), c.getInterestMonthlyPercent(), c.getBillingDueDay(), c.isRequirePayableApproval());
+        Condominio c = access.exigir(condominiumId, Permissao.FINANCE_VIEW);
+        return new Settings(c.getPercentualMulta(), c.getPercentualJurosMensal(), c.getDiaVencimento(), c.isExigeAprovacaoContasPagar());
     }
 
     @Transactional
     public Settings updateSettings(UUID condominiumId, Settings request) {
-        Condominium c = access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
+        Condominio c = access.exigirAtivo(condominiumId, Permissao.FINANCE_EDIT);
         accessService.exigir(Permissao.CONDOMINIUM_EDIT, condominiumId);
-        Settings before = new Settings(c.getFinePercent(), c.getInterestMonthlyPercent(), c.getBillingDueDay(), c.isRequirePayableApproval());
-        c.updateFinancialSettings(request.finePercent(), request.interestMonthlyPercent(), request.billingDueDay(),
-                request.requirePayableApproval(), access.user().idUsuario());
+        Settings before = new Settings(c.getPercentualMulta(), c.getPercentualJurosMensal(), c.getDiaVencimento(), c.isExigeAprovacaoContasPagar());
+        c.atualizarParametrosFinanceiros(request.finePercent(), request.interestMonthlyPercent(), request.billingDueDay(),
+                request.requirePayableApproval(), access.usuario().idUsuario());
         auditService.registrar(AcaoAuditoria.FINANCE_SETTINGS_CHANGED, "Condominium", condominiumId,
                 Map.of("from", before.toString(), "to", request.toString()));
         return request;
@@ -80,13 +80,13 @@ public class FinanceSetupService {
     @Transactional(readOnly = true)
     public List<ChartAccountResponse> chartAccounts() {
         accessService.exigirEscopo(Permissao.FINANCE_VIEW);
-        return chartAccounts.findAvailable(access.organizationId()).stream().map(ChartAccountResponse::from).toList();
+        return chartAccounts.findAvailable(access.idAdministradora()).stream().map(ChartAccountResponse::from).toList();
     }
 
     @Transactional
     public ChartAccountResponse createChartAccount(ChartAccountRequest request) {
         accessService.exigirNaAdministradora(Permissao.FINANCE_EDIT);
-        UUID orgId = access.organizationId();
+        UUID orgId = access.idAdministradora();
         String code = request.code().trim();
         if (chartAccounts.existsCode(orgId, code)) {
             throw ApiException.conflito("CHART_ACCOUNT_CODE_TAKEN", "Já existe uma conta com este código.");
@@ -99,7 +99,7 @@ public class FinanceSetupService {
     @Transactional
     public ChartAccountResponse updateChartAccount(UUID id, String name, boolean active) {
         accessService.exigirNaAdministradora(Permissao.FINANCE_EDIT);
-        ChartAccount account = chartAccounts.findAvailable(id, access.organizationId())
+        ChartAccount account = chartAccounts.findAvailable(id, access.idAdministradora())
                 .orElseThrow(() -> ApiException.naoEncontrado("Conta"));
         if (account.isSystem()) {
             throw ApiException.regraNegocio("SYSTEM_ACCOUNT", "Contas do plano padrão não podem ser alteradas. Crie uma conta própria.");
@@ -111,7 +111,7 @@ public class FinanceSetupService {
     }
 
     public ChartAccount analyticAccount(UUID id, ChartAccount.Nature expected) {
-        ChartAccount account = chartAccounts.findAvailable(id, access.organizationId())
+        ChartAccount account = chartAccounts.findAvailable(id, access.idAdministradora())
                 .orElseThrow(() -> ApiException.naoEncontrado("Conta do plano de contas"));
         if (!account.isAnalytic() || !account.isActive()) {
             throw ApiException.regraNegocio("ACCOUNT_NOT_POSTABLE", "Escolha uma conta analítica ativa (não um grupo).");
@@ -127,18 +127,18 @@ public class FinanceSetupService {
 
     @Transactional(readOnly = true)
     public List<CostCenterResponse> costCenters(UUID condominiumId) {
-        access.require(condominiumId, Permissao.FINANCE_VIEW);
+        access.exigir(condominiumId, Permissao.FINANCE_VIEW);
         return costCenters.findByCondominiumIdOrderByNameAsc(condominiumId).stream()
                 .map(c -> new CostCenterResponse(c.getId(), c.getName(), c.isActive())).toList();
     }
 
     @Transactional
     public CostCenterResponse saveCostCenter(UUID condominiumId, UUID id, String name, Boolean active) {
-        Condominium condominium = access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
+        Condominio condominium = access.exigirAtivo(condominiumId, Permissao.FINANCE_EDIT);
         costCenters.findByName(condominiumId, name.trim()).filter(c -> !c.getId().equals(id)).ifPresent(c -> {
             throw ApiException.conflito("COST_CENTER_NAME_TAKEN", "Já existe um centro de custo com este nome.");
         });
-        CostCenter center = id == null ? new CostCenter(condominium.getOrganizationId(), condominiumId, name)
+        CostCenter center = id == null ? new CostCenter(condominium.getIdAdministradora(), condominiumId, name)
                 : costCenters.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Centro de custo"));
         center.rename(name);
         if (active != null) {
@@ -153,7 +153,7 @@ public class FinanceSetupService {
 
     @Transactional(readOnly = true)
     public List<BankAccountResponse> bankAccounts(UUID condominiumId) {
-        access.require(condominiumId, Permissao.FINANCE_VIEW);
+        access.exigir(condominiumId, Permissao.FINANCE_VIEW);
         Map<UUID, BigDecimal> balances = queries.balances(condominiumId, LocalDate.now(clock));
         return bankAccounts.findByCondominiumIdOrderByNameAsc(condominiumId).stream()
                 .map(b -> toResponse(b, balances.getOrDefault(b.getId(), b.getOpeningBalance()))).toList();
@@ -161,9 +161,9 @@ public class FinanceSetupService {
 
     @Transactional
     public BankAccountResponse createBankAccount(UUID condominiumId, BankAccountRequest request) {
-        Condominium condominium = access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
+        Condominio condominium = access.exigirAtivo(condominiumId, Permissao.FINANCE_EDIT);
         ensureBankNameFree(condominiumId, request.name(), null);
-        BankAccount account = new BankAccount(condominium.getOrganizationId(), condominiumId, request.kind(),
+        BankAccount account = new BankAccount(condominium.getIdAdministradora(), condominiumId, request.kind(),
                 request.openingBalance() == null ? BigDecimal.ZERO : request.openingBalance(),
                 request.openingDate() == null ? LocalDate.now(clock) : request.openingDate());
         account.update(request.name(), blank(request.bankCode()), blank(request.agency()), blank(request.accountNumber()));
@@ -175,7 +175,7 @@ public class FinanceSetupService {
 
     @Transactional
     public BankAccountResponse updateBankAccount(UUID condominiumId, UUID id, BankAccountRequest request, Boolean active) {
-        access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
+        access.exigirAtivo(condominiumId, Permissao.FINANCE_EDIT);
         BankAccount account = loadBankAccount(condominiumId, id);
         ensureBankNameFree(condominiumId, request.name(), id);
         account.update(request.name(), blank(request.bankCode()), blank(request.agency()), blank(request.accountNumber()));

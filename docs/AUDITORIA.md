@@ -33,7 +33,7 @@ desta etapa estão listadas no [RELATORIO-FINAL.md](RELATORIO-FINAL.md).
 | Módulo | Situação | Observação |
 |---|---|---|
 | Administradoras, usuários, papéis, convite e recuperação de senha | Completo | `AuthIT`, `PasswordIT`, `UserManagementIT`, `PermissionIT` |
-| Condomínios, blocos, unidades, fração ideal, importação CSV | Completo | `CondominiumIT`, `StructurePeopleIT` |
+| Condomínios, blocos, unidades, fração ideal, importação CSV | Completo | `CondominioIT`, `EstruturaPessoaIT` |
 | Pessoas e ocupações (proprietário, inquilino, morador, responsável financeiro) | Completo | histórico de vínculos |
 | Plano de contas, centros de custo, contas bancárias | Completo | `FinanceIT` |
 | Contas a pagar e a receber, aprovação, baixa parcial, estorno | Completo | `FinanceIT` |

@@ -30,7 +30,7 @@ export interface Dashboard {
 export class OpsApi {
   private readonly http = inject(HttpClient);
   private b(c: string): string {
-    return `/api/v1/condominiums/${c}`;
+    return `/api/v1/condominios/${c}`;
   }
 
   // documentos

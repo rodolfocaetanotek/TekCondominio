@@ -145,9 +145,9 @@ class AuthIT extends IntegrationTest {
 
     @Test
     void endpointsProtegidosExigemTokenValido() throws Exception {
-        mvc.perform(get("/api/v1/condominiums")).andExpect(status().isUnauthorized())
+        mvc.perform(get("/api/v1/condominios")).andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.codigo").value("UNAUTHENTICATED"));
-        mvc.perform(get("/api/v1/condominiums").header("Authorization", "Bearer token.invalido.aqui"))
+        mvc.perform(get("/api/v1/condominios").header("Authorization", "Bearer token.invalido.aqui"))
                 .andExpect(status().isUnauthorized());
     }
 

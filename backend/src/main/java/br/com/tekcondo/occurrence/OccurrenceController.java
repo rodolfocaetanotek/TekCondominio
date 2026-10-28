@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/condominiums/{c}/occurrences")
+@RequestMapping("/api/v1/condominios/{c}/occurrences")
 @Tag(name = "Ocorrências e manutenção")
 public class OccurrenceController {
 

@@ -13,13 +13,13 @@ import java.util.UUID;
 
 import br.com.tekcondo.auditoria.service.AcaoAuditoria;
 import br.com.tekcondo.auditoria.service.AuditoriaService;
-import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.condominium.service.CondominiumAccess;
+import br.com.tekcondo.condominio.entity.Condominio;
+import br.com.tekcondo.condominio.service.AcessoCondominio;
 import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.notificacao.NotificacaoService;
 import br.com.tekcondo.comum.exception.ApiException;
 import br.com.tekcondo.comum.web.PaginaResponse;
-import br.com.tekcondo.structure.repository.UnitRepository;
+import br.com.tekcondo.estrutura.repository.UnidadeRepository;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -67,14 +67,14 @@ public class OccurrenceService {
 
     private final OccurrenceRepository repository;
     private final OccurrenceInteractionRepository interactions;
-    private final UnitRepository units;
-    private final CondominiumAccess access;
+    private final UnidadeRepository units;
+    private final AcessoCondominio access;
     private final NotificacaoService notifications;
     private final AuditoriaService auditService;
     private final Clock clock;
 
-    public OccurrenceService(OccurrenceRepository repository, OccurrenceInteractionRepository interactions, UnitRepository units,
-                             CondominiumAccess access, NotificacaoService notifications, AuditoriaService auditService, Clock clock) {
+    public OccurrenceService(OccurrenceRepository repository, OccurrenceInteractionRepository interactions, UnidadeRepository units,
+                             AcessoCondominio access, NotificacaoService notifications, AuditoriaService auditService, Clock clock) {
         this.repository = repository;
         this.interactions = interactions;
         this.units = units;
@@ -87,7 +87,7 @@ public class OccurrenceService {
     @Transactional(readOnly = true)
     public PaginaResponse<Summary> list(UUID condominiumId, List<Occurrence.Status> statuses, Occurrence.Category category,
                                       Occurrence.Priority priority, String search, Pageable pageable) {
-        access.require(condominiumId, Permissao.OCCURRENCE_VIEW);
+        access.exigir(condominiumId, Permissao.OCCURRENCE_VIEW);
         return PaginaResponse.of(repository.findAll(spec(condominiumId, statuses, category, priority, search, null), pageable),
                 this::summary);
     }
@@ -111,29 +111,29 @@ public class OccurrenceService {
 
     @Transactional(readOnly = true)
     public Detail get(UUID condominiumId, UUID id) {
-        access.require(condominiumId, Permissao.OCCURRENCE_VIEW);
+        access.exigir(condominiumId, Permissao.OCCURRENCE_VIEW);
         return detail(load(condominiumId, id), true);
     }
 
     @Transactional
     public Detail create(UUID condominiumId, CreateRequest request) {
-        Condominium condominium = access.requireActive(condominiumId, Permissao.OCCURRENCE_EDIT);
-        var user = access.user();
+        Condominio condominium = access.exigirAtivo(condominiumId, Permissao.OCCURRENCE_EDIT);
+        var user = access.usuario();
         return detail(createInternal(condominium, request, user.idUsuario(), user.nome()), true);
     }
 
     /** Usado também pelo portal do morador (permissão verificada pelo chamador). */
-    public Occurrence createInternal(Condominium condominium, CreateRequest request, UUID userId, String userName) {
+    public Occurrence createInternal(Condominio condominium, CreateRequest request, UUID userId, String userName) {
         if (request.unitId() != null) {
-            units.findByIdAndCondominiumId(request.unitId(), condominium.getId()).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
+            units.findByIdAndIdCondominio(request.unitId(), condominium.getId()).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
         }
-        Occurrence o = repository.save(new Occurrence(condominium.getOrganizationId(), condominium.getId(),
+        Occurrence o = repository.save(new Occurrence(condominium.getIdAdministradora(), condominium.getId(),
                 repository.nextNumber(condominium.getId()), request.title().trim(), request.description().trim(),
                 request.category(), request.priority() == null ? Occurrence.Priority.MEDIUM : request.priority(),
                 request.unitId(), userId, userName));
         auditService.registrar(AcaoAuditoria.OCCURRENCE_CREATED, "Occurrence", o.getId(), Map.of("number", o.getNumber(), "title", o.getTitle()));
-        notifications.notificar(condominium.getOrganizationId(),
-                notifications.usuariosComPermissao(condominium.getOrganizationId(), condominium.getId(), Permissao.OCCURRENCE_EDIT)
+        notifications.notificar(condominium.getIdAdministradora(),
+                notifications.usuariosComPermissao(condominium.getIdAdministradora(), condominium.getId(), Permissao.OCCURRENCE_EDIT)
                         .stream().filter(u -> !u.equals(userId)).toList(),
                 "Nova ocorrência nº " + o.getNumber(), o.getTitle(), "/ocorrencias/" + o.getId(), null);
         return o;
@@ -141,7 +141,7 @@ public class OccurrenceService {
 
     @Transactional
     public Detail update(UUID condominiumId, UUID id, UpdateRequest request) {
-        access.requireActive(condominiumId, Permissao.OCCURRENCE_EDIT);
+        access.exigirAtivo(condominiumId, Permissao.OCCURRENCE_EDIT);
         Occurrence o = load(condominiumId, id);
         o.triage(request.category(), request.priority(), blank(request.assigneeName()), request.dueDate());
         repository.flush();
@@ -152,9 +152,9 @@ public class OccurrenceService {
 
     @Transactional
     public Detail changeStatus(UUID condominiumId, UUID id, StatusRequest request) {
-        access.requireActive(condominiumId, Permissao.OCCURRENCE_EDIT);
+        access.exigirAtivo(condominiumId, Permissao.OCCURRENCE_EDIT);
         Occurrence o = load(condominiumId, id);
-        var user = access.user();
+        var user = access.usuario();
         if (request.status() == Occurrence.Status.OPEN && o.getStatus() != Occurrence.Status.OPEN) {
             o.reopen();
         } else {
@@ -174,9 +174,9 @@ public class OccurrenceService {
 
     @Transactional
     public Detail comment(UUID condominiumId, UUID id, CommentRequest request) {
-        access.require(condominiumId, Permissao.OCCURRENCE_EDIT);
+        access.exigir(condominiumId, Permissao.OCCURRENCE_EDIT);
         Occurrence o = load(condominiumId, id);
-        var user = access.user();
+        var user = access.usuario();
         interactions.save(new OccurrenceInteraction(o.getId(), user.idUsuario(), user.nome(), request.message().trim(), null,
                 request.internal()));
         if (!request.internal() && o.getReporterUserId() != null && !o.getReporterUserId().equals(user.idUsuario())) {
@@ -188,7 +188,7 @@ public class OccurrenceService {
 
     @Transactional(readOnly = true)
     public Stats stats(UUID condominiumId) {
-        access.require(condominiumId, Permissao.OCCURRENCE_VIEW);
+        access.exigir(condominiumId, Permissao.OCCURRENCE_VIEW);
         LocalDate today = LocalDate.now(clock);
         Map<Occurrence.Status, Long> byStatus = new EnumMap<>(Occurrence.Status.class);
         long overdue = 0;
@@ -214,7 +214,7 @@ public class OccurrenceService {
     }
 
     public Summary summary(Occurrence o) {
-        String unitLabel = o.getUnitId() == null ? null : units.findById(o.getUnitId()).map(u -> u.label()).orElse(null);
+        String unitLabel = o.getUnitId() == null ? null : units.findById(o.getUnitId()).map(u -> u.rotulo()).orElse(null);
         return new Summary(o.getId(), o.getNumber(), o.getTitle(), o.getCategory(), o.getPriority(), o.getStatus(),
                 o.getUnitId(), unitLabel, o.getReporterName(), o.getAssigneeName(), o.getDueDate(),
                 o.isOverdue(LocalDate.now(clock)), o.getCriadoEm(), o.getResolvedAt());

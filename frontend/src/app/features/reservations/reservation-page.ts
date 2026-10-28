@@ -33,7 +33,7 @@ import { CommonArea, Reservation, ReservationApi } from './reservation-api';
     MatSelectModule, MatTooltipModule, MatMenuModule, PageHeader, CondominiumRequired, EmptyState, IsoDatePipe, LabelPipe],
   template: `
     <div class="tc-page">
-      <tc-page-header eyebrow="Administração" title="Reservas de áreas comuns" [subtitle]="context.selected()?.name">
+      <tc-page-header eyebrow="Administração" title="Reservas de áreas comuns" [subtitle]="context.selected()?.nome">
         @if (canEdit()) {
           <button mat-stroked-button (click)="editArea()"><mat-icon>add_business</mat-icon> Nova área</button>
           <button mat-flat-button (click)="book()" [disabled]="!(areas()?.length)"><mat-icon>event_available</mat-icon> Nova reserva</button>
@@ -151,7 +151,7 @@ export class ReservationPage {
   protected readonly area = new FormControl('', { nonNullable: true });
   private readonly filters = toSignal(merge(this.from.valueChanges, this.to.valueChanges, this.area.valueChanges).pipe(scan((n) => n + 1, 0)), { initialValue: 0 });
 
-  protected readonly canEdit = computed(() => this.context.can('RESERVATION_EDIT') && this.context.selected()?.status === 'ACTIVE');
+  protected readonly canEdit = computed(() => this.context.can('RESERVATION_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   private readonly source = combineLatest([toObservable(this.context.id), toObservable(this.tick), toObservable(this.filters)]).pipe(filter(([c]) => !!c));
   protected readonly areas = toSignal(this.source.pipe(switchMap(([c]) => this.api.areas(c!).pipe(catchError(() => of([] as CommonArea[]))))));
   protected readonly reservations = toSignal(this.source.pipe(switchMap(([c]) =>
@@ -192,7 +192,7 @@ export class ReservationPage {
         fields: [
           { key: 'areaId', label: 'Área', type: 'select', required: true, span: 6,
             options: (this.areas() ?? []).filter((a) => a.active).map((a) => ({ value: a.id, label: a.name })) },
-          { key: 'unitId', label: 'Unidade', type: 'select', required: true, span: 6, options: units.map((u) => ({ value: u.id, label: u.label })) },
+          { key: 'unitId', label: 'Unidade', type: 'select', required: true, span: 6, options: units.map((u) => ({ value: u.id, label: u.rotulo })) },
           { key: 'date', label: 'Data', type: 'date', required: true, value: todayIso(), span: 4 },
           { key: 'startTime', label: 'Início', type: 'time', required: true, span: 4 },
           { key: 'endTime', label: 'Fim', type: 'time', required: true, span: 4 },

@@ -62,9 +62,9 @@ describe('AuthService + authInterceptor', () => {
   it('anexa o Bearer e, em 401, renova a sessão uma vez e repete a chamada', () => {
     signIn();
     let body: unknown;
-    http.get('/api/v1/condominiums').subscribe((b) => (body = b));
+    http.get('/api/v1/condominios').subscribe((b) => (body = b));
 
-    const first = backend.expectOne('/api/v1/condominiums');
+    const first = backend.expectOne('/api/v1/condominios');
     expect(first.request.headers.get('Authorization')).toBe('Bearer T1');
     first.flush({}, { status: 401, statusText: 'Unauthorized' });
 
@@ -73,7 +73,7 @@ describe('AuthService + authInterceptor', () => {
     expect(refresh.request.headers.has('Authorization')).toBe(false);
     refresh.flush({ accessToken: 'T2', tokenType: 'Bearer', expiraEm: '' });
 
-    const retry = backend.expectOne('/api/v1/condominiums');
+    const retry = backend.expectOne('/api/v1/condominios');
     expect(retry.request.headers.get('Authorization')).toBe('Bearer T2');
     retry.flush({ ok: true });
     expect(body).toEqual({ ok: true });
@@ -81,8 +81,8 @@ describe('AuthService + authInterceptor', () => {
 
   it('encerra a sessão quando a renovação falha', () => {
     signIn();
-    http.get('/api/v1/condominiums').subscribe({ error: () => undefined });
-    backend.expectOne('/api/v1/condominiums').flush({}, { status: 401, statusText: 'Unauthorized' });
+    http.get('/api/v1/condominios').subscribe({ error: () => undefined });
+    backend.expectOne('/api/v1/condominios').flush({}, { status: 401, statusText: 'Unauthorized' });
     backend.expectOne('/api/v1/auth/refresh').flush({ codigo: 'SESSION_EXPIRED' }, { status: 401, statusText: 'Unauthorized' });
 
     expect(auth.isAuthenticated()).toBe(false);

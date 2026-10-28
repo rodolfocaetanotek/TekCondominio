@@ -3,7 +3,7 @@ package br.com.tekcondo.visitor;
 import java.time.LocalDate;
 import java.util.Map;
 
-import br.com.tekcondo.condominium.entity.Condominium;
+import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.acesso.entity.Usuario;
 import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
@@ -34,7 +34,7 @@ class VisitorIT extends IntegrationTest {
     VisitorService visitorService;
 
     Administradora org;
-    Condominium condo;
+    Condominio condo;
     String admin;
     String porter;
     String resident;
@@ -46,21 +46,21 @@ class VisitorIT extends IntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         org = data.administradora();
-        condo = data.condominium(org, "Condomínio Portaria");
+        condo = data.condominio(org, "Condomínio Portaria");
         admin = TestData.bearer(data.login(data.adminAdministradora(org)));
         Usuario staff = data.usuario(org);
         data.conceder(staff, "CONDO_STAFF", condo.getId());
         porter = TestData.bearer(data.login(staff));
-        base = "/api/v1/condominiums/" + condo.getId();
+        base = "/api/v1/condominios/" + condo.getId();
         portal = "/api/v1/portal/" + condo.getId();
-        unit101 = call(admin, "POST", base + "/units", Map.of("identifier", "101", "type", "APARTMENT", "idealFraction", "50"), 201).get("id").asText();
-        unit102 = call(admin, "POST", base + "/units", Map.of("identifier", "102", "type", "APARTMENT", "idealFraction", "50"), 201).get("id").asText();
+        unit101 = call(admin, "POST", base + "/unidades", Map.of("identificacao", "101", "tipo", "APARTMENT", "fracaoIdeal", "50"), 201).get("id").asText();
+        unit102 = call(admin, "POST", base + "/unidades", Map.of("identificacao", "102", "tipo", "APARTMENT", "fracaoIdeal", "50"), 201).get("id").asText();
         String email = TestData.emailUnico();
-        String person = call(admin, "POST", "/api/v1/people", Map.of("name", "Caio Morador", "kind", "INDIVIDUAL", "email", email), 201)
+        String person = call(admin, "POST", "/api/v1/pessoas", Map.of("nome", "Caio Morador", "tipo", "INDIVIDUAL", "email", email), 201)
                 .get("id").asText();
-        call(admin, "POST", base + "/occupancies", Map.of("unitId", unit101, "personId", person, "role", "TENANT",
-                "financialResponsible", false, "startDate", "2024-01-01"), 201);
-        call(admin, "POST", "/api/v1/people/" + person + "/portal-access", null, 200);
+        call(admin, "POST", base + "/vinculos", Map.of("idUnidade", unit101, "idPessoa", person, "tipo", "TENANT",
+                "responsavelFinanceiro", false, "dataInicio", "2024-01-01"), 201);
+        call(admin, "POST", "/api/v1/pessoas/" + person + "/acesso-portal", null, 200);
         resident = activate(email);
     }
 

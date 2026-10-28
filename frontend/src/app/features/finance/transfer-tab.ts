@@ -63,7 +63,7 @@ export class TransferTab {
   private readonly dialog = inject(MatDialog);
   private readonly notify = inject(NotificationService);
   protected readonly columns = ['date', 'route', 'amount', 'status', 'actions'];
-  protected readonly canEdit = computed(() => this.context.can('FINANCE_EDIT') && this.context.selected()?.status === 'ACTIVE');
+  protected readonly canEdit = computed(() => this.context.can('FINANCE_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   protected readonly canCancel = computed(() => this.context.can('FINANCE_CANCEL'));
   private readonly tick = signal(0);
   protected readonly list = toSignal(

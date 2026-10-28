@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import br.com.tekcondo.condominium.entity.Condominium;
+import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
 import br.com.tekcondo.support.GravacaoEmailGateway;
@@ -37,7 +37,7 @@ class ReservationIT extends IntegrationTest {
     JdbcTemplate jdbc;
 
     Administradora org;
-    Condominium condo;
+    Condominio condo;
     String token;
     String base;
     String portal;
@@ -49,18 +49,18 @@ class ReservationIT extends IntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         org = data.administradora();
-        condo = data.condominium(org, "Condomínio Reservas");
+        condo = data.condominio(org, "Condomínio Reservas");
         token = TestData.bearer(data.login(data.adminAdministradora(org)));
-        base = "/api/v1/condominiums/" + condo.getId();
+        base = "/api/v1/condominios/" + condo.getId();
         portal = "/api/v1/portal/" + condo.getId();
-        unit101 = call(token, "POST", base + "/units", Map.of("identifier", "101", "type", "APARTMENT", "idealFraction", "50"), 201).get("id").asText();
-        unit102 = call(token, "POST", base + "/units", Map.of("identifier", "102", "type", "APARTMENT", "idealFraction", "50"), 201).get("id").asText();
+        unit101 = call(token, "POST", base + "/unidades", Map.of("identificacao", "101", "tipo", "APARTMENT", "fracaoIdeal", "50"), 201).get("id").asText();
+        unit102 = call(token, "POST", base + "/unidades", Map.of("identificacao", "102", "tipo", "APARTMENT", "fracaoIdeal", "50"), 201).get("id").asText();
         String email = TestData.emailUnico();
-        String person = call(token, "POST", "/api/v1/people", Map.of("name", "Rita Proprietária", "kind", "INDIVIDUAL", "email", email), 201)
+        String person = call(token, "POST", "/api/v1/pessoas", Map.of("nome", "Rita Proprietária", "tipo", "INDIVIDUAL", "email", email), 201)
                 .get("id").asText();
-        call(token, "POST", base + "/occupancies", Map.of("unitId", unit101, "personId", person, "role", "OWNER",
-                "financialResponsible", true, "startDate", "2024-01-01"), 201);
-        call(token, "POST", "/api/v1/people/" + person + "/portal-access", null, 200);
+        call(token, "POST", base + "/vinculos", Map.of("idUnidade", unit101, "idPessoa", person, "tipo", "OWNER",
+                "responsavelFinanceiro", true, "dataInicio", "2024-01-01"), 201);
+        call(token, "POST", "/api/v1/pessoas/" + person + "/acesso-portal", null, 200);
         resident = activate(email);
     }
 

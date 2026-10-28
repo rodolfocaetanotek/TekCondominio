@@ -106,7 +106,7 @@ export class SettingsTab {
   private readonly dialog = inject(MatDialog);
   private readonly notify = inject(NotificationService);
   private readonly tick = signal(0);
-  protected readonly canEdit = computed(() => this.context.can('FINANCE_EDIT') && this.context.selected()?.status === 'ACTIVE');
+  protected readonly canEdit = computed(() => this.context.can('FINANCE_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   protected readonly canEditSettings = computed(() => this.canEdit() && this.context.can('CONDOMINIUM_EDIT'));
 
   protected readonly form = inject(FormBuilder).nonNullable.group({

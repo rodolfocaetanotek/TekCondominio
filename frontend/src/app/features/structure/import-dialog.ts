@@ -4,7 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { toProblem } from '../../core/api/api.models';
-import { ImportResult } from './structure.models';
+import { ResultadoImportacao } from './structure.models';
 import { StructureService } from './structure.service';
 import { DialogClose } from '../../shared/ui/dialog-close';
 
@@ -36,30 +36,30 @@ const TEMPLATE = 'bloco;unidade;tipo;fracao;area;proprietario;documento;email;te
         <p class="tc-alert" role="alert">{{ message }}</p>
       }
       @if (result(); as r) {
-        @if (r.errors.length) {
-          <p class="tc-alert" role="alert">{{ r.errors.length }} problema(s) encontrado(s). Nada foi gravado — corrija a planilha e envie novamente.</p>
+        @if (r.erros.length) {
+          <p class="tc-alert" role="alert">{{ r.erros.length }} problema(s) encontrado(s). Nada foi gravado — corrija a planilha e envie novamente.</p>
           <ul class="errors">
-            @for (e of r.errors; track $index) {
-              <li><strong>Linha {{ e.line }}:</strong> {{ e.message }}</li>
+            @for (e of r.erros; track $index) {
+              <li><strong>Linha {{ e.linha }}:</strong> {{ e.mensagem }}</li>
             }
           </ul>
-        } @else if (r.dryRun) {
+        } @else if (r.simulacao) {
           <p class="ok" role="status"><mat-icon>check_circle</mat-icon>
-            Planilha válida: {{ r.unitsCreated }} unidade(s){{ r.buildingsCreated ? ', ' + r.buildingsCreated + ' bloco(s) novo(s)' : '' }}.
+            Planilha válida: {{ r.unidadesCriadas }} unidade(s){{ r.blocosCriados ? ', ' + r.blocosCriados + ' bloco(s) novo(s)' : '' }}.
             Confirme para importar.</p>
         } @else {
           <p class="ok" role="status"><mat-icon>task_alt</mat-icon>
-            Importação concluída: {{ r.unitsCreated }} unidade(s), {{ r.buildingsCreated }} bloco(s) novo(s),
-            {{ r.peopleCreated }} pessoa(s) nova(s), {{ r.peopleReused }} reaproveitada(s).</p>
+            Importação concluída: {{ r.unidadesCriadas }} unidade(s), {{ r.blocosCriados }} bloco(s) novo(s),
+            {{ r.pessoasCriadas }} pessoa(s) nova(s), {{ r.pessoasReaproveitadas }} reaproveitada(s).</p>
         }
       }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      @if (result() && !result()!.dryRun && !result()!.errors.length) {
+      @if (result() && !result()!.simulacao && !result()!.erros.length) {
         <button mat-flat-button (click)="ref.close(true)">Concluir</button>
       } @else {
         <button mat-button mat-dialog-close>Cancelar</button>
-        @if (result()?.dryRun && !result()!.errors.length) {
+        @if (result()?.simulacao && !result()!.erros.length) {
           <button mat-flat-button (click)="run(false)" [disabled]="busy()">Importar agora</button>
         } @else {
           <button mat-flat-button (click)="run(true)" [disabled]="!file() || busy()">Validar planilha</button>
@@ -84,7 +84,7 @@ export class ImportDialog {
 
   protected readonly file = signal<File | null>(null);
   protected readonly busy = signal(false);
-  protected readonly result = signal<ImportResult | null>(null);
+  protected readonly result = signal<ResultadoImportacao | null>(null);
   protected readonly error = signal<string | null>(null);
 
   pick(event: Event): void {
@@ -94,12 +94,12 @@ export class ImportDialog {
     this.error.set(null);
   }
 
-  run(dryRun: boolean): void {
+  run(simulacao: boolean): void {
     const file = this.file();
     if (!file) return;
     this.busy.set(true);
     this.error.set(null);
-    this.service.importUnits(this.data.condominiumId, file, dryRun).subscribe({
+    this.service.importUnits(this.data.condominiumId, file, simulacao).subscribe({
       next: (r) => {
         this.busy.set(false);
         this.result.set(r);

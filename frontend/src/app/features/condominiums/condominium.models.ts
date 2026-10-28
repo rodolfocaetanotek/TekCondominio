@@ -1,13 +1,13 @@
-export type CondominiumType = 'RESIDENTIAL' | 'COMMERCIAL' | 'MIXED';
-export type CondominiumStatus = 'ACTIVE' | 'INACTIVE';
+export type TipoCondominio = 'RESIDENTIAL' | 'COMMERCIAL' | 'MIXED';
+export type SituacaoCondominio = 'ACTIVE' | 'INACTIVE';
 
-export const CONDOMINIUM_TYPE_LABELS: Record<CondominiumType, string> = {
+export const CONDOMINIUM_TYPE_LABELS: Record<TipoCondominio, string> = {
   RESIDENTIAL: 'Residencial',
   COMMERCIAL: 'Comercial',
   MIXED: 'Misto',
 };
 
-export const CONDOMINIUM_STATUS_LABELS: Record<CondominiumStatus, string> = {
+export const CONDOMINIUM_STATUS_LABELS: Record<SituacaoCondominio, string> = {
   ACTIVE: 'Ativo',
   INACTIVE: 'Inativo',
 };
@@ -17,57 +17,57 @@ export const BRAZILIAN_STATES = [
   'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
 ] as const;
 
-export interface Address {
-  zipCode?: string | null;
-  street?: string | null;
-  number?: string | null;
-  complement?: string | null;
-  district?: string | null;
-  city?: string | null;
-  state?: string | null;
+export interface Endereco {
+  cep?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  uf?: string | null;
 }
 
-export interface CondominiumSummary {
+export interface CondominioResumo {
   id: string;
-  name: string;
+  nome: string;
   cnpj?: string;
-  type: CondominiumType;
-  city?: string;
-  state?: string;
-  status: CondominiumStatus;
+  tipo: TipoCondominio;
+  cidade?: string;
+  uf?: string;
+  situacao: SituacaoCondominio;
 }
 
-export interface Condominium {
+export interface Condominio {
   id: string;
-  name: string;
-  legalName?: string;
+  nome: string;
+  razaoSocial?: string;
   cnpj?: string;
-  type: CondominiumType;
-  address?: Address;
+  tipo: TipoCondominio;
+  endereco?: Endereco;
   email?: string;
-  phone?: string;
-  status: CondominiumStatus;
-  inactivatedAt?: string;
-  inactivationReason?: string;
-  createdAt: string;
-  updatedAt: string;
-  version: number;
+  telefone?: string;
+  situacao: SituacaoCondominio;
+  inativadoEm?: string;
+  motivoInativacao?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+  versao: number;
 }
 
-export interface CondominiumRequest {
-  name: string;
-  legalName: string | null;
+export interface CondominioRequest {
+  nome: string;
+  razaoSocial: string | null;
   cnpj: string | null;
-  type: CondominiumType;
-  address: Address | null;
+  tipo: TipoCondominio;
+  endereco: Endereco | null;
   email: string | null;
-  phone: string | null;
-  version?: number;
+  telefone: string | null;
+  versao?: number;
 }
 
 export interface CondominiumQuery {
   search?: string;
-  status?: CondominiumStatus | '';
+  status?: SituacaoCondominio | '';
   page: number;
   size: number;
   sort?: string;

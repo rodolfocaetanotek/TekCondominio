@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import br.com.tekcondo.condominium.entity.Condominium;
+import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.acesso.entity.Usuario;
 import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
@@ -33,7 +33,7 @@ class BillingIT extends IntegrationTest {
     ObjectMapper objectMapper;
 
     Administradora org;
-    Condominium condo;
+    Condominio condo;
     String token;
     String base;
     String unitA;
@@ -42,15 +42,15 @@ class BillingIT extends IntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         org = data.administradora();
-        condo = data.condominium(org, "Condomínio Cobrança");
+        condo = data.condominio(org, "Condomínio Cobrança");
         token = TestData.bearer(data.login(data.adminAdministradora(org)));
-        base = "/api/v1/condominiums/" + condo.getId();
-        unitA = call("POST", base + "/units", Map.of("identifier", "A", "type", "APARTMENT", "idealFraction", "50"), 201).get("id").asText();
-        call("POST", base + "/units", Map.of("identifier", "B", "type", "APARTMENT", "idealFraction", "30"), 201);
-        call("POST", base + "/units", Map.of("identifier", "C", "type", "APARTMENT", "idealFraction", "20"), 201);
-        String person = call("POST", "/api/v1/people", Map.of("name", "Ana Pagadora", "kind", "INDIVIDUAL"), 201).get("id").asText();
-        call("POST", base + "/occupancies", Map.of("unitId", unitA, "personId", person, "role", "OWNER",
-                "financialResponsible", true, "startDate", "2024-01-01"), 201);
+        base = "/api/v1/condominios/" + condo.getId();
+        unitA = call("POST", base + "/unidades", Map.of("identificacao", "A", "tipo", "APARTMENT", "fracaoIdeal", "50"), 201).get("id").asText();
+        call("POST", base + "/unidades", Map.of("identificacao", "B", "tipo", "APARTMENT", "fracaoIdeal", "30"), 201);
+        call("POST", base + "/unidades", Map.of("identificacao", "C", "tipo", "APARTMENT", "fracaoIdeal", "20"), 201);
+        String person = call("POST", "/api/v1/pessoas", Map.of("nome", "Ana Pagadora", "tipo", "INDIVIDUAL"), 201).get("id").asText();
+        call("POST", base + "/vinculos", Map.of("idUnidade", unitA, "idPessoa", person, "tipo", "OWNER",
+                "responsavelFinanceiro", true, "dataInicio", "2024-01-01"), 201);
     }
 
     private JsonNode call(String method, String url, Object body, int expected) throws Exception {
@@ -98,7 +98,7 @@ class BillingIT extends IntegrationTest {
 
     @Test
     void idealFractionRequiresBalancedUnits() throws Exception {
-        call("POST", base + "/units", Map.of("identifier", "D", "type", "STORE", "idealFraction", "5"), 201);
+        call("POST", base + "/unidades", Map.of("identificacao", "D", "tipo", "STORE", "fracaoIdeal", "5"), 201);
         call("POST", base + "/billing/allocations/preview", allocation(YearMonth.from(today), ACC_CONDO_FEE, null), 422);
         Map<String, Object> equal = allocation(YearMonth.from(today), ACC_CONDO_FEE, null);
         equal.put("method", "EQUAL");

@@ -16,7 +16,7 @@ import { EmptyState } from '../../shared/ui/empty-state';
 import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
 import { PageHeader } from '../../shared/ui/page-header';
 import { PersonDialog } from './person-dialog';
-import { Occupancy, OCCUPANCY_ROLE_LABELS, PersonDetail as Person } from './structure.models';
+import { OCCUPANCY_ROLE_LABELS, PessoaDetalhe as Person, Vinculo } from './structure.models';
 import { StructureService } from './structure.service';
 
 @Component({
@@ -28,9 +28,9 @@ import { StructureService } from './structure.service';
       @if (error(); as message) {
         <section class="tc-card"><tc-empty-state icon="error" title="Não foi possível abrir" [description]="message" /></section>
       } @else if (person(); as p) {
-        <tc-page-header [eyebrow]="p.kind === 'COMPANY' ? 'Pessoa jurídica' : 'Pessoa física'" [title]="p.name"
-          [subtitle]="p.document ? (p.document | doc: 'cpfCnpj') : 'Sem documento informado'">
-          <span class="tc-status big" [class.is-active]="p.active" [class.is-inactive]="!p.active">{{ p.active ? 'Ativa' : 'Inativa' }}</span>
+        <tc-page-header [eyebrow]="p.tipo === 'COMPANY' ? 'Pessoa jurídica' : 'Pessoa física'" [title]="p.nome"
+          [subtitle]="p.documento ? (p.documento | doc: 'cpfCnpj') : 'Sem documento informado'">
+          <span class="tc-status big" [class.is-active]="p.ativo" [class.is-inactive]="!p.ativo">{{ p.ativo ? 'Ativa' : 'Inativa' }}</span>
           @if (canEdit()) {
             <button mat-stroked-button (click)="edit(p)"><mat-icon>edit</mat-icon> Editar</button>
           }
@@ -39,18 +39,18 @@ import { StructureService } from './structure.service';
         <div class="layout">
           <section class="tc-table-card">
             <h2 class="tc-section-title tc-card-head is-divided">Vínculos com unidades</h2>
-            @for (o of p.occupancies; track o.id) {
-              <div class="occ" [class.ended]="!o.current">
+            @for (o of p.vinculos; track o.id) {
+              <div class="occ" [class.ended]="!o.vigente">
                 <div class="who">
-                  <strong>{{ o.unitLabel }}</strong>
-                  <span class="tc-muted">{{ roleLabel(o) }} · {{ o.startDate | isoDate }}{{ o.current ? ' até hoje' : ' a ' + (o.endDate | isoDate) }}</span>
+                  <strong>{{ o.rotuloUnidade }}</strong>
+                  <span class="tc-muted">{{ roleLabel(o) }} · {{ o.dataInicio | isoDate }}{{ o.vigente ? ' até hoje' : ' a ' + (o.dataFim | isoDate) }}</span>
                 </div>
                 <div class="occ-end">
-                  @if (o.financialResponsible) {
+                  @if (o.responsavelFinanceiro) {
                     <span class="tc-chip-soft">Resp. financeiro</span>
                   }
-                  @if (o.condominiumId === context.id()) {
-                    <a mat-button [routerLink]="['/unidades', o.unitId]">Ver unidade</a>
+                  @if (o.idCondominio === context.id()) {
+                    <a mat-button [routerLink]="['/unidades', o.idUnidade]">Ver unidade</a>
                   }
                 </div>
               </div>
@@ -64,27 +64,27 @@ import { StructureService } from './structure.service';
               <h2 class="tc-section-title">Contato</h2>
               <dl class="tc-dl">
                 <div><dt>E-mail</dt><dd>{{ p.email ?? '—' }}</dd></div>
-                <div><dt>Telefone</dt><dd>{{ p.phone ? (p.phone | doc: 'phone') : '—' }}</dd></div>
-                <div><dt>Alternativo</dt><dd>{{ p.secondaryPhone ? (p.secondaryPhone | doc: 'phone') : '—' }}</dd></div>
+                <div><dt>Telefone</dt><dd>{{ p.telefone ? (p.telefone | doc: 'phone') : '—' }}</dd></div>
+                <div><dt>Alternativo</dt><dd>{{ p.telefoneSecundario ? (p.telefoneSecundario | doc: 'phone') : '—' }}</dd></div>
               </dl>
-              @if (p.notes) {
-                <p class="tc-muted small">{{ p.notes }}</p>
+              @if (p.observacoes) {
+                <p class="tc-muted small">{{ p.observacoes }}</p>
               }
             </section>
             <section class="tc-card">
               <h2 class="tc-section-title">Portal do morador</h2>
-              @if (p.portalUser) {
+              @if (p.usuarioPortal) {
                 <p class="small"><mat-icon inline>verified</mat-icon> Possui acesso ao portal.</p>
               } @else {
                 <p class="tc-muted small">Permite consultar cobranças, comunicados e documentos da(s) sua(s) unidade(s).</p>
               }
-              @if (auth.can('USER_MANAGE') && p.active) {
+              @if (auth.can('USER_MANAGE') && p.ativo) {
                 <button mat-stroked-button (click)="grantPortal(p)" [disabled]="busy()">
-                  <mat-icon>forward_to_inbox</mat-icon>{{ p.portalUser ? 'Atualizar acesso / reenviar convite' : 'Conceder acesso ao portal' }}
+                  <mat-icon>forward_to_inbox</mat-icon>{{ p.usuarioPortal ? 'Atualizar acesso / reenviar convite' : 'Conceder acesso ao portal' }}
                 </button>
               }
               @if (canEdit()) {
-                <button mat-button class="toggle" (click)="toggle(p)" [disabled]="busy()">{{ p.active ? 'Inativar cadastro' : 'Reativar cadastro' }}</button>
+                <button mat-button class="toggle" (click)="toggle(p)" [disabled]="busy()">{{ p.ativo ? 'Inativar cadastro' : 'Reativar cadastro' }}</button>
               }
             </section>
           </aside>
@@ -139,8 +139,8 @@ export class PersonDetail {
     { initialValue: null },
   );
 
-  roleLabel(o: Occupancy): string {
-    return OCCUPANCY_ROLE_LABELS[o.role];
+  roleLabel(o: Vinculo): string {
+    return OCCUPANCY_ROLE_LABELS[o.tipo];
   }
 
   edit(p: Person): void {
@@ -152,7 +152,7 @@ export class PersonDetail {
   }
 
   toggle(p: Person): void {
-    this.run(this.service.setPersonActive(p.id, !p.active), p.active ? 'Cadastro inativado.' : 'Cadastro reativado.');
+    this.run(this.service.setPersonActive(p.id, !p.ativo), p.ativo ? 'Cadastro inativado.' : 'Cadastro reativado.');
   }
 
   grantPortal(p: Person): void {

@@ -122,7 +122,7 @@ export class UnitDebtPage {
   private readonly tick = signal(0);
   protected readonly selected = signal<string[]>([]);
   protected readonly error = signal<string | null>(null);
-  protected readonly canEdit = computed(() => this.context.can('BILLING_EDIT') && this.context.selected()?.status === 'ACTIVE');
+  protected readonly canEdit = computed(() => this.context.can('BILLING_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
 
   protected readonly debt = toSignal(
     combineLatest([toObservable(this.context.id), toObservable(this.unitId), toObservable(this.tick)]).pipe(

@@ -119,15 +119,15 @@ def main():
     ok('administradora criada e administrador autenticado', bool(admin))
 
     print('2. Condomínio, unidades e responsáveis')
-    condo = call('POST', '/api/v1/condominiums', admin, {'name': f'Residencial Londrina {STAMP}', 'type': 'RESIDENTIAL'}, expect=201)
+    condo = call('POST', '/api/v1/condominios', admin, {'nome': f'Residencial Londrina {STAMP}', 'tipo': 'RESIDENTIAL'}, expect=201)
     c = condo['id']
-    b = f'/api/v1/condominiums/{c}'
-    units = [call('POST', b + '/units', admin, {'identifier': str(101 + i), 'type': 'APARTMENT', 'idealFraction': f}, expect=201)['id']
+    b = f'/api/v1/condominios/{c}'
+    units = [call('POST', b + '/unidades', admin, {'identificacao': str(101 + i), 'tipo': 'APARTMENT', 'fracaoIdeal': f}, expect=201)['id']
              for i, f in enumerate(['33.3333', '33.3333', '33.3334'])]
     owner_email = f'morador.{STAMP}@e2e.local'
-    person = call('POST', '/api/v1/people', admin, {'name': 'Morador E2E', 'kind': 'INDIVIDUAL', 'email': owner_email}, expect=201)['id']
-    call('POST', b + '/occupancies', admin, {'unitId': units[0], 'personId': person, 'role': 'OWNER', 'financialResponsible': True,
-                                             'startDate': '2024-01-01'}, expect=201)
+    person = call('POST', '/api/v1/pessoas', admin, {'nome': 'Morador E2E', 'tipo': 'INDIVIDUAL', 'email': owner_email}, expect=201)['id']
+    call('POST', b + '/vinculos', admin, {'idUnidade': units[0], 'idPessoa': person, 'tipo': 'OWNER', 'responsavelFinanceiro': True,
+                                             'dataInicio': '2024-01-01'}, expect=201)
     ok('3 unidades com frações somando 100%', len(units) == 3)
 
     print('3. Financeiro: conta e rateio')
@@ -199,7 +199,7 @@ def main():
     print('8. Reservas e portaria')
     resident_token = None
     t1 = time.time() - 1
-    call('POST', f'/api/v1/people/{person}/portal-access', admin)
+    call('POST', f'/api/v1/pessoas/{person}/acesso-portal', admin)
     resident_token = activate(owner_email, t1)
     area = call('POST', b + '/common-areas', admin, {'name': 'Salão de festas', 'fee': '120.00', 'requiresApproval': True, 'blockDelinquent': False,
                                                      'openTime': '10:00', 'closeTime': '23:00', 'minAdvanceHours': 24, 'maxAdvanceDays': 90}, expect=201)

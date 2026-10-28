@@ -86,52 +86,52 @@ public class FinanceController {
     }
 
     // ---------- parâmetros, centros de custo e contas
-    @GetMapping("/condominiums/{c}/finance/settings")
+    @GetMapping("/condominios/{c}/finance/settings")
     @Operation(summary = "Parâmetros financeiros (multa, juros, vencimento, aprovação de pagamentos)")
     public Settings settings(@PathVariable UUID c) {
         return setup.settings(c);
     }
 
-    @PutMapping("/condominiums/{c}/finance/settings")
+    @PutMapping("/condominios/{c}/finance/settings")
     public Settings updateSettings(@PathVariable UUID c, @Valid @RequestBody Settings request) {
         return setup.updateSettings(c, request);
     }
 
-    @GetMapping("/condominiums/{c}/finance/cost-centers")
+    @GetMapping("/condominios/{c}/finance/cost-centers")
     public List<CostCenterResponse> costCenters(@PathVariable UUID c) {
         return setup.costCenters(c);
     }
 
-    @PostMapping("/condominiums/{c}/finance/cost-centers")
+    @PostMapping("/condominios/{c}/finance/cost-centers")
     public ResponseEntity<CostCenterResponse> createCostCenter(@PathVariable UUID c, @Valid @RequestBody NameRequest request) {
         return ResponseEntity.status(201).body(setup.saveCostCenter(c, null, request.name(), null));
     }
 
-    @PutMapping("/condominiums/{c}/finance/cost-centers/{id}")
+    @PutMapping("/condominios/{c}/finance/cost-centers/{id}")
     public CostCenterResponse updateCostCenter(@PathVariable UUID c, @PathVariable UUID id, @Valid @RequestBody NameRequest request,
                                                @RequestParam(required = false) Boolean active) {
         return setup.saveCostCenter(c, id, request.name(), active);
     }
 
-    @GetMapping("/condominiums/{c}/finance/bank-accounts")
+    @GetMapping("/condominios/{c}/finance/bank-accounts")
     @Operation(summary = "Contas bancárias e caixa, com saldo atual calculado")
     public List<BankAccountResponse> bankAccounts(@PathVariable UUID c) {
         return setup.bankAccounts(c);
     }
 
-    @PostMapping("/condominiums/{c}/finance/bank-accounts")
+    @PostMapping("/condominios/{c}/finance/bank-accounts")
     public ResponseEntity<BankAccountResponse> createBankAccount(@PathVariable UUID c, @Valid @RequestBody BankAccountRequest request) {
         return ResponseEntity.status(201).body(setup.createBankAccount(c, request));
     }
 
-    @PutMapping("/condominiums/{c}/finance/bank-accounts/{id}")
+    @PutMapping("/condominios/{c}/finance/bank-accounts/{id}")
     public BankAccountResponse updateBankAccount(@PathVariable UUID c, @PathVariable UUID id,
                                                  @Valid @RequestBody BankAccountRequest request,
                                                  @RequestParam(required = false) Boolean active) {
         return setup.updateBankAccount(c, id, request, active);
     }
 
-    @GetMapping("/condominiums/{c}/finance/bank-accounts/{id}/statement")
+    @GetMapping("/condominios/{c}/finance/bank-accounts/{id}/statement")
     @Operation(summary = "Extrato da conta com saldo acumulado e situação de conciliação")
     public Statement statement(@PathVariable UUID c, @PathVariable UUID id,
                                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
@@ -139,14 +139,14 @@ public class FinanceController {
         return treasury.statement(c, id, from, to);
     }
 
-    @PostMapping("/condominiums/{c}/finance/reconciliation")
+    @PostMapping("/condominios/{c}/finance/reconciliation")
     @Operation(summary = "Concilia (ou desfaz) movimentações com o extrato bancário")
     public Map<String, Integer> reconcile(@PathVariable UUID c, @Valid @RequestBody ReconcileRequest request) {
         return Map.of("updated", treasury.reconcile(c, request.items(), request.reconciled()));
     }
 
     // ---------- lançamentos
-    @GetMapping("/condominiums/{c}/finance/entries")
+    @GetMapping("/condominios/{c}/finance/entries")
     @Operation(summary = "Contas a pagar e a receber", description = "Filtros: kind, status (lista), dueFrom, dueTo, chartAccountId, supplierId, unitId, search, overdue, approval")
     public PaginaResponse<EntrySummary> entries(@PathVariable UUID c,
                                               @RequestParam(required = false) FinancialEntry.Kind kind,
@@ -166,80 +166,80 @@ public class FinanceController {
                 overdue, approval), PaginaRequests.of(pagina, tamanho, ordem, ENTRY_SORTS, Sort.by("dueDate").and(Sort.by("id"))));
     }
 
-    @GetMapping("/condominiums/{c}/finance/entries/{id}")
+    @GetMapping("/condominios/{c}/finance/entries/{id}")
     public EntryDetail entry(@PathVariable UUID c, @PathVariable UUID id) {
         return entries.get(c, id);
     }
 
-    @PostMapping("/condominiums/{c}/finance/entries")
+    @PostMapping("/condominios/{c}/finance/entries")
     @Operation(summary = "Lança receita ou despesa (repeat > 1 gera parcelas/recorrência mensal)")
     public ResponseEntity<List<EntryDetail>> createEntry(@PathVariable UUID c, @Valid @RequestBody EntryRequest request) {
         return ResponseEntity.status(201).body(entries.create(c, request));
     }
 
-    @PutMapping("/condominiums/{c}/finance/entries/{id}")
+    @PutMapping("/condominios/{c}/finance/entries/{id}")
     public EntryDetail updateEntry(@PathVariable UUID c, @PathVariable UUID id, @Valid @RequestBody EntryRequest request) {
         return entries.update(c, id, request);
     }
 
-    @PostMapping("/condominiums/{c}/finance/entries/{id}/approve")
+    @PostMapping("/condominios/{c}/finance/entries/{id}/approve")
     public EntryDetail approve(@PathVariable UUID c, @PathVariable UUID id, @Valid @RequestBody(required = false) DecisionRequest request) {
         return entries.approve(c, id, true, request == null ? null : request.note());
     }
 
-    @PostMapping("/condominiums/{c}/finance/entries/{id}/reject")
+    @PostMapping("/condominios/{c}/finance/entries/{id}/reject")
     public EntryDetail reject(@PathVariable UUID c, @PathVariable UUID id, @Valid @RequestBody DecisionRequest request) {
         return entries.approve(c, id, false, request.note());
     }
 
-    @PostMapping("/condominiums/{c}/finance/entries/{id}/cancel")
+    @PostMapping("/condominios/{c}/finance/entries/{id}/cancel")
     @Operation(summary = "Cancela o lançamento (sem baixas ativas), com justificativa")
     public EntryDetail cancel(@PathVariable UUID c, @PathVariable UUID id, @Valid @RequestBody ReasonRequest request) {
         return entries.cancel(c, id, request.reason());
     }
 
-    @GetMapping("/condominiums/{c}/finance/entries/{id}/quote")
+    @GetMapping("/condominios/{c}/finance/entries/{id}/quote")
     @Operation(summary = "Calcula multa e juros para pagamento na data informada")
     public PaymentQuote quote(@PathVariable UUID c, @PathVariable UUID id,
                               @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return entries.quote(c, id, date);
     }
 
-    @PostMapping("/condominiums/{c}/finance/entries/{id}/payments")
+    @PostMapping("/condominios/{c}/finance/entries/{id}/payments")
     @Operation(summary = "Registra baixa total ou parcial")
     public EntryDetail pay(@PathVariable UUID c, @PathVariable UUID id, @Valid @RequestBody PaymentRequest request) {
         return entries.pay(c, id, request);
     }
 
-    @PostMapping("/condominiums/{c}/finance/payments/{paymentId}/reverse")
+    @PostMapping("/condominios/{c}/finance/payments/{paymentId}/reverse")
     @Operation(summary = "Estorna uma baixa, com justificativa")
     public EntryDetail reversePayment(@PathVariable UUID c, @PathVariable UUID paymentId, @Valid @RequestBody ReasonRequest request) {
         return entries.reversePayment(c, paymentId, request.reason());
     }
 
     // ---------- transferências e orçamento
-    @GetMapping("/condominiums/{c}/finance/transfers")
+    @GetMapping("/condominios/{c}/finance/transfers")
     public List<TransferResponse> transfers(@PathVariable UUID c) {
         return treasury.transfers(c);
     }
 
-    @PostMapping("/condominiums/{c}/finance/transfers")
+    @PostMapping("/condominios/{c}/finance/transfers")
     public ResponseEntity<TransferResponse> transfer(@PathVariable UUID c, @Valid @RequestBody TransferRequest request) {
         return ResponseEntity.status(201).body(treasury.transfer(c, request));
     }
 
-    @PostMapping("/condominiums/{c}/finance/transfers/{id}/reverse")
+    @PostMapping("/condominios/{c}/finance/transfers/{id}/reverse")
     public TransferResponse reverseTransfer(@PathVariable UUID c, @PathVariable UUID id, @Valid @RequestBody ReasonRequest request) {
         return treasury.reverseTransfer(c, id, request.reason());
     }
 
-    @GetMapping("/condominiums/{c}/finance/budget/{year}")
+    @GetMapping("/condominios/{c}/finance/budget/{year}")
     @Operation(summary = "Orçamento anual: previsto × realizado por conta e mês")
     public Budget budget(@PathVariable UUID c, @PathVariable int year) {
         return budget.budget(c, year);
     }
 
-    @PutMapping("/condominiums/{c}/finance/budget/{year}")
+    @PutMapping("/condominios/{c}/finance/budget/{year}")
     public Budget saveBudget(@PathVariable UUID c, @PathVariable int year, @Valid @RequestBody BudgetRequest request) {
         return budget.save(c, year, request.cells());
     }

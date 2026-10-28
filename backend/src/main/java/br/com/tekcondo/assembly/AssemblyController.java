@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/condominiums/{c}/assemblies")
+@RequestMapping("/api/v1/condominios/{c}/assemblies")
 @Tag(name = "Assembleias e atas")
 public class AssemblyController {
 

@@ -14,7 +14,7 @@ export interface VisitorPass {
 export class VisitorApi {
   private readonly http = inject(HttpClient);
   private b(c: string): string {
-    return `/api/v1/condominiums/${c}/visitors`;
+    return `/api/v1/condominios/${c}/visitors`;
   }
 
   today(c: string): Observable<VisitorPass[]> { return this.http.get<VisitorPass[]>(`${this.b(c)}/today`); }

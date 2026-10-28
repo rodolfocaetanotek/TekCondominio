@@ -19,7 +19,7 @@ export interface Slot { areaId: string; date: string; startTime: string; endTime
 export class ReservationApi {
   private readonly http = inject(HttpClient);
   private b(c: string): string {
-    return `/api/v1/condominiums/${c}`;
+    return `/api/v1/condominios/${c}`;
   }
 
   areas(c: string): Observable<CommonArea[]> { return this.http.get<CommonArea[]>(`${this.b(c)}/common-areas`); }

@@ -13,8 +13,8 @@ import java.util.UUID;
 
 import br.com.tekcondo.auditoria.service.AcaoAuditoria;
 import br.com.tekcondo.auditoria.service.AuditoriaService;
-import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.condominium.service.CondominiumAccess;
+import br.com.tekcondo.condominio.entity.Condominio;
+import br.com.tekcondo.condominio.service.AcessoCondominio;
 import br.com.tekcondo.document.entity.Document;
 import br.com.tekcondo.document.repository.DocumentRepository;
 import br.com.tekcondo.acesso.autorizacao.AcessoService;
@@ -70,13 +70,13 @@ public class DocumentService {
 
     private final DocumentRepository repository;
     private final ArmazenamentoArquivos storage;
-    private final CondominiumAccess access;
+    private final AcessoCondominio access;
     private final AcessoService accessService;
     private final AuditoriaService auditService;
     private final TekCondoProperties props;
     private final Clock clock;
 
-    public DocumentService(DocumentRepository repository, ArmazenamentoArquivos storage, CondominiumAccess access,
+    public DocumentService(DocumentRepository repository, ArmazenamentoArquivos storage, AcessoCondominio access,
                            AcessoService accessService, AuditoriaService auditService, TekCondoProperties props, Clock clock) {
         this.repository = repository;
         this.storage = storage;
@@ -109,12 +109,12 @@ public class DocumentService {
 
     @Transactional
     public DocumentResponse upload(UUID condominiumId, Upload u) {
-        Condominium condominium = access.require(condominiumId, editPermission(u.entityType()));
+        Condominio condominium = access.exigir(condominiumId, editPermission(u.entityType()));
         validate(u);
         String extension = extension(u.originalName());
         String key = storage.gravar(u.content());
-        var user = access.user();
-        Document document = repository.save(new Document(condominium.getOrganizationId(), condominiumId, u.category(),
+        var user = access.usuario();
+        Document document = repository.save(new Document(condominium.getIdAdministradora(), condominiumId, u.category(),
                 u.title().trim(), blank(u.description()), safeName(u.originalName()), ALLOWED.get(extension),
                 u.content().length, sha256(u.content()), key,
                 u.visibility() == null ? Document.Visibility.INTERNAL : u.visibility(), u.entityType(), u.entityId(),
@@ -140,8 +140,8 @@ public class DocumentService {
     @Transactional
     public DocumentResponse archive(UUID condominiumId, UUID id) {
         Document d = repository.findByIdAndCondominiumId(id, condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Documento"));
-        access.require(condominiumId, editPermission(d.getEntityType()));
-        d.archive(access.user().idUsuario(), Instant.now(clock));
+        access.exigir(condominiumId, editPermission(d.getEntityType()));
+        d.archive(access.usuario().idUsuario(), Instant.now(clock));
         auditService.registrar(AcaoAuditoria.DOCUMENT_ARCHIVED, "Document", id, Map.of("title", d.getTitle()));
         return DocumentResponse.from(d);
     }
@@ -150,14 +150,14 @@ public class DocumentService {
 
     private void requireView(UUID condominiumId, String entityType) {
         if (entityType == null) {
-            access.require(condominiumId, Permissao.DOCUMENT_VIEW);
+            access.exigir(condominiumId, Permissao.DOCUMENT_VIEW);
             return;
         }
         Permissao[] perms = ENTITY_PERMISSIONS.get(entityType);
         if (perms == null) {
             throw ApiException.requisicaoInvalida("INVALID_ENTITY_TYPE", "Tipo de vínculo inválido.");
         }
-        access.require(condominiumId, accessService.concessoesAtuais().tem(Permissao.DOCUMENT_VIEW, condominiumId)
+        access.exigir(condominiumId, accessService.concessoesAtuais().tem(Permissao.DOCUMENT_VIEW, condominiumId)
                 ? Permissao.DOCUMENT_VIEW : perms[0]);
     }
 

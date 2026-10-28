@@ -33,7 +33,7 @@ Legenda: ✅ implementado e testado · 🟡 implementado parcialmente · ⬜ pen
 ## Entrada, saída e transporte
 - ✅ Bean Validation em todos os DTOs; erros RFC 9457 sem stack trace
 - ✅ JPA com parâmetros (sem SQL concatenado); `LIKE` com escape de curingas
-- ✅ Ordenação apenas por campos em lista branca — `CondominiumIT`
+- ✅ Ordenação apenas por campos em lista branca — `CondominioIT`
 - ✅ Entidades JPA nunca expostas diretamente (DTOs)
 - ✅ Cabeçalhos: `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, CSP no nginx
 - ✅ Angular escapa interpolação por padrão (sem `innerHTML`); proteção a redirecionamento aberto no login

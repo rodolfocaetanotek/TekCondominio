@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
-import br.com.tekcondo.condominium.entity.Condominium;
+import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.acesso.entity.Usuario;
 import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
@@ -30,7 +30,7 @@ class PeriodClosingIT extends IntegrationTest {
     ObjectMapper objectMapper;
 
     Administradora org;
-    Condominium condo;
+    Condominio condo;
     String token;
     String base;
     String bank;
@@ -42,9 +42,9 @@ class PeriodClosingIT extends IntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         org = data.administradora();
-        condo = data.condominium(org, "Condomínio Fechamento");
+        condo = data.condominio(org, "Condomínio Fechamento");
         token = TestData.bearer(data.login(data.adminAdministradora(org)));
-        base = "/api/v1/condominiums/" + condo.getId() + "/finance";
+        base = "/api/v1/condominios/" + condo.getId() + "/finance";
         bank = call("POST", base + "/bank-accounts", Map.of("name", "Conta Corrente", "kind", "CHECKING",
                 "openingBalance", "1000.00", "openingDate", today.minusMonths(6).toString()), 201).get("id").asText();
         cash = call("POST", base + "/bank-accounts", Map.of("name", "Caixa", "kind", "CASH",

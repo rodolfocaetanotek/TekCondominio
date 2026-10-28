@@ -10,7 +10,7 @@ import { toProblem } from '../../core/api/api.models';
 import { FieldError } from '../../shared/forms/field-error';
 import { todayIso } from '../../shared/ui/dates';
 import { PersonPicker } from './person-picker';
-import { Occupancy, OCCUPANCY_ROLE_LABELS, OccupancyRole, PersonSummary } from './structure.models';
+import { OCCUPANCY_ROLE_LABELS, PessoaResumo, TipoVinculo, Vinculo } from './structure.models';
 import { StructureService } from './structure.service';
 import { DialogClose } from '../../shared/ui/dialog-close';
 
@@ -33,7 +33,7 @@ import { DialogClose } from '../../shared/ui/dialog-close';
         <div class="tc-grid">
           <mat-form-field class="span-6">
             <mat-label>Vínculo</mat-label>
-            <mat-select formControlName="role">
+            <mat-select formControlName="tipo">
               @for (r of roles; track r[0]) {
                 <mat-option [value]="r[0]">{{ r[1] }}</mat-option>
               }
@@ -41,11 +41,11 @@ import { DialogClose } from '../../shared/ui/dialog-close';
           </mat-form-field>
           <mat-form-field class="span-6">
             <mat-label>Início</mat-label>
-            <input matInput type="date" formControlName="startDate" required />
-            <mat-error><tc-field-error [control]="form.controls.startDate" /></mat-error>
+            <input matInput type="date" formControlName="dataInicio" required />
+            <mat-error><tc-field-error [control]="form.controls.dataInicio" /></mat-error>
           </mat-form-field>
         </div>
-        <mat-checkbox formControlName="financialResponsible">Responsável financeiro (recebe as cobranças da unidade)</mat-checkbox>
+        <mat-checkbox formControlName="responsavelFinanceiro">Responsável financeiro (recebe as cobranças da unidade)</mat-checkbox>
       </mat-dialog-content>
       <mat-dialog-actions align="end">
         <button mat-button type="button" mat-dialog-close>Cancelar</button>
@@ -57,16 +57,16 @@ import { DialogClose } from '../../shared/ui/dialog-close';
 })
 export class OccupancyDialog {
   protected readonly data = inject<{ condominiumId: string; unitId: string; unitLabel: string; hasFinancial: boolean }>(MAT_DIALOG_DATA);
-  private readonly ref = inject(MatDialogRef<OccupancyDialog, Occupancy>);
+  private readonly ref = inject(MatDialogRef<OccupancyDialog, Vinculo>);
   private readonly service = inject(StructureService);
-  protected readonly roles = Object.entries(OCCUPANCY_ROLE_LABELS) as [OccupancyRole, string][];
-  protected readonly person = signal<PersonSummary | null>(null);
+  protected readonly roles = Object.entries(OCCUPANCY_ROLE_LABELS) as [TipoVinculo, string][];
+  protected readonly person = signal<PessoaResumo | null>(null);
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly form = inject(FormBuilder).nonNullable.group({
-    role: ['OWNER' as OccupancyRole],
-    startDate: [todayIso(), Validators.required],
-    financialResponsible: [!this.data.hasFinancial],
+    tipo: ['OWNER' as TipoVinculo],
+    dataInicio: [todayIso(), Validators.required],
+    responsavelFinanceiro: [!this.data.hasFinancial],
   });
 
   save(): void {
@@ -77,7 +77,7 @@ export class OccupancyDialog {
     this.error.set(null);
     const v = this.form.getRawValue();
     this.service
-      .addOccupancy(this.data.condominiumId, { unitId: this.data.unitId, personId: person.id, ...v })
+      .addOccupancy(this.data.condominiumId, { idUnidade: this.data.unitId, idPessoa: person.id, ...v })
       .subscribe({
         next: (o) => this.ref.close(o),
         error: (err: unknown) => {
@@ -96,18 +96,18 @@ export class OccupancyDialog {
     <h2 mat-dialog-title>Encerrar vínculo <tc-dialog-close /></h2>
     <form [formGroup]="form" (ngSubmit)="save()" novalidate>
       <mat-dialog-content>
-        <p>{{ data.occupancy.personName }} — {{ data.occupancy.unitLabel }}</p>
+        <p>{{ data.occupancy.nomePessoa }} — {{ data.occupancy.rotuloUnidade }}</p>
         @if (error(); as message) {
           <p class="tc-alert" role="alert">{{ message }}</p>
         }
         <mat-form-field class="full">
           <mat-label>Data de encerramento</mat-label>
-          <input matInput type="date" formControlName="endDate" required />
-          <mat-error><tc-field-error [control]="form.controls.endDate" /></mat-error>
+          <input matInput type="date" formControlName="dataFim" required />
+          <mat-error><tc-field-error [control]="form.controls.dataFim" /></mat-error>
         </mat-form-field>
         <mat-form-field class="full">
           <mat-label>Motivo</mat-label>
-          <input matInput formControlName="reason" maxlength="255" placeholder="Ex.: venda do imóvel, fim do contrato de locação" />
+          <input matInput formControlName="motivo" maxlength="255" placeholder="Ex.: venda do imóvel, fim do contrato de locação" />
         </mat-form-field>
       </mat-dialog-content>
       <mat-dialog-actions align="end">
@@ -119,14 +119,14 @@ export class OccupancyDialog {
   styles: `.full { width: 100%; }`,
 })
 export class EndOccupancyDialog {
-  protected readonly data = inject<{ condominiumId: string; occupancy: Occupancy }>(MAT_DIALOG_DATA);
-  private readonly ref = inject(MatDialogRef<EndOccupancyDialog, Occupancy>);
+  protected readonly data = inject<{ condominiumId: string; occupancy: Vinculo }>(MAT_DIALOG_DATA);
+  private readonly ref = inject(MatDialogRef<EndOccupancyDialog, Vinculo>);
   private readonly service = inject(StructureService);
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly form = inject(FormBuilder).nonNullable.group({
-    endDate: [todayIso(), Validators.required],
-    reason: [''],
+    dataFim: [todayIso(), Validators.required],
+    motivo: [''],
   });
 
   save(): void {
@@ -134,7 +134,7 @@ export class EndOccupancyDialog {
     if (this.form.invalid || this.saving()) return;
     this.saving.set(true);
     const v = this.form.getRawValue();
-    this.service.endOccupancy(this.data.condominiumId, this.data.occupancy.id, v.endDate, v.reason.trim() || null).subscribe({
+    this.service.endOccupancy(this.data.condominiumId, this.data.occupancy.id, v.dataFim, v.motivo.trim() || null).subscribe({
       next: (o) => this.ref.close(o),
       error: (err: unknown) => {
         this.saving.set(false);

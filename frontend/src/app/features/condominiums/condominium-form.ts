@@ -25,9 +25,9 @@ import {
   BRAZILIAN_STATES,
   CONDOMINIUM_STATUS_LABELS,
   CONDOMINIUM_TYPE_LABELS,
-  Condominium,
-  CondominiumRequest,
-  CondominiumType,
+  Condominio,
+  CondominioRequest,
+  TipoCondominio,
 } from './condominium.models';
 import { CondominiumService } from './condominium.service';
 
@@ -64,11 +64,11 @@ export class CondominiumForm implements OnInit {
   /** Parâmetro de rota; ausente em /condominios/novo. */
   readonly id = input<string>();
 
-  protected readonly types = Object.entries(CONDOMINIUM_TYPE_LABELS) as [CondominiumType, string][];
+  protected readonly types = Object.entries(CONDOMINIUM_TYPE_LABELS) as [TipoCondominio, string][];
   protected readonly states = BRAZILIAN_STATES;
   protected readonly statusLabels = CONDOMINIUM_STATUS_LABELS;
 
-  protected readonly condominium = signal<Condominium | null>(null);
+  protected readonly condominium = signal<Condominio | null>(null);
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
   protected readonly loadError = signal<string | null>(null);
@@ -76,7 +76,7 @@ export class CondominiumForm implements OnInit {
   protected readonly stale = signal(false);
 
   protected readonly isNew = computed(() => !this.id());
-  protected readonly isInactive = computed(() => this.condominium()?.status === 'INACTIVE');
+  protected readonly isInactive = computed(() => this.condominium()?.situacao === 'INACTIVE');
   protected readonly canEdit = computed(() => {
     const id = this.id();
     if (!id) return this.auth.can('CONDOMINIUM_CREATE');
@@ -89,21 +89,21 @@ export class CondominiumForm implements OnInit {
 
   private readonly fb = inject(FormBuilder).nonNullable;
   protected readonly form = this.fb.group({
-    name: ['', [Validators.required, Validators.maxLength(150)]],
-    legalName: ['', [Validators.maxLength(200)]],
+    nome: ['', [Validators.required, Validators.maxLength(150)]],
+    razaoSocial: ['', [Validators.maxLength(200)]],
     // Apenas formato; dígitos verificadores são validados pelo backend.
     cnpj: ['', [Validators.pattern(/^[0-9A-Z]{2}\.[0-9A-Z]{3}\.[0-9A-Z]{3}\/[0-9A-Z]{4}-\d{2}$/)]],
-    type: ['RESIDENTIAL' as CondominiumType, [Validators.required]],
+    tipo: ['RESIDENTIAL' as TipoCondominio, [Validators.required]],
     email: ['', [Validators.email, Validators.maxLength(254)]],
-    phone: ['', [Validators.pattern(/^\(\d{2}\) \d{4,5}-\d{4}$/)]],
-    address: this.fb.group({
-      zipCode: ['', [Validators.pattern(/^\d{5}-\d{3}$/)]],
-      street: ['', [Validators.maxLength(200)]],
-      number: ['', [Validators.maxLength(20)]],
-      complement: ['', [Validators.maxLength(100)]],
-      district: ['', [Validators.maxLength(100)]],
-      city: ['', [Validators.maxLength(100)]],
-      state: [''],
+    telefone: ['', [Validators.pattern(/^\(\d{2}\) \d{4,5}-\d{4}$/)]],
+    endereco: this.fb.group({
+      cep: ['', [Validators.pattern(/^\d{5}-\d{3}$/)]],
+      logradouro: ['', [Validators.maxLength(200)]],
+      numero: ['', [Validators.maxLength(20)]],
+      complemento: ['', [Validators.maxLength(100)]],
+      bairro: ['', [Validators.maxLength(100)]],
+      cidade: ['', [Validators.maxLength(100)]],
+      uf: [''],
     }),
   });
 
@@ -139,8 +139,8 @@ export class CondominiumForm implements OnInit {
     this.formError.set(null);
     this.stale.set(false);
     const current = this.condominium();
-    const request = this.toRequest(current?.version);
-    const call$: Observable<Condominium> = current
+    const request = this.toRequest(current?.versao);
+    const call$: Observable<Condominio> = current
       ? this.service.update(current.id, request)
       : this.service.create(request);
     call$.subscribe({
@@ -178,7 +178,7 @@ export class CondominiumForm implements OnInit {
       .open<ConfirmDialog, ConfirmDialogData, string | true>(ConfirmDialog, {
         data: {
           title: 'Inativar condomínio',
-          message: `"${c.name}" deixará de receber novos lançamentos e cobranças. O histórico será preservado.`,
+          message: `"${c.nome}" deixará de receber novos lançamentos e cobranças. O histórico será preservado.`,
           confirmLabel: 'Inativar',
           danger: true,
           reasonLabel: 'Justificativa',
@@ -205,7 +205,7 @@ export class CondominiumForm implements OnInit {
     if (!c) return;
     this.dialog
       .open<ConfirmDialog, ConfirmDialogData, string | true>(ConfirmDialog, {
-        data: { title: 'Reativar condomínio', message: `Reativar "${c.name}"?`, confirmLabel: 'Reativar' },
+        data: { title: 'Reativar condomínio', message: `Reativar "${c.nome}"?`, confirmLabel: 'Reativar' },
         width: '420px',
       })
       .afterClosed()
@@ -231,23 +231,23 @@ export class CondominiumForm implements OnInit {
     }
   }
 
-  private apply(c: Condominium): void {
+  private apply(c: Condominio): void {
     this.condominium.set(c);
     this.form.reset({
-      name: c.name,
-      legalName: c.legalName ?? '',
+      nome: c.nome,
+      razaoSocial: c.razaoSocial ?? '',
       cnpj: formatCnpj(c.cnpj),
-      type: c.type,
+      tipo: c.tipo,
       email: c.email ?? '',
-      phone: formatPhone(c.phone),
-      address: {
-        zipCode: formatZipCode(c.address?.zipCode),
-        street: c.address?.street ?? '',
-        number: c.address?.number ?? '',
-        complement: c.address?.complement ?? '',
-        district: c.address?.district ?? '',
-        city: c.address?.city ?? '',
-        state: c.address?.state ?? '',
+      telefone: formatPhone(c.telefone),
+      endereco: {
+        cep: formatZipCode(c.endereco?.cep),
+        logradouro: c.endereco?.logradouro ?? '',
+        numero: c.endereco?.numero ?? '',
+        complemento: c.endereco?.complemento ?? '',
+        bairro: c.endereco?.bairro ?? '',
+        cidade: c.endereco?.cidade ?? '',
+        uf: c.endereco?.uf ?? '',
       },
     });
     if (this.canEdit()) {
@@ -257,29 +257,29 @@ export class CondominiumForm implements OnInit {
     }
   }
 
-  private toRequest(version: number | undefined): CondominiumRequest {
+  private toRequest(versao: number | undefined): CondominioRequest {
     const v = this.form.getRawValue();
-    const a = v.address;
+    const a = v.endereco;
     const hasAddress = Object.values(a).some((x) => !!x?.trim());
     return {
-      name: v.name.trim(),
-      legalName: blank(v.legalName),
+      nome: v.nome.trim(),
+      razaoSocial: blank(v.razaoSocial),
       cnpj: blank(v.cnpj),
-      type: v.type,
+      tipo: v.tipo,
       email: blank(v.email),
-      phone: blank(v.phone),
-      address: hasAddress
+      telefone: blank(v.telefone),
+      endereco: hasAddress
         ? {
-            zipCode: blank(a.zipCode),
-            street: blank(a.street),
-            number: blank(a.number),
-            complement: blank(a.complement),
-            district: blank(a.district),
-            city: blank(a.city),
-            state: blank(a.state),
+            cep: blank(a.cep),
+            logradouro: blank(a.logradouro),
+            numero: blank(a.numero),
+            complemento: blank(a.complemento),
+            bairro: blank(a.bairro),
+            cidade: blank(a.cidade),
+            uf: blank(a.uf),
           }
         : null,
-      version,
+      versao,
     };
   }
 }

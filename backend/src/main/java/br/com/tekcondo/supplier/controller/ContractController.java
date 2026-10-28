@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/condominiums/{c}/contracts")
+@RequestMapping("/api/v1/condominios/{c}/contracts")
 @Tag(name = "Contratos")
 public class ContractController {
 

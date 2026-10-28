@@ -6,7 +6,7 @@ import java.time.YearMonth;
 import java.util.HashMap;
 import java.util.Map;
 
-import br.com.tekcondo.condominium.entity.Condominium;
+import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.acesso.entity.Usuario;
 import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
@@ -41,7 +41,7 @@ class ReportsDashboardPortalIT extends IntegrationTest {
     GravacaoEmailGateway mail;
 
     Administradora org;
-    Condominium condo;
+    Condominio condo;
     String token;
     String base;
     String bank;
@@ -52,15 +52,15 @@ class ReportsDashboardPortalIT extends IntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         org = data.administradora();
-        condo = data.condominium(org, "Condomínio Relatórios");
+        condo = data.condominio(org, "Condomínio Relatórios");
         token = TestData.bearer(data.login(data.adminAdministradora(org)));
-        base = "/api/v1/condominiums/" + condo.getId();
+        base = "/api/v1/condominios/" + condo.getId();
         call(token, "PUT", base + "/finance/settings", Map.of("finePercent", "2", "interestMonthlyPercent", "1",
                 "billingDueDay", 10, "requirePayableApproval", false), 200);
         bank = call(token, "POST", base + "/finance/bank-accounts", Map.of("name", "Banco", "kind", "CHECKING",
                 "openingBalance", "1000.00", "openingDate", today.minusYears(1).toString()), 201).get("id").asText();
-        unitOwner = call(token, "POST", base + "/units", Map.of("identifier", "11", "type", "APARTMENT", "idealFraction", "50"), 201).get("id").asText();
-        unitOther = call(token, "POST", base + "/units", Map.of("identifier", "12", "type", "APARTMENT", "idealFraction", "50"), 201).get("id").asText();
+        unitOwner = call(token, "POST", base + "/unidades", Map.of("identificacao", "11", "tipo", "APARTMENT", "fracaoIdeal", "50"), 201).get("id").asText();
+        unitOther = call(token, "POST", base + "/unidades", Map.of("identificacao", "12", "tipo", "APARTMENT", "fracaoIdeal", "50"), 201).get("id").asText();
 
         Map<String, Object> expense = new HashMap<>(Map.of("kind", "EXPENSE", "description", "Conserto bomba",
                 "chartAccountId", ACC_MAINTENANCE, "amount", "300.00", "dueDate", today.toString()));
@@ -125,7 +125,7 @@ class ReportsDashboardPortalIT extends IntegrationTest {
         assertThat(d.get("chargesIssued").asInt()).isEqualTo(2);
         assertThat(d.get("series")).hasSize(12);
 
-        Condominium other = data.condominium(org, "Outro");
+        Condominio other = data.condominio(org, "Outro");
         Usuario syndic = data.usuario(org);
         data.conceder(syndic, "SYNDIC", other.getId());
         JsonNode scoped = call(TestData.bearer(data.login(syndic)), "GET", "/api/v1/dashboard", null, 200);
@@ -137,15 +137,15 @@ class ReportsDashboardPortalIT extends IntegrationTest {
     @Test
     void residentPortalShowsOnlyOwnData() throws Exception {
         String ownerEmail = TestData.emailUnico();
-        String owner = call(token, "POST", "/api/v1/people", Map.of("name", "Olga Dona", "kind", "INDIVIDUAL", "email", ownerEmail), 201).get("id").asText();
+        String owner = call(token, "POST", "/api/v1/pessoas", Map.of("nome", "Olga Dona", "tipo", "INDIVIDUAL", "email", ownerEmail), 201).get("id").asText();
         String tenantEmail = TestData.emailUnico();
-        String tenant = call(token, "POST", "/api/v1/people", Map.of("name", "Ivo Morador", "kind", "INDIVIDUAL", "email", tenantEmail), 201).get("id").asText();
-        call(token, "POST", base + "/occupancies", Map.of("unitId", unitOwner, "personId", owner, "role", "OWNER",
-                "financialResponsible", true, "startDate", "2024-01-01"), 201);
-        call(token, "POST", base + "/occupancies", Map.of("unitId", unitOwner, "personId", tenant, "role", "RESIDENT",
-                "financialResponsible", false, "startDate", "2024-01-01"), 201);
-        call(token, "POST", "/api/v1/people/" + owner + "/portal-access", null, 200);
-        call(token, "POST", "/api/v1/people/" + tenant + "/portal-access", null, 200);
+        String tenant = call(token, "POST", "/api/v1/pessoas", Map.of("nome", "Ivo Morador", "tipo", "INDIVIDUAL", "email", tenantEmail), 201).get("id").asText();
+        call(token, "POST", base + "/vinculos", Map.of("idUnidade", unitOwner, "idPessoa", owner, "tipo", "OWNER",
+                "responsavelFinanceiro", true, "dataInicio", "2024-01-01"), 201);
+        call(token, "POST", base + "/vinculos", Map.of("idUnidade", unitOwner, "idPessoa", tenant, "tipo", "RESIDENT",
+                "responsavelFinanceiro", false, "dataInicio", "2024-01-01"), 201);
+        call(token, "POST", "/api/v1/pessoas/" + owner + "/acesso-portal", null, 200);
+        call(token, "POST", "/api/v1/pessoas/" + tenant + "/acesso-portal", null, 200);
         String ownerToken = activate(ownerEmail);
         String tenantToken = activate(tenantEmail);
 

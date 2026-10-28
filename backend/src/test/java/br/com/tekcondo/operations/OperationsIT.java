@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import br.com.tekcondo.announcement.AnnouncementRepository;
-import br.com.tekcondo.condominium.entity.Condominium;
+import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.finance.repository.FinancialEntryRepository;
 import br.com.tekcondo.acesso.entity.Usuario;
 import br.com.tekcondo.jobs.DailyRemindersJob;
@@ -57,7 +57,7 @@ class OperationsIT extends IntegrationTest {
     TransactionTemplate tx;
 
     Administradora org;
-    Condominium condo;
+    Condominio condo;
     Usuario admin;
     String token;
     String base;
@@ -67,12 +67,12 @@ class OperationsIT extends IntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         org = data.administradora();
-        condo = data.condominium(org, "Condomínio Operações");
+        condo = data.condominio(org, "Condomínio Operações");
         admin = data.adminAdministradora(org);
         token = TestData.bearer(data.login(admin));
-        base = "/api/v1/condominiums/" + condo.getId();
-        unit101 = call("POST", base + "/units", Map.of("identifier", "101", "type", "APARTMENT", "idealFraction", "60"), 201).get("id").asText();
-        unit102 = call("POST", base + "/units", Map.of("identifier", "102", "type", "APARTMENT", "idealFraction", "40"), 201).get("id").asText();
+        base = "/api/v1/condominios/" + condo.getId();
+        unit101 = call("POST", base + "/unidades", Map.of("identificacao", "101", "tipo", "APARTMENT", "fracaoIdeal", "60"), 201).get("id").asText();
+        unit102 = call("POST", base + "/unidades", Map.of("identificacao", "102", "tipo", "APARTMENT", "fracaoIdeal", "40"), 201).get("id").asText();
     }
 
     private JsonNode call(String method, String url, Object body, int expected) throws Exception {
@@ -145,13 +145,13 @@ class OperationsIT extends IntegrationTest {
     @Test
     void announcementReachesResidentsByNotificationAndEmail() throws Exception {
         String email = TestData.emailUnico();
-        String person = call("POST", "/api/v1/people", Map.of("name", "Rita Moradora", "kind", "INDIVIDUAL", "email", email), 201)
+        String person = call("POST", "/api/v1/pessoas", Map.of("nome", "Rita Moradora", "tipo", "INDIVIDUAL", "email", email), 201)
                 .get("id").asText();
         call("POST", base + "/occurrences", Map.of("title", "x", "description", "x", "category", "OTHER"), 201);
         call("POST", base + "/occurrences", Map.of("title", "y", "description", "y", "category", "OTHER"), 201);
-        call("POST", base + "/occupancies", Map.of("unitId", unit101, "personId", person, "role", "RESIDENT",
-                "financialResponsible", false, "startDate", "2025-01-01"), 201);
-        call("POST", "/api/v1/people/" + person + "/portal-access", null, 200);
+        call("POST", base + "/vinculos", Map.of("idUnidade", unit101, "idPessoa", person, "tipo", "RESIDENT",
+                "responsavelFinanceiro", false, "dataInicio", "2025-01-01"), 201);
+        call("POST", "/api/v1/pessoas/" + person + "/acesso-portal", null, 200);
         String residentUser = jdbc.queryForObject("select id::text from app_user where person_id = ?::uuid", String.class, person);
 
         call("POST", base + "/announcements", Map.of("title", "Manutenção do elevador", "body", "O elevador ficará parado amanhã.",

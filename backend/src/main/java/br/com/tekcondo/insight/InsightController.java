@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/condominiums/{c}/insights")
+@RequestMapping("/api/v1/condominios/{c}/insights")
 @Tag(name = "Indicadores e alertas financeiros")
 public class InsightController {
 

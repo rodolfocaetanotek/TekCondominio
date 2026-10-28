@@ -22,8 +22,8 @@ import {
   CONDOMINIUM_STATUS_LABELS,
   CONDOMINIUM_TYPE_LABELS,
   CondominiumQuery,
-  CondominiumStatus,
-  CondominiumSummary,
+  SituacaoCondominio,
+  CondominioResumo,
 } from './condominium.models';
 import { CondominiumService } from './condominium.service';
 
@@ -57,9 +57,9 @@ export class CondominiumList {
   protected readonly statusLabels = CONDOMINIUM_STATUS_LABELS;
 
   protected readonly search = new FormControl('', { nonNullable: true });
-  protected readonly status = new FormControl<CondominiumStatus | ''>('', { nonNullable: true });
+  protected readonly status = new FormControl<SituacaoCondominio | ''>('', { nonNullable: true });
 
-  protected readonly query = signal<CondominiumQuery>({ page: 0, size: 20, sort: 'name,asc', search: '', status: '' });
+  protected readonly query = signal<CondominiumQuery>({ page: 0, size: 20, sort: 'nome,asc', search: '', status: '' });
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
 
@@ -68,7 +68,7 @@ export class CondominiumList {
     { initialValue: false },
   );
   protected readonly columns = computed(() =>
-    this.isHandset() ? ['name', 'status'] : ['name', 'type', 'city', 'status'],
+    this.isHandset() ? ['nome', 'situacao'] : ['nome', 'tipo', 'cidade', 'situacao'],
   );
 
   protected readonly result = toSignal(
@@ -81,7 +81,7 @@ export class CondominiumList {
         this.service.list(q).pipe(
           catchError((err: unknown) => {
             this.error.set(toProblem(err).detail);
-            return of<PaginaResponse<CondominiumSummary> | null>(null);
+            return of<PaginaResponse<CondominioResumo> | null>(null);
           }),
           finalize(() => this.loading.set(false)),
         ),
@@ -102,7 +102,7 @@ export class CondominiumList {
   }
 
   onSort(sort: Sort): void {
-    const value = sort.direction ? `${sort.active},${sort.direction}` : 'name,asc';
+    const value = sort.direction ? `${sort.active},${sort.direction}` : 'nome,asc';
     this.query.update((q) => ({ ...q, sort: value, page: 0 }));
   }
 
@@ -120,15 +120,15 @@ export class CondominiumList {
     this.query.update((q) => ({ ...q }));
   }
 
-  typeLabel(c: CondominiumSummary): string {
-    return this.typeLabels[c.type];
+  typeLabel(c: CondominioResumo): string {
+    return this.typeLabels[c.tipo];
   }
 
-  statusLabel(c: CondominiumSummary): string {
-    return this.statusLabels[c.status];
+  statusLabel(c: CondominioResumo): string {
+    return this.statusLabels[c.situacao];
   }
 
-  open(row: CondominiumSummary): void {
+  open(row: CondominioResumo): void {
     void this.router.navigate(['/condominios', row.id]);
   }
 }

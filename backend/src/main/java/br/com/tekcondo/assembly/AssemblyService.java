@@ -22,12 +22,12 @@ import br.com.tekcondo.assembly.AssemblyEntities.Attendance;
 import br.com.tekcondo.assembly.AssemblyEntities.Vote;
 import br.com.tekcondo.auditoria.service.AcaoAuditoria;
 import br.com.tekcondo.auditoria.service.AuditoriaService;
-import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.condominium.service.CondominiumAccess;
+import br.com.tekcondo.condominio.entity.Condominio;
+import br.com.tekcondo.condominio.service.AcessoCondominio;
 import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.comum.exception.ApiException;
-import br.com.tekcondo.structure.entity.Unit;
-import br.com.tekcondo.structure.repository.UnitRepository;
+import br.com.tekcondo.estrutura.entity.Unidade;
+import br.com.tekcondo.estrutura.repository.UnidadeRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -101,16 +101,16 @@ public class AssemblyService {
     private final AgendaItemRepository items;
     private final AttendanceRepository attendances;
     private final VoteRepository votes;
-    private final UnitRepository units;
+    private final UnidadeRepository units;
     private final AnnouncementRepository announcements;
     private final AnnouncementService announcementService;
-    private final CondominiumAccess access;
+    private final AcessoCondominio access;
     private final AuditoriaService auditService;
     private final Clock clock;
 
     public AssemblyService(AssemblyRepository assemblies, AgendaItemRepository items, AttendanceRepository attendances,
-                           VoteRepository votes, UnitRepository units, AnnouncementRepository announcements,
-                           AnnouncementService announcementService, CondominiumAccess access, AuditoriaService auditService,
+                           VoteRepository votes, UnidadeRepository units, AnnouncementRepository announcements,
+                           AnnouncementService announcementService, AcessoCondominio access, AuditoriaService auditService,
                            Clock clock) {
         this.assemblies = assemblies;
         this.items = items;
@@ -126,7 +126,7 @@ public class AssemblyService {
 
     @Transactional(readOnly = true)
     public List<Summary> list(UUID condominiumId) {
-        access.require(condominiumId, Permissao.ASSEMBLY_VIEW);
+        access.exigir(condominiumId, Permissao.ASSEMBLY_VIEW);
         return assemblies.findByCondominiumIdOrderByScheduledAtDesc(condominiumId).stream()
                 .map(a -> new Summary(a.getId(), a.getTitle(), a.getKind(), a.getScheduledAt(), a.getLocation(), a.getStatus()))
                 .toList();
@@ -134,14 +134,14 @@ public class AssemblyService {
 
     @Transactional(readOnly = true)
     public Detail get(UUID condominiumId, UUID id) {
-        access.require(condominiumId, Permissao.ASSEMBLY_VIEW);
+        access.exigir(condominiumId, Permissao.ASSEMBLY_VIEW);
         return detail(load(condominiumId, id));
     }
 
     @Transactional
     public Detail create(UUID condominiumId, Request r) {
-        Condominium c = access.requireActive(condominiumId, Permissao.ASSEMBLY_EDIT);
-        Assembly a = new Assembly(c.getOrganizationId(), condominiumId, access.user().idUsuario());
+        Condominio c = access.exigirAtivo(condominiumId, Permissao.ASSEMBLY_EDIT);
+        Assembly a = new Assembly(c.getIdAdministradora(), condominiumId, access.usuario().idUsuario());
         a.details(r.title().trim(), r.kind(), r.scheduledAt(), r.secondCallAt(), r.location().trim(), r.voteWeight());
         assemblies.save(a);
         saveAgenda(a, r.agenda());
@@ -151,7 +151,7 @@ public class AssemblyService {
 
     @Transactional
     public Detail update(UUID condominiumId, UUID id, Request r) {
-        access.requireActive(condominiumId, Permissao.ASSEMBLY_EDIT);
+        access.exigirAtivo(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         a.details(r.title().trim(), r.kind(), r.scheduledAt(), r.secondCallAt(), r.location().trim(), r.voteWeight());
         items.deleteByAssemblyId(a.getId());
@@ -165,7 +165,7 @@ public class AssemblyService {
     /** Convoca: publica comunicado com data, local e pauta para todos os condôminos (notificação + e-mail). */
     @Transactional
     public Detail call(UUID condominiumId, UUID id) {
-        Condominium c = access.requireActive(condominiumId, Permissao.ASSEMBLY_EDIT);
+        Condominio c = access.exigirAtivo(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         if (!a.getScheduledAt().isAfter(Instant.now(clock))) {
             throw ApiException.regraNegocio("ASSEMBLY_IN_PAST", "A data da assembleia já passou. Ajuste antes de convocar.");
@@ -182,8 +182,8 @@ public class AssemblyService {
             body.append(item.getPosition()).append(". ").append(item.getTitle()).append('\n');
         }
         body.append("\nO condômino poderá ser representado por procurador, mediante procuração.");
-        var user = access.user();
-        Announcement announcement = announcements.save(new Announcement(c.getOrganizationId(), condominiumId,
+        var user = access.usuario();
+        Announcement announcement = announcements.save(new Announcement(c.getIdAdministradora(), condominiumId,
                 "Convocação: " + a.getTitle(), body.toString(), Announcement.Audience.ALL, null, null, true, true,
                 a.getScheduledAt().atZone(ZONE).toLocalDate(), Instant.now(clock), user.idUsuario(), user.nome()));
         announcementService.distribute(c, announcement);
@@ -193,7 +193,7 @@ public class AssemblyService {
 
     @Transactional
     public Detail start(UUID condominiumId, UUID id) {
-        access.requireActive(condominiumId, Permissao.ASSEMBLY_EDIT);
+        access.exigirAtivo(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         a.start();
         auditService.registrar(AcaoAuditoria.ASSEMBLY_STATUS_CHANGED, "Assembly", id, Map.of("status", "IN_PROGRESS"));
@@ -202,7 +202,7 @@ public class AssemblyService {
 
     @Transactional
     public Detail close(UUID condominiumId, UUID id) {
-        access.require(condominiumId, Permissao.ASSEMBLY_EDIT);
+        access.exigir(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         a.close(Instant.now(clock));
         auditService.registrar(AcaoAuditoria.ASSEMBLY_STATUS_CHANGED, "Assembly", id, Map.of("status", "CLOSED"));
@@ -211,7 +211,7 @@ public class AssemblyService {
 
     @Transactional
     public Detail cancel(UUID condominiumId, UUID id, String reason) {
-        access.require(condominiumId, Permissao.ASSEMBLY_EDIT);
+        access.exigir(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         a.cancel(reason.trim());
         auditService.registrar(AcaoAuditoria.ASSEMBLY_STATUS_CHANGED, "Assembly", id, Map.of("status", "CANCELLED", "reason", reason.trim()));
@@ -220,21 +220,21 @@ public class AssemblyService {
 
     @Transactional
     public Detail registerAttendance(UUID condominiumId, UUID id, AttendanceRequest r) {
-        access.require(condominiumId, Permissao.ASSEMBLY_EDIT);
+        access.exigir(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         a.requireInProgress();
-        Unit unit = units.findByIdAndCondominiumId(r.unitId(), condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
+        Unidade unit = units.findByIdAndIdCondominio(r.unitId(), condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
         if (attendances.findByAssemblyIdAndUnitId(id, unit.getId()).isPresent()) {
-            throw ApiException.conflito("ALREADY_PRESENT", "A unidade " + unit.label() + " já está na lista de presença.");
+            throw ApiException.conflito("ALREADY_PRESENT", "A unidade " + unit.rotulo() + " já está na lista de presença.");
         }
         attendances.save(new Attendance(id, unit.getId(), r.attendeeName().trim(), r.byProxy(),
-                r.proxyName() == null ? null : r.proxyName().trim(), access.user().idUsuario()));
+                r.proxyName() == null ? null : r.proxyName().trim(), access.usuario().idUsuario()));
         return detail(a);
     }
 
     @Transactional
     public Detail removeAttendance(UUID condominiumId, UUID id, UUID attendanceId) {
-        access.require(condominiumId, Permissao.ASSEMBLY_EDIT);
+        access.exigir(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         a.requireInProgress();
         Attendance att = attendances.findById(attendanceId).filter(x -> x.getAssemblyId().equals(id))
@@ -248,7 +248,7 @@ public class AssemblyService {
 
     @Transactional
     public Detail vote(UUID condominiumId, UUID id, VoteRequest r) {
-        access.require(condominiumId, Permissao.ASSEMBLY_EDIT);
+        access.exigir(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         a.requireInProgress();
         AgendaItem item = items.findById(r.agendaItemId()).filter(i -> i.getAssemblyId().equals(id))
@@ -256,23 +256,23 @@ public class AssemblyService {
         if (!item.isVoting()) {
             throw ApiException.regraNegocio("ITEM_NOT_VOTING", "Este item da pauta não é deliberativo.");
         }
-        Unit unit = units.findByIdAndCondominiumId(r.unitId(), condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
+        Unidade unit = units.findByIdAndIdCondominio(r.unitId(), condominiumId).orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
         if (attendances.findByAssemblyIdAndUnitId(id, unit.getId()).isEmpty()) {
             throw ApiException.regraNegocio("UNIT_NOT_PRESENT", "Registre a presença da unidade antes do voto.");
         }
         if (votes.existsByAgendaItemIdAndUnitId(item.getId(), unit.getId())) {
-            throw ApiException.conflito("ALREADY_VOTED", "A unidade " + unit.label() + " já votou neste item.");
+            throw ApiException.conflito("ALREADY_VOTED", "A unidade " + unit.rotulo() + " já votou neste item.");
         }
-        BigDecimal weight = a.getVoteWeight() == Assembly.VoteWeight.IDEAL_FRACTION ? unit.getIdealFraction() : BigDecimal.ONE;
-        votes.save(new Vote(id, item.getId(), unit.getId(), r.choice(), weight, access.user().idUsuario()));
-        auditService.registrar(AcaoAuditoria.VOTE_CAST, "Assembly", id, Map.of("item", item.getPosition(), "unit", unit.label(),
+        BigDecimal weight = a.getVoteWeight() == Assembly.VoteWeight.IDEAL_FRACTION ? unit.getFracaoIdeal() : BigDecimal.ONE;
+        votes.save(new Vote(id, item.getId(), unit.getId(), r.choice(), weight, access.usuario().idUsuario()));
+        auditService.registrar(AcaoAuditoria.VOTE_CAST, "Assembly", id, Map.of("item", item.getPosition(), "unit", unit.rotulo(),
                 "choice", r.choice().name()));
         return detail(a);
     }
 
     @Transactional
     public Detail deliberate(UUID condominiumId, UUID id, UUID itemId, DeliberationRequest r) {
-        access.require(condominiumId, Permissao.ASSEMBLY_EDIT);
+        access.exigir(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         if (a.getStatus() != Assembly.Status.IN_PROGRESS && a.getStatus() != Assembly.Status.CLOSED) {
             throw ApiException.regraNegocio("ASSEMBLY_NOT_HELD", "Deliberações são registradas durante ou após a assembleia.");
@@ -285,7 +285,7 @@ public class AssemblyService {
 
     @Transactional
     public Detail writeMinutes(UUID condominiumId, UUID id, String minutes) {
-        access.require(condominiumId, Permissao.ASSEMBLY_EDIT);
+        access.exigir(condominiumId, Permissao.ASSEMBLY_EDIT);
         Assembly a = load(condominiumId, id);
         a.writeMinutes(minutes.trim());
         auditService.registrar(AcaoAuditoria.ASSEMBLY_UPDATED, "Assembly", id, Map.of("minutes", "atualizada"));
@@ -295,11 +295,11 @@ public class AssemblyService {
     /** Rascunho da ata gerado a partir da pauta, presença, resultados e deliberações registrados. */
     @Transactional(readOnly = true)
     public String minutesDraft(UUID condominiumId, UUID id) {
-        Condominium c = access.require(condominiumId, Permissao.ASSEMBLY_VIEW);
+        Condominio c = access.exigir(condominiumId, Permissao.ASSEMBLY_VIEW);
         Detail d = detail(load(condominiumId, id));
         StringBuilder sb = new StringBuilder();
         sb.append("ATA DA ASSEMBLEIA GERAL ").append(d.kind() == Assembly.Kind.ORDINARY ? "ORDINÁRIA" : "EXTRAORDINÁRIA")
-                .append(" DO ").append(c.getName().toUpperCase()).append("\n\n");
+                .append(" DO ").append(c.getNome().toUpperCase()).append("\n\n");
         sb.append("Aos ").append(DATE_TIME.format(d.scheduledAt())).append(", em ").append(d.location())
                 .append(", reuniram-se os condôminos, conforme lista de presença, representando ")
                 .append(d.quorum().unitsPresent()).append(" de ").append(d.quorum().totalUnits()).append(" unidades (")
@@ -349,14 +349,14 @@ public class AssemblyService {
                     i.getResponsible(), i.getDeadline(), new Tally(sums.getOrDefault(Vote.Choice.YES, BigDecimal.ZERO),
                     sums.getOrDefault(Vote.Choice.NO, BigDecimal.ZERO), sums.getOrDefault(Vote.Choice.ABSTAIN, BigDecimal.ZERO), list.size()));
         }).toList();
-        List<Unit> condoUnits = units.findActiveByCondominium(a.getCondominiumId());
-        Map<UUID, Unit> unitMap = condoUnits.stream().collect(Collectors.toMap(Unit::getId, Function.identity()));
+        List<Unidade> condoUnits = units.buscarAtivasDoCondominio(a.getCondominiumId());
+        Map<UUID, Unidade> unitMap = condoUnits.stream().collect(Collectors.toMap(Unidade::getId, Function.identity()));
         List<Attendance> present = attendances.findByAssemblyIdOrderByRegisteredAtAsc(a.getId());
         List<AttendanceResponse> attendance = present.stream().map(x -> new AttendanceResponse(x.getId(), x.getUnitId(),
-                unitMap.containsKey(x.getUnitId()) ? unitMap.get(x.getUnitId()).label() : units.findById(x.getUnitId()).map(Unit::label).orElse("?"),
+                unitMap.containsKey(x.getUnitId()) ? unitMap.get(x.getUnitId()).rotulo() : units.findById(x.getUnitId()).map(Unidade::rotulo).orElse("?"),
                 x.getAttendeeName(), x.isByProxy(), x.getProxyName(), x.getRegisteredAt())).toList();
         BigDecimal fraction = present.stream().map(x -> unitMap.get(x.getUnitId())).filter(u -> u != null)
-                .map(Unit::getIdealFraction).reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(Unidade::getFracaoIdeal).reduce(BigDecimal.ZERO, BigDecimal::add);
         return new Detail(a.getId(), a.getTitle(), a.getKind(), a.getScheduledAt(), a.getSecondCallAt(), a.getLocation(),
                 a.getVoteWeight(), a.getStatus(), a.getCalledAt(), a.getClosedAt(), a.getCancelReason(), a.getMinutes(),
                 a.getVersao(), agenda, attendance, new Quorum(present.size(), condoUnits.size(), fraction));

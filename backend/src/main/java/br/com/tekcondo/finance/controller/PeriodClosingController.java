@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/condominiums/{c}/finance/closing")
+@RequestMapping("/api/v1/condominios/{c}/finance/closing")
 @Tag(name = "Financeiro — fechamento mensal")
 public class PeriodClosingController {
 

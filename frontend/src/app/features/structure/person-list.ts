@@ -19,7 +19,7 @@ import { DocPipe } from '../../shared/format/doc.pipe';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { PageHeader } from '../../shared/ui/page-header';
 import { PersonDialog } from './person-dialog';
-import { PersonDetail, PersonSummary } from './structure.models';
+import { PessoaDetalhe, PessoaResumo } from './structure.models';
 import { StructureService } from './structure.service';
 
 @Component({
@@ -56,12 +56,12 @@ import { StructureService } from './structure.service';
                 <caption class="sr-only">Pessoas</caption>
                 <ng-container matColumnDef="name">
                   <th mat-header-cell *matHeaderCellDef>Nome</th>
-                  <td mat-cell *matCellDef="let p"><strong class="block">{{ p.name }}</strong>
-                    <span class="tc-muted mono">{{ p.document ? (p.document | doc: 'cpfCnpj') : '' }}</span></td>
+                  <td mat-cell *matCellDef="let p"><strong class="block">{{ p.nome }}</strong>
+                    <span class="tc-muted mono">{{ p.documento ? (p.documento | doc: 'cpfCnpj') : '' }}</span></td>
                 </ng-container>
                 <ng-container matColumnDef="contact">
                   <th mat-header-cell *matHeaderCellDef>Contato</th>
-                  <td mat-cell *matCellDef="let p"><span class="block">{{ p.email ?? '' }}</span><span class="tc-muted">{{ p.phone ? (p.phone | doc: 'phone') : '' }}</span></td>
+                  <td mat-cell *matCellDef="let p"><span class="block">{{ p.email ?? '' }}</span><span class="tc-muted">{{ p.telefone ? (p.telefone | doc: 'phone') : '' }}</span></td>
                 </ng-container>
                 <ng-container matColumnDef="units">
                   <th mat-header-cell *matHeaderCellDef>Unidades (vínculo vigente)</th>
@@ -69,7 +69,7 @@ import { StructureService } from './structure.service';
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="columns"></tr>
                 <tr mat-row *matRowDef="let row; columns: columns" class="is-clickable" tabindex="0" role="link"
-                  [attr.aria-label]="'Abrir ' + row.name" (click)="open(row)" (keydown.enter)="open(row)"></tr>
+                  [attr.aria-label]="'Abrir ' + row.nome" (click)="open(row)" (keydown.enter)="open(row)"></tr>
               </table>
             </div>
             <mat-paginator [length]="page.totalElementos" [pageIndex]="page.pagina" [pageSize]="page.tamanho"
@@ -109,7 +109,7 @@ export class PersonList {
         this.service.people({ search: q.search, page: q.page, size: q.size, condominiumId: q.condo ?? undefined }).pipe(
           catchError((err: unknown) => {
             this.error.set(toProblem(err).detail);
-            return of<PaginaResponse<PersonSummary> | null>(null);
+            return of<PaginaResponse<PessoaResumo> | null>(null);
           }),
           finalize(() => this.loading.set(false)),
         ),
@@ -125,15 +125,15 @@ export class PersonList {
     this.onlyCondo.valueChanges.pipe(takeUntilDestroyed()).subscribe((only) => this.params.update((p) => ({ ...p, only, page: 0 })));
   }
 
-  unitsOf(p: PersonSummary): string {
-    return p.units.length ? p.units.join(', ') : '—';
+  unitsOf(p: PessoaResumo): string {
+    return p.unidades.length ? p.unidades.join(', ') : '—';
   }
 
   onPage(e: PageEvent): void {
     this.params.update((p) => ({ ...p, page: e.pageIndex, size: e.pageSize }));
   }
 
-  open(p: PersonSummary): void {
+  open(p: PessoaResumo): void {
     void this.router.navigate(['/pessoas', p.id]);
   }
 
@@ -141,9 +141,9 @@ export class PersonList {
     this.dialog
       .open(PersonDialog, { data: {}, width: '680px', maxWidth: '95vw' })
       .afterClosed()
-      .pipe(filter((p): p is PersonDetail => !!p))
+      .pipe(filter((p): p is PessoaDetalhe => !!p))
       .subscribe((p) => {
-        this.notify.success(`${p.name} cadastrado(a).`);
+        this.notify.success(`${p.nome} cadastrado(a).`);
         void this.router.navigate(['/pessoas', p.id]);
       });
   }

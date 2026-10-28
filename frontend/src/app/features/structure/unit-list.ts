@@ -23,7 +23,7 @@ import { EmptyState } from '../../shared/ui/empty-state';
 import { PageHeader } from '../../shared/ui/page-header';
 import { BuildingDialog } from './building-dialog';
 import { ImportDialog } from './import-dialog';
-import { Building, Unit, UNIT_TYPE_LABELS } from './structure.models';
+import { Bloco, Unidade, UNIT_TYPE_LABELS } from './structure.models';
 import { StructureService } from './structure.service';
 import { UnitDialog, UnitDialogData } from './unit-dialog';
 
@@ -34,7 +34,7 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
     PageHeader, EmptyState, CondominiumRequired],
   template: `
     <div class="tc-page">
-      <tc-page-header eyebrow="Estrutura" title="Unidades" [subtitle]="context.selected()?.name">
+      <tc-page-header eyebrow="Estrutura" title="Unidades" [subtitle]="context.selected()?.nome">
         @if (canEdit()) {
           <button mat-stroked-button (click)="openImport()"><mat-icon>upload_file</mat-icon> Importar planilha</button>
           <button mat-flat-button (click)="openUnit()"><mat-icon>add</mat-icon> Nova unidade</button>
@@ -46,22 +46,22 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
       } @else {
         @if (data(); as d) {
           <section class="summary">
-            <div class="tc-kpi tc-card fraction" [class.tone-success]="d.summary.balanced" [class.tone-warning]="!d.summary.balanced" role="status">
-              <span class="icon"><mat-icon aria-hidden="true">{{ d.summary.balanced ? 'check_circle' : 'warning' }}</mat-icon></span>
+            <div class="tc-kpi tc-card fraction" [class.tone-success]="d.summary.fechada" [class.tone-warning]="!d.summary.fechada" role="status">
+              <span class="icon"><mat-icon aria-hidden="true">{{ d.summary.fechada ? 'check_circle' : 'warning' }}</mat-icon></span>
               <span class="label">Frações ideais</span>
               <span class="value">{{ d.summary.total | number: '1.2-6' }}%</span>
-              <span class="sub">{{ d.summary.activeUnits }} unidade(s) ativa(s) ·
-                {{ d.summary.balanced ? 'soma correta, rateio por fração liberado' : 'faltam ' + (d.summary.difference | number: '1.2-6') + ' p.p. para 100%' }}</span>
+              <span class="sub">{{ d.summary.unidadesAtivas }} unidade(s) ativa(s) ·
+                {{ d.summary.fechada ? 'soma correta, rateio por fração liberado' : 'faltam ' + (d.summary.diferenca | number: '1.2-6') + ' p.p. para 100%' }}</span>
             </div>
             <div class="tc-card buildings">
               <p class="tc-section-label">Blocos</p>
               <div class="chips">
               @for (b of d.buildings; track b.id) {
-                <button mat-stroked-button class="chip" [class.inactive]="!b.active" [matMenuTriggerFor]="bm" [disabled]="!canEdit()"
-                  [matTooltip]="b.activeUnits + ' unidade(s) ativa(s)'">{{ b.name }} ({{ b.activeUnits }})</button>
+                <button mat-stroked-button class="chip" [class.inactive]="!b.ativo" [matMenuTriggerFor]="bm" [disabled]="!canEdit()"
+                  [matTooltip]="b.unidadesAtivas + ' unidade(s) ativa(s)'">{{ b.nome }} ({{ b.unidadesAtivas }})</button>
                 <mat-menu #bm="matMenu">
                   <button mat-menu-item (click)="openBuilding(b)"><mat-icon>edit</mat-icon>Editar</button>
-                  <button mat-menu-item (click)="toggleBuilding(b)"><mat-icon>{{ b.active ? 'block' : 'check_circle' }}</mat-icon>{{ b.active ? 'Inativar' : 'Reativar' }}</button>
+                  <button mat-menu-item (click)="toggleBuilding(b)"><mat-icon>{{ b.ativo ? 'block' : 'check_circle' }}</mat-icon>{{ b.ativo ? 'Inativar' : 'Reativar' }}</button>
                 </mat-menu>
               } @empty {
                 <span class="tc-muted">nenhum</span>
@@ -85,7 +85,7 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
             <mat-select [formControl]="building">
               <mat-option value="">Todos</mat-option>
               @for (b of data()?.buildings ?? []; track b.id) {
-                <mat-option [value]="b.id">{{ b.name }}</mat-option>
+                <mat-option [value]="b.id">{{ b.nome }}</mat-option>
               }
             </mat-select>
           </mat-form-field>
@@ -113,7 +113,7 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
                   <caption class="sr-only">Unidades</caption>
                   <ng-container matColumnDef="label">
                     <th mat-header-cell *matHeaderCellDef>Unidade</th>
-                    <td mat-cell *matCellDef="let u"><strong>{{ u.label }}</strong></td>
+                    <td mat-cell *matCellDef="let u"><strong>{{ u.rotulo }}</strong></td>
                   </ng-container>
                   <ng-container matColumnDef="type">
                     <th mat-header-cell *matHeaderCellDef>Tipo</th>
@@ -121,23 +121,23 @@ import { UnitDialog, UnitDialogData } from './unit-dialog';
                   </ng-container>
                   <ng-container matColumnDef="fraction">
                     <th mat-header-cell *matHeaderCellDef class="num">Fração (%)</th>
-                    <td mat-cell *matCellDef="let u" class="num mono">{{ u.idealFraction | number: '1.2-6' }}</td>
+                    <td mat-cell *matCellDef="let u" class="num mono">{{ u.fracaoIdeal | number: '1.2-6' }}</td>
                   </ng-container>
                   <ng-container matColumnDef="owner">
                     <th mat-header-cell *matHeaderCellDef>Proprietário</th>
-                    <td mat-cell *matCellDef="let u">{{ u.ownerName ?? '—' }}</td>
+                    <td mat-cell *matCellDef="let u">{{ u.nomeProprietario ?? '—' }}</td>
                   </ng-container>
                   <ng-container matColumnDef="financial">
                     <th mat-header-cell *matHeaderCellDef>Resp. financeiro</th>
-                    <td mat-cell *matCellDef="let u">{{ u.financialResponsibleName ?? '—' }}</td>
+                    <td mat-cell *matCellDef="let u">{{ u.nomeResponsavelFinanceiro ?? '—' }}</td>
                   </ng-container>
                   <ng-container matColumnDef="status">
                     <th mat-header-cell *matHeaderCellDef>Situação</th>
-                    <td mat-cell *matCellDef="let u"><span class="tc-status" [class.is-active]="u.active" [class.is-inactive]="!u.active">{{ u.active ? 'Ativa' : 'Inativa' }}</span></td>
+                    <td mat-cell *matCellDef="let u"><span class="tc-status" [class.is-active]="u.ativo" [class.is-inactive]="!u.ativo">{{ u.ativo ? 'Ativa' : 'Inativa' }}</span></td>
                   </ng-container>
                   <tr mat-header-row *matHeaderRowDef="columns"></tr>
                   <tr mat-row *matRowDef="let row; columns: columns" class="is-clickable" tabindex="0" role="link"
-                    [attr.aria-label]="'Abrir unidade ' + row.label" (click)="open(row)" (keydown.enter)="open(row)"></tr>
+                    [attr.aria-label]="'Abrir unidade ' + row.rotulo" (click)="open(row)" (keydown.enter)="open(row)"></tr>
                 </table>
               </div>
               <mat-paginator [length]="d.page.totalElementos" [pageIndex]="d.page.pagina" [pageSize]="d.page.tamanho"
@@ -171,7 +171,7 @@ export class UnitList {
   private readonly paging = signal({ page: 0, size: 50, search: '', buildingId: '', active: 'true', tick: 0 });
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
-  protected readonly canEdit = computed(() => this.context.can('STRUCTURE_EDIT') && this.context.selected()?.status === 'ACTIVE');
+  protected readonly canEdit = computed(() => this.context.can('STRUCTURE_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
 
   private readonly query = computed(() => ({ condo: this.context.id(), ...this.paging() }));
 
@@ -207,31 +207,31 @@ export class UnitList {
     this.active.valueChanges.pipe(takeUntilDestroyed()).subscribe((active) => this.paging.update((p) => ({ ...p, active, page: 0 })));
   }
 
-  typeLabel(u: Unit): string {
-    return UNIT_TYPE_LABELS[u.type];
+  typeLabel(u: Unidade): string {
+    return UNIT_TYPE_LABELS[u.tipo];
   }
 
   onPage(e: PageEvent): void {
     this.paging.update((p) => ({ ...p, page: e.pageIndex, size: e.pageSize }));
   }
 
-  open(u: Unit): void {
+  open(u: Unidade): void {
     void this.router.navigate(['/unidades', u.id]);
   }
 
   openUnit(): void {
     const condominiumId = this.context.id()!;
     this.dialog
-      .open<UnitDialog, UnitDialogData, Unit>(UnitDialog, { data: { condominiumId, buildings: this.data()?.buildings ?? [] }, width: '640px', maxWidth: '95vw' })
+      .open<UnitDialog, UnitDialogData, Unidade>(UnitDialog, { data: { condominiumId, buildings: this.data()?.buildings ?? [] }, width: '640px', maxWidth: '95vw' })
       .afterClosed()
-      .pipe(filter((u): u is Unit => !!u))
+      .pipe(filter((u): u is Unidade => !!u))
       .subscribe((u) => {
-        this.notify.success(`Unidade ${u.label} cadastrada.`);
+        this.notify.success(`Unidade ${u.rotulo} cadastrada.`);
         this.refresh();
       });
   }
 
-  openBuilding(building?: Building): void {
+  openBuilding(building?: Bloco): void {
     this.dialog
       .open(BuildingDialog, { data: { condominiumId: this.context.id()!, building }, width: '440px' })
       .afterClosed()
@@ -242,8 +242,8 @@ export class UnitList {
       });
   }
 
-  toggleBuilding(b: Building): void {
-    this.service.setBuildingActive(this.context.id()!, b.id, !b.active).subscribe({
+  toggleBuilding(b: Bloco): void {
+    this.service.setBuildingActive(this.context.id()!, b.id, !b.ativo).subscribe({
       next: () => this.refresh(),
       error: (err: unknown) => this.notify.error(toProblem(err).detail),
     });

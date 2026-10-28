@@ -1,6 +1,6 @@
-export type UnitType = 'APARTMENT' | 'HOUSE' | 'ROOM' | 'STORE' | 'PARKING' | 'OTHER';
+export type TipoUnidade = 'APARTMENT' | 'HOUSE' | 'ROOM' | 'STORE' | 'PARKING' | 'OTHER';
 
-export const UNIT_TYPE_LABELS: Record<UnitType, string> = {
+export const UNIT_TYPE_LABELS: Record<TipoUnidade, string> = {
   APARTMENT: 'Apartamento',
   HOUSE: 'Casa',
   ROOM: 'Sala',
@@ -9,117 +9,117 @@ export const UNIT_TYPE_LABELS: Record<UnitType, string> = {
   OTHER: 'Outro',
 };
 
-export interface Building {
+export interface Bloco {
   id: string;
-  name: string;
-  description?: string;
-  active: boolean;
-  activeUnits: number;
+  nome: string;
+  descricao?: string;
+  ativo: boolean;
+  unidadesAtivas: number;
 }
 
-export interface Unit {
+export interface Unidade {
   id: string;
-  buildingId?: string;
-  buildingName?: string;
-  identifier: string;
-  label: string;
-  type: UnitType;
-  floor?: string;
+  idBloco?: string;
+  nomeBloco?: string;
+  identificacao: string;
+  rotulo: string;
+  tipo: TipoUnidade;
+  andar?: string;
   area?: number;
-  idealFraction: number;
-  notes?: string;
-  active: boolean;
-  version: number;
-  ownerName?: string;
-  financialResponsibleName?: string;
+  fracaoIdeal: number;
+  observacoes?: string;
+  ativo: boolean;
+  versao: number;
+  nomeProprietario?: string;
+  nomeResponsavelFinanceiro?: string;
 }
 
-export interface UnitRequest {
-  buildingId: string | null;
-  identifier: string;
-  type: UnitType;
-  floor: string | null;
+export interface UnidadeRequest {
+  idBloco: string | null;
+  identificacao: string;
+  tipo: TipoUnidade;
+  andar: string | null;
   area: number | null;
-  idealFraction: number | null;
-  notes: string | null;
-  version?: number;
+  fracaoIdeal: number | null;
+  observacoes: string | null;
+  versao?: number;
 }
 
-export interface FractionSummary {
+export interface ResumoFracoes {
   total: number;
-  activeUnits: number;
-  balanced: boolean;
-  difference: number;
+  unidadesAtivas: number;
+  fechada: boolean;
+  diferenca: number;
 }
 
-export interface ImportResult {
-  dryRun: boolean;
-  lines: number;
-  buildingsCreated: number;
-  unitsCreated: number;
-  peopleCreated: number;
-  peopleReused: number;
-  errors: { line: number; message: string }[];
+export interface ResultadoImportacao {
+  simulacao: boolean;
+  linhas: number;
+  blocosCriados: number;
+  unidadesCriadas: number;
+  pessoasCriadas: number;
+  pessoasReaproveitadas: number;
+  erros: { linha: number; mensagem: string }[];
 }
 
-export type OccupancyRole = 'OWNER' | 'TENANT' | 'RESIDENT';
+export type TipoVinculo = 'OWNER' | 'TENANT' | 'RESIDENT';
 
-export const OCCUPANCY_ROLE_LABELS: Record<OccupancyRole, string> = {
+export const OCCUPANCY_ROLE_LABELS: Record<TipoVinculo, string> = {
   OWNER: 'Proprietário',
   TENANT: 'Inquilino',
   RESIDENT: 'Morador',
 };
 
-export interface Occupancy {
+export interface Vinculo {
   id: string;
-  condominiumId: string;
-  unitId: string;
-  unitLabel: string;
-  personId: string;
-  personName: string;
-  role: OccupancyRole;
-  financialResponsible: boolean;
-  startDate: string;
-  endDate?: string;
-  endReason?: string;
-  current: boolean;
+  idCondominio: string;
+  idUnidade: string;
+  rotuloUnidade: string;
+  idPessoa: string;
+  nomePessoa: string;
+  tipo: TipoVinculo;
+  responsavelFinanceiro: boolean;
+  dataInicio: string;
+  dataFim?: string;
+  motivoEncerramento?: string;
+  vigente: boolean;
 }
 
-export type PersonKind = 'INDIVIDUAL' | 'COMPANY';
+export type TipoPessoa = 'INDIVIDUAL' | 'COMPANY';
 
-export interface PersonSummary {
+export interface PessoaResumo {
   id: string;
-  name: string;
-  kind: PersonKind;
-  document?: string;
+  nome: string;
+  tipo: TipoPessoa;
+  documento?: string;
   email?: string;
-  phone?: string;
-  active: boolean;
-  units: string[];
+  telefone?: string;
+  ativo: boolean;
+  unidades: string[];
 }
 
-export interface PersonDetail {
+export interface PessoaDetalhe {
   id: string;
-  name: string;
-  kind: PersonKind;
-  document?: string;
+  nome: string;
+  tipo: TipoPessoa;
+  documento?: string;
   email?: string;
-  phone?: string;
-  secondaryPhone?: string;
-  notes?: string;
-  active: boolean;
-  version: number;
-  portalUser: boolean;
-  occupancies: Occupancy[];
+  telefone?: string;
+  telefoneSecundario?: string;
+  observacoes?: string;
+  ativo: boolean;
+  versao: number;
+  usuarioPortal: boolean;
+  vinculos: Vinculo[];
 }
 
-export interface PersonRequest {
-  name: string;
-  kind: PersonKind;
-  document: string | null;
+export interface PessoaRequest {
+  nome: string;
+  tipo: TipoPessoa;
+  documento: string | null;
   email: string | null;
-  phone: string | null;
-  secondaryPhone: string | null;
-  notes: string | null;
-  version?: number;
+  telefone: string | null;
+  telefoneSecundario: string | null;
+  observacoes: string | null;
+  versao?: number;
 }

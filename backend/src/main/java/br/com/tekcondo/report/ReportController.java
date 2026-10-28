@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/condominiums/{c}/reports")
+@RequestMapping("/api/v1/condominios/{c}/reports")
 @Tag(name = "Relatórios")
 public class ReportController {
 

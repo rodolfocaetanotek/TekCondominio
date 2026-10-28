@@ -3,7 +3,7 @@ package br.com.tekcondo.acesso;
 import java.util.HashMap;
 import java.util.Map;
 
-import br.com.tekcondo.condominium.entity.Condominium;
+import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.acesso.entity.Usuario;
 import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
@@ -38,14 +38,14 @@ class UsuarioIT extends IntegrationTest {
 
     Administradora org;
     Usuario administrador;
-    Condominium condominio;
+    Condominio condominio;
     String token;
 
     @BeforeEach
     void setUp() {
         org = data.administradora();
         administrador = data.adminAdministradora(org);
-        condominio = data.condominium(org, "Residencial Sabiá");
+        condominio = data.condominio(org, "Residencial Sabiá");
         token = TestData.bearer(data.login(administrador));
     }
 
@@ -92,7 +92,7 @@ class UsuarioIT extends IntegrationTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         String tokenSindico = "Bearer " + objectMapper.readTree(login).get("accessToken").asText();
 
-        mvc.perform(get("/api/v1/condominiums").header("Authorization", tokenSindico))
+        mvc.perform(get("/api/v1/condominios").header("Authorization", tokenSindico))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.conteudo", hasSize(1)));
         // Síndico não gerencia usuários.
@@ -123,7 +123,7 @@ class UsuarioIT extends IntegrationTest {
                         .content(data.json(corpoCadastro(TestData.emailUnico(), "ORG_ADMIN", condominio.getId()))))
                 .andExpect(status().isUnprocessableEntity());
 
-        Condominium deOutra = data.condominium(data.administradora(), "Condomínio de outra administradora");
+        Condominio deOutra = data.condominio(data.administradora(), "Condomínio de outra administradora");
         mvc.perform(post("/api/v1/usuarios").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
                         .content(data.json(corpoCadastro(TestData.emailUnico(), "SYNDIC", deOutra.getId()))))
                 .andExpect(status().isNotFound());
@@ -193,14 +193,14 @@ class UsuarioIT extends IntegrationTest {
         Usuario funcionario = data.usuario(org);
         data.conceder(funcionario, "ORG_STAFF", null);
         String tokenFuncionario = TestData.bearer(data.login(funcionario));
-        mvc.perform(get("/api/v1/condominiums").header("Authorization", tokenFuncionario)).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/condominios").header("Authorization", tokenFuncionario)).andExpect(status().isOk());
 
         mvc.perform(post("/api/v1/usuarios/" + funcionario.getId() + "/desativar").header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ativo").value(false));
 
         // Token de acesso ainda não expirou, mas as permissões são lidas do banco: acesso negado na hora.
-        mvc.perform(get("/api/v1/condominiums").header("Authorization", tokenFuncionario)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/condominios").header("Authorization", tokenFuncionario)).andExpect(status().isForbidden());
 
         mvc.perform(post("/api/v1/usuarios/" + funcionario.getId() + "/ativar").header("Authorization", token))
                 .andExpect(status().isOk())

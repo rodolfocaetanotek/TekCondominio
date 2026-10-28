@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
-import br.com.tekcondo.condominium.entity.Condominium;
+import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.acesso.entity.Usuario;
 import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
@@ -34,40 +34,40 @@ class TenantIsolationIT extends IntegrationTest {
 
     Administradora orgA;
     Administradora orgB;
-    Condominium condoB;
+    Condominio condoB;
     String tokenA;
 
     @BeforeEach
     void setUp() {
         orgA = data.administradora();
         orgB = data.administradora();
-        data.condominium(orgA, "Condomínio da A");
-        condoB = data.condominium(orgB, "Condomínio da B");
+        data.condominio(orgA, "Condomínio da A");
+        condoB = data.condominio(orgB, "Condomínio da B");
         tokenA = TestData.bearer(data.login(data.adminAdministradora(orgA)));
     }
 
     @Test
     void listNeverIncludesOtherOrganizationsData() throws Exception {
-        mvc.perform(get("/api/v1/condominiums").header("Authorization", tokenA).param("tamanho", "100"))
+        mvc.perform(get("/api/v1/condominios").header("Authorization", tokenA).param("tamanho", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.conteudo[*].name", hasItem("Condomínio da A")))
+                .andExpect(jsonPath("$.conteudo[*].nome", hasItem("Condomínio da A")))
                 .andExpect(jsonPath("$.conteudo[*].id", not(hasItem(condoB.getId().toString()))));
     }
 
     @Test
     void readingAnotherOrganizationsRecordReturns404() throws Exception {
-        mvc.perform(get("/api/v1/condominiums/" + condoB.getId()).header("Authorization", tokenA))
+        mvc.perform(get("/api/v1/condominios/" + condoB.getId()).header("Authorization", tokenA))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void writingAnotherOrganizationsRecordReturns404() throws Exception {
-        Map<String, Object> body = Map.of("name", "Invadido", "type", "RESIDENTIAL", "version", 0);
-        mvc.perform(put("/api/v1/condominiums/" + condoB.getId()).header("Authorization", tokenA)
+        Map<String, Object> body = Map.of("nome", "Invadido", "tipo", "RESIDENTIAL", "versao", 0);
+        mvc.perform(put("/api/v1/condominios/" + condoB.getId()).header("Authorization", tokenA)
                         .contentType(MediaType.APPLICATION_JSON).content(data.json(body)))
                 .andExpect(status().isNotFound());
-        mvc.perform(post("/api/v1/condominiums/" + condoB.getId() + "/inactivate").header("Authorization", tokenA)
-                        .contentType(MediaType.APPLICATION_JSON).content(data.json(Map.of("reason", "Tentativa indevida"))))
+        mvc.perform(post("/api/v1/condominios/" + condoB.getId() + "/inativar").header("Authorization", tokenA)
+                        .contentType(MediaType.APPLICATION_JSON).content(data.json(Map.of("motivo", "Tentativa indevida"))))
                 .andExpect(status().isNotFound());
     }
 

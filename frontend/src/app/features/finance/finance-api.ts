@@ -57,7 +57,7 @@ export interface ReturnItem { id: string; fileId: string; sequence: number; move
 export class FinanceApi {
   private readonly http = inject(HttpClient);
   private b(c: string): string {
-    return `/api/v1/condominiums/${c}`;
+    return `/api/v1/condominios/${c}`;
   }
 
   chartAccounts(): Observable<ChartAccount[]> { return this.http.get<ChartAccount[]>('/api/v1/finance/chart-accounts'); }

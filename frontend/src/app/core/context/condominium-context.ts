@@ -3,11 +3,11 @@ import { Injectable, computed, effect, inject, signal, untracked } from '@angula
 import { Permissao } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
 
-export interface CondominiumOption {
+export interface OpcaoCondominio {
   id: string;
-  name: string;
-  status: 'ACTIVE' | 'INACTIVE';
-  permissions: Permissao[];
+  nome: string;
+  situacao: 'ACTIVE' | 'INACTIVE';
+  permissoes: Permissao[];
 }
 
 const STORAGE_KEY = 'tc.condominio';
@@ -21,7 +21,7 @@ export class CondominiumContext {
   private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthService);
 
-  readonly options = signal<CondominiumOption[]>([]);
+  readonly options = signal<OpcaoCondominio[]>([]);
   readonly loaded = signal(false);
   private readonly selectedId = signal<string | null>(readStored());
 
@@ -44,11 +44,11 @@ export class CondominiumContext {
   }
 
   reload(): void {
-    this.http.get<CondominiumOption[]>('/api/v1/condominiums/accessible').subscribe({
+    this.http.get<OpcaoCondominio[]>('/api/v1/condominios/acessiveis').subscribe({
       next: (options) => {
         this.options.set(options);
         if (!options.some((o) => o.id === this.selectedId())) {
-          const first = options.find((o) => o.status === 'ACTIVE') ?? options[0];
+          const first = options.find((o) => o.situacao === 'ACTIVE') ?? options[0];
           this.select(first?.id ?? null);
         }
         this.loaded.set(true);
@@ -72,12 +72,12 @@ export class CondominiumContext {
 
   /** Permissão no condomínio selecionado (apenas para exibir/ocultar; o backend decide). */
   can(permission: Permissao): boolean {
-    return this.selected()?.permissions.includes(permission) ?? false;
+    return this.selected()?.permissoes.includes(permission) ?? false;
   }
 
   /** Permissão em algum condomínio acessível. */
   canAny(permission: Permissao): boolean {
-    return this.options().some((o) => o.permissions.includes(permission));
+    return this.options().some((o) => o.permissoes.includes(permission));
   }
 }
 

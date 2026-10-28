@@ -8,7 +8,7 @@ import java.util.UUID;
 
 import br.com.tekcondo.auditoria.service.AcaoAuditoria;
 import br.com.tekcondo.auditoria.service.AuditoriaService;
-import br.com.tekcondo.condominium.service.CondominiumAccess;
+import br.com.tekcondo.condominio.service.AcessoCondominio;
 import br.com.tekcondo.acesso.autorizacao.AcessoService;
 import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.comum.exception.ApiException;
@@ -29,10 +29,10 @@ public class SupplierService {
 
     private final SupplierRepository repository;
     private final AcessoService accessService;
-    private final CondominiumAccess access;
+    private final AcessoCondominio access;
     private final AuditoriaService auditService;
 
-    public SupplierService(SupplierRepository repository, AcessoService accessService, CondominiumAccess access,
+    public SupplierService(SupplierRepository repository, AcessoService accessService, AcessoCondominio access,
                            AuditoriaService auditService) {
         this.repository = repository;
         this.accessService = accessService;
@@ -42,7 +42,7 @@ public class SupplierService {
 
     @Transactional(readOnly = true)
     public PaginaResponse<SupplierResponse> list(String search, Boolean active, Pageable pageable) {
-        UUID orgId = access.organizationId();
+        UUID orgId = access.idAdministradora();
         // Fornecedores são consultados também por quem lança despesas.
         if (accessService.concessoesAtuais().escopo(Permissao.SUPPLIER_VIEW).isVazio()) {
             accessService.exigirEscopo(Permissao.FINANCE_VIEW);
@@ -74,10 +74,10 @@ public class SupplierService {
     @Transactional
     public SupplierResponse save(UUID id, SupplierRequest request, Boolean active) {
         accessService.exigirEscopo(Permissao.SUPPLIER_EDIT);
-        Supplier supplier = id == null ? new Supplier(access.organizationId()) : load(id);
+        Supplier supplier = id == null ? new Supplier(access.idAdministradora()) : load(id);
         String document = DocumentosBrasileiros.normalizarDocumento(request.document());
         if (document != null) {
-            repository.findByOrganizationIdAndDocument(access.organizationId(), document)
+            repository.findByOrganizationIdAndDocument(access.idAdministradora(), document)
                     .filter(s -> !s.getId().equals(supplier.getId()))
                     .ifPresent(s -> {
                         throw ApiException.conflito("SUPPLIER_DOCUMENT_TAKEN", "Já existe o fornecedor " + s.getName() + " com este CPF/CNPJ.");
@@ -95,7 +95,7 @@ public class SupplierService {
     }
 
     private Supplier load(UUID id) {
-        return repository.findByIdAndOrganizationId(id, access.organizationId()).orElseThrow(() -> ApiException.naoEncontrado("Fornecedor"));
+        return repository.findByIdAndOrganizationId(id, access.idAdministradora()).orElseThrow(() -> ApiException.naoEncontrado("Fornecedor"));
     }
 
     private static SupplierResponse toResponse(Supplier s) {

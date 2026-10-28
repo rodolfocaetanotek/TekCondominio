@@ -29,7 +29,7 @@ import { OccurrenceDetail, OccurrenceSummary, OpsApi } from './ops-api';
     MatIconModule, MatProgressBarModule, PageHeader, EmptyState, CondominiumRequired, LabelPipe],
   template: `
     <div class="tc-page">
-      <tc-page-header eyebrow="Manutenção" title="Ocorrências" [subtitle]="context.selected()?.name">
+      <tc-page-header eyebrow="Manutenção" title="Ocorrências" [subtitle]="context.selected()?.nome">
         @if (canEdit()) { <button mat-flat-button (click)="create()"><mat-icon>add_alert</mat-icon> Registrar ocorrência</button> }
       </tc-page-header>
       @if (!context.id()) {
@@ -119,7 +119,7 @@ export class OccurrenceList {
   protected readonly search = new FormControl('', { nonNullable: true });
   protected readonly status = new FormControl('pending', { nonNullable: true });
   private readonly params = signal({ search: '', status: 'pending', tick: 0 });
-  protected readonly canEdit = computed(() => this.context.can('OCCURRENCE_EDIT') && this.context.selected()?.status === 'ACTIVE');
+  protected readonly canEdit = computed(() => this.context.can('OCCURRENCE_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   private readonly source = combineLatest([toObservable(this.context.id), toObservable(this.params)]).pipe(filter(([c]) => !!c));
 
   protected readonly page = toSignal(this.source.pipe(switchMap(([c, p]) => this.api.occurrences(c!, {
@@ -147,7 +147,7 @@ export class OccurrenceList {
           { key: 'category', label: 'Categoria', type: 'select', required: true, value: 'MAINTENANCE', span: 6, options: options('occurrenceCategory') },
           { key: 'priority', label: 'Prioridade', type: 'select', value: 'MEDIUM', span: 6, options: options('priority') },
           { key: 'unitId', label: 'Unidade relacionada', type: 'select', value: null,
-            options: [{ value: null, label: '— (área comum)' }, ...units.map((u) => ({ value: u.id, label: u.label }))] },
+            options: [{ value: null, label: '— (área comum)' }, ...units.map((u) => ({ value: u.id, label: u.rotulo }))] },
         ],
         submit: (v) => this.api.createOccurrence(c, v),
       }).pipe(filter((r): r is OccurrenceDetail => !!r)).subscribe((r) => {

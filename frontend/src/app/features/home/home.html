@@ -6,7 +6,7 @@
       <mat-label>Condomínios</mat-label>
       <mat-select [formControl]="scope">
         <mat-option value="">Todos os condomínios</mat-option>
-        @for (o of context.options(); track o.id) { <mat-option [value]="o.id">{{ o.name }}</mat-option> }
+        @for (o of context.options(); track o.id) { <mat-option [value]="o.id">{{ o.nome }}</mat-option> }
       </mat-select>
     </mat-form-field>
     <mat-form-field><mat-label>Período de</mat-label><input matInput type="date" [formControl]="from" /></mat-form-field>

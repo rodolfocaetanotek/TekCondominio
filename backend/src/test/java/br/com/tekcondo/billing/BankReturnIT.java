@@ -5,7 +5,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
-import br.com.tekcondo.condominium.entity.Condominium;
+import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
 import br.com.tekcondo.support.TestData;
@@ -35,7 +35,7 @@ class BankReturnIT extends IntegrationTest {
     ObjectMapper objectMapper;
 
     Administradora org;
-    Condominium condo;
+    Condominio condo;
     String token;
     String base;
     String bank;
@@ -46,12 +46,12 @@ class BankReturnIT extends IntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         org = data.administradora();
-        condo = data.condominium(org, "Condomínio Retorno");
+        condo = data.condominio(org, "Condomínio Retorno");
         token = TestData.bearer(data.login(data.adminAdministradora(org)));
-        base = "/api/v1/condominiums/" + condo.getId();
+        base = "/api/v1/condominios/" + condo.getId();
         bank = call("POST", base + "/finance/bank-accounts", Map.of("name", "Sicoob Cobrança", "kind", "CHECKING", "bankCode", "756",
                 "openingBalance", "0", "openingDate", today.minusMonths(2).toString()), 201).get("id").asText();
-        unit = call("POST", base + "/units", Map.of("identifier", "101", "type", "APARTMENT", "idealFraction", "10"), 201).get("id").asText();
+        unit = call("POST", base + "/unidades", Map.of("identificacao", "101", "tipo", "APARTMENT", "fracaoIdeal", "10"), 201).get("id").asText();
     }
 
     private JsonNode call(String method, String url, Object body, int expected) throws Exception {

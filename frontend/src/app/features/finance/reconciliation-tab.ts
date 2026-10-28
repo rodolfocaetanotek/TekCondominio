@@ -115,7 +115,7 @@ export class ReconciliationTab {
   private readonly accountValue = toSignal(this.account.valueChanges, { initialValue: null });
   private readonly statusValue = toSignal(this.status.valueChanges, { initialValue: 'UNMATCHED' });
 
-  protected readonly canEdit = computed(() => this.context.can('FINANCE_EDIT') && this.context.selected()?.status === 'ACTIVE');
+  protected readonly canEdit = computed(() => this.context.can('FINANCE_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   protected readonly accounts = toSignal(toObservable(this.context.id).pipe(
     filter((c) => !!c),
     switchMap((c) => this.api.bankAccounts(c!).pipe(catchError(() => of([] as BankAccount[])))),

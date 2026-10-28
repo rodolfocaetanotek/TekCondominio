@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/condominiums/{c}")
+@RequestMapping("/api/v1/condominios/{c}")
 @Tag(name = "Reservas de áreas comuns")
 public class ReservationController {
 

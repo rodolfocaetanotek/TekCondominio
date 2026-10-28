@@ -48,7 +48,7 @@ import { DialogClose } from '../../shared/ui/dialog-close';
         <p class="tc-muted">Informe o consumo (R$) de cada unidade; deixe em branco para não cobrar.</p>
         <div class="consumption">
           @for (u of units(); track u.id) {
-            <label>{{ u.label }} <input type="number" class="consumption-input" step="0.01" min="0" [value]="consumption[u.id] ?? ''" (input)="setConsumption(u.id, $event)" /></label>
+            <label>{{ u.rotulo }} <input type="number" class="consumption-input" step="0.01" min="0" [value]="consumption[u.id] ?? ''" (input)="setConsumption(u.id, $event)" /></label>
           }
         </div>
       }

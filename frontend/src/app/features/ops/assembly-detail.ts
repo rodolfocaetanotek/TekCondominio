@@ -237,7 +237,7 @@ export class AssemblyDetailPage {
   }
 
   private units(): Observable<{ value: string; label: string }[]> {
-    return this.structure.units(this.c(), { page: 0, size: 100, active: 'true' }).pipe(map((p) => p.conteudo.map((u) => ({ value: u.id, label: u.label }))));
+    return this.structure.units(this.c(), { page: 0, size: 100, active: 'true' }).pipe(map((p) => p.conteudo.map((u) => ({ value: u.id, label: u.rotulo }))));
   }
 
   private done(m: string): void {

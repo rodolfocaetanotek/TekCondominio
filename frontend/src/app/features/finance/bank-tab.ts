@@ -111,7 +111,7 @@ export class BankTab {
   private readonly dialog = inject(MatDialog);
   private readonly notify = inject(NotificationService);
 
-  protected readonly canEdit = computed(() => this.context.can('FINANCE_EDIT') && this.context.selected()?.status === 'ACTIVE');
+  protected readonly canEdit = computed(() => this.context.can('FINANCE_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   protected readonly selected = signal<string | null>(null);
   private readonly tick = signal(0);
   protected readonly from = new FormControl(todayIso().slice(0, 8) + '01', { nonNullable: true });

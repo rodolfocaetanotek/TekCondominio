@@ -21,9 +21,9 @@ _Atualizado em 28/10/2026._ Legenda: ✅ concluído e testado · 🟡 parcial ·
 | Autenticação (JWT + refresh rotativo, bloqueio, convite, esqueci/troca de senha) | ✅ | ✅ | `AuthIT`, `PasswordIT` |
 | Administradoras (plataforma) + convite de administradores + ativar/inativar | ✅ | ✅ | `OrganizationIT` |
 | Usuários e papéis por organização/condomínio | ✅ | ✅ | `UserManagementIT`, `PermissionIT` |
-| Condomínios + parâmetros financeiros | ✅ | ✅ | `CondominiumIT`, `FinanceIT` |
-| Blocos, unidades, fração ideal, importação CSV | ✅ | ✅ | `StructurePeopleIT` |
-| Pessoas (CPF/CNPJ único), ocupações com histórico, responsável financeiro | ✅ | ✅ | `StructurePeopleIT` |
+| Condomínios + parâmetros financeiros | ✅ | ✅ | `CondominioIT`, `FinanceIT` |
+| Blocos, unidades, fração ideal, importação CSV | ✅ | ✅ | `EstruturaPessoaIT` |
+| Pessoas (CPF/CNPJ único), ocupações com histórico, responsável financeiro | ✅ | ✅ | `EstruturaPessoaIT` |
 | Plano de contas (padrão + próprio), centros de custo, contas bancárias com saldo | ✅ | ✅ | `FinanceIT` |
 | Contas a pagar/receber, recorrência, aprovação, baixas parciais, estorno, cancelamento, anexos | ✅ | ✅ | `FinanceIT` |
 | Transferências, extrato, conciliação bancária | ✅ | ✅ | `FinanceIT` |

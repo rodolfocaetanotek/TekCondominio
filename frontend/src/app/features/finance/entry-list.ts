@@ -126,7 +126,7 @@ export class EntryList {
   private readonly params = signal({ page: 0, size: 50, search: '', status: 'open', from: '', to: '', tick: 0 });
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
-  protected readonly canEdit = computed(() => this.context.can('FINANCE_EDIT') && this.context.selected()?.status === 'ACTIVE');
+  protected readonly canEdit = computed(() => this.context.can('FINANCE_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   private readonly query = computed(() => ({ c: this.context.id(), kind: this.kind(), ...this.params() }));
 
   protected readonly page = toSignal(

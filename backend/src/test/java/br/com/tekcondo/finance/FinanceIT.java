@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import br.com.tekcondo.condominium.entity.Condominium;
+import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.acesso.entity.Usuario;
 import br.com.tekcondo.administradora.entity.Administradora;
 import br.com.tekcondo.support.IntegrationTest;
@@ -34,7 +34,7 @@ class FinanceIT extends IntegrationTest {
     ObjectMapper objectMapper;
 
     Administradora org;
-    Condominium condo;
+    Condominio condo;
     String token;
     String base;
     String bank;
@@ -43,9 +43,9 @@ class FinanceIT extends IntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         org = data.administradora();
-        condo = data.condominium(org, "Condomínio Financeiro");
+        condo = data.condominio(org, "Condomínio Financeiro");
         token = TestData.bearer(data.login(data.adminAdministradora(org)));
-        base = "/api/v1/condominiums/" + condo.getId() + "/finance";
+        base = "/api/v1/condominios/" + condo.getId() + "/finance";
         bank = call("POST", base + "/bank-accounts", Map.of("name", "Conta Corrente", "kind", "CHECKING",
                 "openingBalance", "1000.00", "openingDate", today.minusMonths(6).toString()), 201).get("id").asText();
     }
@@ -120,8 +120,8 @@ class FinanceIT extends IntegrationTest {
 
     @Test
     void receivableQuoteAppliesFineAndInterestFromEntrySnapshot() throws Exception {
-        String unit = call("POST", "/api/v1/condominiums/" + condo.getId() + "/units",
-                Map.of("identifier", "101", "type", "APARTMENT", "idealFraction", "10"), 201).get("id").asText();
+        String unit = call("POST", "/api/v1/condominios/" + condo.getId() + "/unidades",
+                Map.of("identificacao", "101", "tipo", "APARTMENT", "fracaoIdeal", "10"), 201).get("id").asText();
         Map<String, Object> income = new HashMap<>();
         income.put("kind", "INCOME");
         income.put("description", "Taxa condominial");

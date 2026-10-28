@@ -28,7 +28,7 @@ import { VisitorApi, VisitorPass } from './visitor-api';
     CondominiumRequired, EmptyState, IsoDatePipe, LabelPipe],
   template: `
     <div class="tc-page">
-      <tc-page-header eyebrow="Administração" title="Portaria" [subtitle]="context.selected()?.name">
+      <tc-page-header eyebrow="Administração" title="Portaria" [subtitle]="context.selected()?.nome">
         @if (canEdit()) { <button mat-flat-button (click)="arrival()"><mat-icon>person_add</mat-icon> Registrar chegada</button> }
       </tc-page-header>
       @if (!context.id()) {
@@ -101,7 +101,7 @@ export class GatePage {
   private readonly tick = signal(0);
   protected readonly code = new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/^\d{6}$/)] });
 
-  protected readonly canEdit = computed(() => this.context.can('ACCESS_EDIT') && this.context.selected()?.status === 'ACTIVE');
+  protected readonly canEdit = computed(() => this.context.can('ACCESS_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   protected readonly list = toSignal(combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(
     filter(([c]) => !!c), switchMap(([c]) => this.api.today(c!).pipe(catchError(() => of([] as VisitorPass[]))))));
   protected readonly groups = computed(() => {
@@ -140,7 +140,7 @@ export class GatePage {
         title: 'Registrar chegada',
         intro: 'Colete apenas os dados necessários. O documento é exibido mascarado e os registros são anonimizados após o prazo de retenção.',
         fields: [
-          { key: 'unitId', label: 'Unidade de destino', type: 'select', required: true, span: 6, options: units.map((u) => ({ value: u.id, label: u.label })) },
+          { key: 'unitId', label: 'Unidade de destino', type: 'select', required: true, span: 6, options: units.map((u) => ({ value: u.id, label: u.rotulo })) },
           { key: 'kind', label: 'Tipo', type: 'select', required: true, value: 'VISITOR', span: 6, options: options('visitorKind') },
           { key: 'name', label: 'Nome', required: true, maxLength: 150 },
           { key: 'document', label: 'Documento (opcional)', maxLength: 20, span: 6 },

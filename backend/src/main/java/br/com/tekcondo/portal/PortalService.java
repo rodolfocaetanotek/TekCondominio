@@ -21,8 +21,8 @@ import br.com.tekcondo.assembly.AssemblyRepository;
 import br.com.tekcondo.billing.dto.BillingDtos.DebtLine;
 import br.com.tekcondo.billing.dto.BillingDtos.UnitDebt;
 import br.com.tekcondo.billing.service.CollectionService;
-import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.condominium.repository.CondominiumRepository;
+import br.com.tekcondo.condominio.entity.Condominio;
+import br.com.tekcondo.condominio.repository.CondominioRepository;
 import br.com.tekcondo.document.entity.Document;
 import br.com.tekcondo.document.repository.DocumentRepository;
 import br.com.tekcondo.document.service.DocumentService;
@@ -35,8 +35,8 @@ import br.com.tekcondo.occurrence.OccurrenceInteraction;
 import br.com.tekcondo.occurrence.OccurrenceInteractionRepository;
 import br.com.tekcondo.occurrence.OccurrenceRepository;
 import br.com.tekcondo.occurrence.OccurrenceService;
-import br.com.tekcondo.people.entity.Occupancy;
-import br.com.tekcondo.people.repository.OccupancyRepository;
+import br.com.tekcondo.pessoa.entity.Vinculo;
+import br.com.tekcondo.pessoa.repository.VinculoRepository;
 import br.com.tekcondo.reservation.ReservationService;
 import br.com.tekcondo.visitor.VisitorService;
 import br.com.tekcondo.comum.exception.ApiException;
@@ -54,7 +54,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PortalService {
 
-    public record PortalUnit(UUID unitId, String label, Occupancy.Role role, boolean financialResponsible, boolean seesCharges) {
+    public record PortalUnit(UUID unitId, String label, Vinculo.Tipo role, boolean financialResponsible, boolean seesCharges) {
     }
 
     public record PortalCondominium(UUID id, String name, List<PortalUnit> units) {
@@ -73,18 +73,18 @@ public class PortalService {
                                Assembly.Status status, String minutes) {
     }
 
-    private record Ctx(UsuarioAtual user, Usuario account, Condominium condominium, List<Occupancy> occupancies) {
+    private record Ctx(UsuarioAtual user, Usuario account, Condominio condominium, List<Vinculo> occupancies) {
 
         Set<UUID> unitIds() {
-            return occupancies.stream().map(o -> o.getUnit().getId()).collect(Collectors.toSet());
+            return occupancies.stream().map(o -> o.getUnidade().getId()).collect(Collectors.toSet());
         }
     }
 
     private final UsuarioAtualProvider currentUserProvider;
     private final UsuarioRepository users;
     private final AcessoService accessService;
-    private final CondominiumRepository condominiums;
-    private final OccupancyRepository occupancies;
+    private final CondominioRepository condominiums;
+    private final VinculoRepository occupancies;
     private final CollectionService collection;
     private final AnnouncementRepository announcements;
     private final AnnouncementService announcementService;
@@ -99,7 +99,7 @@ public class PortalService {
     private final Clock clock;
 
     public PortalService(UsuarioAtualProvider currentUserProvider, UsuarioRepository users, AcessoService accessService,
-                         CondominiumRepository condominiums, OccupancyRepository occupancies, CollectionService collection,
+                         CondominioRepository condominiums, VinculoRepository occupancies, CollectionService collection,
                          AnnouncementRepository announcements, AnnouncementService announcementService,
                          DocumentRepository documents, DocumentService documentService, OccurrenceRepository occurrences,
                          OccurrenceInteractionRepository interactions, OccurrenceService occurrenceService,
@@ -130,8 +130,8 @@ public class PortalService {
         List<PortalCondominium> list = new ArrayList<>();
         for (UUID condoId : accessService.concessoesAtuais().porCondominio().entrySet().stream()
                 .filter(e -> e.getValue().contains(Permissao.PORTAL_ACCESS)).map(Map.Entry::getKey).toList()) {
-            condominiums.findByIdAndOrganizationId(condoId, user.idAdministradora()).ifPresent(c -> list.add(new PortalCondominium(
-                    c.getId(), c.getName(), occupancies.findCurrentByPersonInCondominium(account.getIdPessoa(), c.getId()).stream()
+            condominiums.findByIdAndIdAdministradora(condoId, user.idAdministradora()).ifPresent(c -> list.add(new PortalCondominium(
+                    c.getId(), c.getNome(), occupancies.buscarVigentesDaPessoaNoCondominio(account.getIdPessoa(), c.getId()).stream()
                     .map(this::toUnit).sorted(Comparator.comparing(PortalUnit::label)).toList())));
         }
         return new Me(account.getNome(), account.getEmail(), list);
@@ -141,14 +141,14 @@ public class PortalService {
     public List<UnitCharges> charges(UUID condominiumId) {
         Ctx ctx = ctx(condominiumId);
         LocalDate today = LocalDate.now(clock);
-        return ctx.occupancies().stream().filter(o -> toUnit(o).seesCharges()).map(o -> o.getUnit()).distinct()
+        return ctx.occupancies().stream().filter(o -> toUnit(o).seesCharges()).map(o -> o.getUnidade()).distinct()
                 .map(unit -> {
                     UnitDebt debt = collection.buildUnitDebt(condominiumId, unit, today);
                     // Histórico dos últimos 24 meses + tudo que estiver em aberto. Notas internas de cobrança não são expostas.
                     List<DebtLine> lines = debt.lines().stream()
                             .filter(l -> l.remaining().signum() > 0 || !l.dueDate().isBefore(today.minusMonths(24)))
                             .sorted(Comparator.comparing(DebtLine::dueDate).reversed()).toList();
-                    return new UnitCharges(unit.getId(), unit.label(), debt.openTotal(), lines);
+                    return new UnitCharges(unit.getId(), unit.rotulo(), debt.openTotal(), lines);
                 }).toList();
     }
 
@@ -156,7 +156,7 @@ public class PortalService {
     public List<AnnouncementService.Response> announcements(UUID condominiumId) {
         Ctx ctx = ctx(condominiumId);
         LocalDate today = LocalDate.now(clock);
-        Set<UUID> buildings = ctx.occupancies().stream().map(o -> o.getUnit().getBuilding()).filter(Objects::nonNull)
+        Set<UUID> buildings = ctx.occupancies().stream().map(o -> o.getUnidade().getBloco()).filter(Objects::nonNull)
                 .map(b -> b.getId()).collect(Collectors.toSet());
         return announcements.findByCondominium(condominiumId).stream()
                 .filter(a -> a.isVisible(today))
@@ -263,7 +263,7 @@ public class PortalService {
         if (!ctx.unitIds().contains(request.unitId())) {
             throw new AccessDeniedException("Unidade não vinculada ao morador");
         }
-        if (ctx.condominium().getStatus() != br.com.tekcondo.condominium.entity.CondominiumStatus.ACTIVE) {
+        if (ctx.condominium().getSituacao() != br.com.tekcondo.condominio.entity.SituacaoCondominio.ACTIVE) {
             throw ApiException.regraNegocio("CONDOMINIUM_INACTIVE", "O condomínio está inativo.");
         }
         return reservations.bookAsResident(ctx.condominium(), request, ctx.user().idUsuario(), ctx.account().getNome());
@@ -325,10 +325,10 @@ public class PortalService {
     private Ctx ctx(UUID condominiumId) {
         UsuarioAtual user = currentUserProvider.exigirMembroAdministradora();
         Usuario account = linkedAccount(user);
-        Condominium condominium = condominiums.findByIdAndOrganizationId(condominiumId, user.idAdministradora())
+        Condominio condominium = condominiums.findByIdAndIdAdministradora(condominiumId, user.idAdministradora())
                 .orElseThrow(() -> ApiException.naoEncontrado("Condomínio"));
         accessService.exigir(Permissao.PORTAL_ACCESS, condominiumId);
-        List<Occupancy> current = occupancies.findCurrentByPersonInCondominium(account.getIdPessoa(), condominiumId);
+        List<Vinculo> current = occupancies.buscarVigentesDaPessoaNoCondominio(account.getIdPessoa(), condominiumId);
         if (current.isEmpty()) {
             throw new AccessDeniedException("Sem vínculo vigente com unidades deste condomínio");
         }
@@ -343,9 +343,9 @@ public class PortalService {
         return account;
     }
 
-    private PortalUnit toUnit(Occupancy o) {
-        return new PortalUnit(o.getUnit().getId(), o.getUnit().label(), o.getRole(), o.isFinancialResponsible(),
-                o.getRole() == Occupancy.Role.OWNER || o.isFinancialResponsible());
+    private PortalUnit toUnit(Vinculo o) {
+        return new PortalUnit(o.getUnidade().getId(), o.getUnidade().rotulo(), o.getTipo(), o.isResponsavelFinanceiro(),
+                o.getTipo() == Vinculo.Tipo.OWNER || o.isResponsavelFinanceiro());
     }
 
     private List<Document> visibleDocuments(Ctx ctx) {

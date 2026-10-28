@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/condominiums/{c}/billing")
+@RequestMapping("/api/v1/condominios/{c}/billing")
 @Tag(name = "Cobrança e inadimplência")
 public class BillingController {
 

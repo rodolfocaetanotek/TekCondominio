@@ -40,7 +40,7 @@ const REPORTS = [
     PageHeader, CondominiumRequired, EmptyState],
   template: `
     <div class="tc-page">
-      <tc-page-header eyebrow="Análise" title="Relatórios" [subtitle]="context.selected()?.name" />
+      <tc-page-header eyebrow="Análise" title="Relatórios" [subtitle]="context.selected()?.nome" />
       @if (!context.id()) {
         <tc-condominium-required />
       } @else {

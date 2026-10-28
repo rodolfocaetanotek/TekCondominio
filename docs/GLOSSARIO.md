@@ -42,6 +42,11 @@ seletores), mais as decisões tomadas para o Tek Condomínio._
 - **Códigos de erro da API.** `NOT_FOUND`, `VALIDATION_ERROR`, `INVALID_SORT`… são códigos estáveis para o cliente.
 - **Formatos externos.** Campos dos layouts OFX e CNAB 240 (`FITID`, `TRNAMT`, segmentos T/U) seguem o padrão
   do banco ou do layout.
+- **Planilha de importação de unidades.** O cabeçalho CSV documentado (`bloco; unidade; tipo; fracao; area;
+  proprietario; documento; email; telefone`) e os apelidos da coluna `tipo` já são em português e continuam aceitos
+  como estão (não quebram as planilhas dos usuários).
+- **Caminhos de outros módulos sob `/condominios/{id}`.** O recurso raiz passou a `/api/v1/condominios`; os
+  subcaminhos dos módulos ainda não padronizados (`/finance`, `/billing`, `/announcements`...) mudam no lote de cada módulo.
 
 ## Módulos (pacotes Java / pastas)
 
@@ -140,3 +145,15 @@ seletores), mais as decisões tomadas para o Tek Condomínio._
 | occurredAt / action / details | ocorridoEm / acao / detalhes | | entityType / entityId | tipoEntidade / idEntidade |
 | userEmail / ipAddress | emailUsuario / enderecoIp | | dedupKey | chaveDeduplicacao |
 | problem+json `code` / `errors` | `codigo` / `erros` (`campo`, `mensagem`) | | from / to (filtros) | de / ate |
+| legalName | razaoSocial | | address (zipCode, street, number, complement, district, city, state) | endereco (cep, logradouro, numero, complemento, bairro, cidade, uf) |
+| inactivatedAt / inactivationReason | inativadoEm / motivoInativacao | | finePercent / interestMonthlyPercent | percentualMulta / percentualJurosMensal |
+| billingDueDay / requirePayableApproval | diaVencimento / exigeAprovacaoContasPagar | | identifier / label (unidade) | identificacao / rotulo |
+| floor | andar | | ownerName / financialResponsibleName | nomeProprietario / nomeResponsavelFinanceiro |
+| activeUnits | unidadesAtivas | | balanced / difference (frações) | fechada / diferenca |
+| dryRun | simulacao | | buildingsCreated / unitsCreated / peopleCreated / peopleReused | blocosCriados / unidadesCriadas / pessoasCriadas / pessoasReaproveitadas |
+| secondaryPhone | telefoneSecundario | | portalUser / portal-access | usuarioPortal / acesso-portal |
+| Person.Kind (física/jurídica) | Pessoa.Tipo (`tipo`) | | Occupancy.Role (OWNER/TENANT/RESIDENT) | Vinculo.Tipo (`tipo`; evita conflito com `Papel` de acesso) |
+| financialResponsible | responsavelFinanceiro | | startDate / endDate / endReason (vínculo) | dataInicio / dataFim / motivoEncerramento |
+| current (vínculo) | vigente | | file (multipart da importação de unidades) | arquivo |
+| CondominiumOption / accessible | OpcaoCondominio / acessiveis | | CondominiumAccess (require / requireActive) | AcessoCondominio (exigir / exigirAtivo) |
+| FractionSummary / ImportResult / ImportError | ResumoFracoes / ResultadoImportacao / ErroImportacao | | Summary / Detail (DTOs) | Resumo / Detalhe |

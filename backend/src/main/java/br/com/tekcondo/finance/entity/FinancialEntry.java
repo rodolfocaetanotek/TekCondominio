@@ -5,9 +5,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import br.com.tekcondo.people.entity.Person;
+import br.com.tekcondo.pessoa.entity.Pessoa;
 import br.com.tekcondo.comum.exception.ApiException;
-import br.com.tekcondo.structure.entity.Unit;
+import br.com.tekcondo.estrutura.entity.Unidade;
 import br.com.tekcondo.supplier.entity.Supplier;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -79,11 +79,11 @@ public class FinancialEntry {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "unit_id")
-    private Unit unit;
+    private Unidade unit;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "person_id")
-    private Person person;
+    private Pessoa person;
 
     @Column(name = "amount", nullable = false)
     private BigDecimal amount;
@@ -200,8 +200,8 @@ public class FinancialEntry {
 
     // ------------------------------------------------------------------ regras
 
-    public void details(String description, ChartAccount account, CostCenter costCenter, Supplier supplier, Unit unit,
-                        Person person, BigDecimal amount, LocalDate dueDate, LocalDate competence,
+    public void details(String description, ChartAccount account, CostCenter costCenter, Supplier supplier, Unidade unit,
+                        Pessoa person, BigDecimal amount, LocalDate dueDate, LocalDate competence,
                         String documentNumber, String notes, UUID by) {
         if (paidAmount.signum() > 0) {
             throw ApiException.regraNegocio("ENTRY_HAS_PAYMENTS",
@@ -378,11 +378,11 @@ public class FinancialEntry {
         return supplier;
     }
 
-    public Unit getUnit() {
+    public Unidade getUnit() {
         return unit;
     }
 
-    public Person getPerson() {
+    public Pessoa getPerson() {
         return person;
     }
 

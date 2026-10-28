@@ -10,8 +10,8 @@ import java.util.UUID;
 
 import br.com.tekcondo.auditoria.service.AcaoAuditoria;
 import br.com.tekcondo.auditoria.service.AuditoriaService;
-import br.com.tekcondo.condominium.entity.Condominium;
-import br.com.tekcondo.condominium.service.CondominiumAccess;
+import br.com.tekcondo.condominio.entity.Condominio;
+import br.com.tekcondo.condominio.service.AcessoCondominio;
 import br.com.tekcondo.finance.dto.FinanceDtos.ReconcileItem;
 import br.com.tekcondo.finance.dto.FinanceDtos.Statement;
 import br.com.tekcondo.finance.dto.FinanceDtos.StatementLine;
@@ -38,13 +38,13 @@ public class TreasuryService {
     private final FinanceSetupService setup;
     private final FinanceQueries queries;
     private final PeriodLock periodLock;
-    private final CondominiumAccess access;
+    private final AcessoCondominio access;
     private final AuditoriaService auditService;
     private final Clock clock;
 
     public TreasuryService(BankTransferRepository transfers, EntryPaymentRepository payments,
                            StatementLineRepository statementLines, FinanceSetupService setup,
-                           FinanceQueries queries, PeriodLock periodLock, CondominiumAccess access, AuditoriaService auditService, Clock clock) {
+                           FinanceQueries queries, PeriodLock periodLock, AcessoCondominio access, AuditoriaService auditService, Clock clock) {
         this.transfers = transfers;
         this.payments = payments;
         this.statementLines = statementLines;
@@ -58,13 +58,13 @@ public class TreasuryService {
 
     @Transactional(readOnly = true)
     public List<TransferResponse> transfers(UUID condominiumId) {
-        access.require(condominiumId, Permissao.FINANCE_VIEW);
+        access.exigir(condominiumId, Permissao.FINANCE_VIEW);
         return transfers.findByCondominium(condominiumId).stream().map(TreasuryService::toResponse).toList();
     }
 
     @Transactional
     public TransferResponse transfer(UUID condominiumId, TransferRequest request) {
-        Condominium condominium = access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
+        Condominio condominium = access.exigirAtivo(condominiumId, Permissao.FINANCE_EDIT);
         BankAccount from = active(condominiumId, request.fromAccountId());
         BankAccount to = active(condominiumId, request.toAccountId());
         if (request.date().isAfter(LocalDate.now(clock))) {
@@ -75,8 +75,8 @@ public class TreasuryService {
         if (from.getKind() == BankAccount.Kind.CASH && available.compareTo(request.amount()) < 0) {
             throw ApiException.regraNegocio("INSUFFICIENT_CASH", "Saldo de caixa insuficiente na data (R$ " + available.toPlainString() + ").");
         }
-        BankTransfer transfer = transfers.save(new BankTransfer(condominium.getOrganizationId(), condominiumId, from, to,
-                request.amount(), request.date(), blank(request.description()), access.user().idUsuario()));
+        BankTransfer transfer = transfers.save(new BankTransfer(condominium.getIdAdministradora(), condominiumId, from, to,
+                request.amount(), request.date(), blank(request.description()), access.usuario().idUsuario()));
         auditService.registrar(AcaoAuditoria.TRANSFER_CREATED, "BankTransfer", transfer.getId(), Map.of("from", from.getName(),
                 "to", to.getName(), "amount", request.amount().toPlainString(), "date", request.date().toString()));
         return toResponse(transfer);
@@ -84,18 +84,18 @@ public class TreasuryService {
 
     @Transactional
     public TransferResponse reverseTransfer(UUID condominiumId, UUID id, String reason) {
-        access.require(condominiumId, Permissao.FINANCE_CANCEL);
+        access.exigir(condominiumId, Permissao.FINANCE_CANCEL);
         BankTransfer transfer = transfers.findByIdAndCondominiumId(id, condominiumId)
                 .orElseThrow(() -> ApiException.naoEncontrado("Transferência"));
         periodLock.ensureOpen(condominiumId, transfer.getTransferDate());
-        transfer.reverse(reason.trim(), access.user().idUsuario(), Instant.now(clock));
+        transfer.reverse(reason.trim(), access.usuario().idUsuario(), Instant.now(clock));
         auditService.registrar(AcaoAuditoria.TRANSFER_REVERSED, "BankTransfer", id, Map.of("reason", reason.trim()));
         return toResponse(transfer);
     }
 
     @Transactional(readOnly = true)
     public Statement statement(UUID condominiumId, UUID accountId, LocalDate from, LocalDate to) {
-        access.require(condominiumId, Permissao.FINANCE_VIEW);
+        access.exigir(condominiumId, Permissao.FINANCE_VIEW);
         BankAccount account = setup.loadBankAccount(condominiumId, accountId);
         LocalDate end = to == null ? LocalDate.now(clock) : to;
         LocalDate start = from == null ? end.withDayOfMonth(1) : from;
@@ -112,8 +112,8 @@ public class TreasuryService {
     /** Marca/desmarca movimentações como conferidas com o extrato do banco. */
     @Transactional
     public int reconcile(UUID condominiumId, List<ReconcileItem> items, boolean reconciled) {
-        access.requireActive(condominiumId, Permissao.FINANCE_EDIT);
-        UUID by = access.user().idUsuario();
+        access.exigirAtivo(condominiumId, Permissao.FINANCE_EDIT);
+        UUID by = access.usuario().idUsuario();
         Instant now = Instant.now(clock);
         List<UUID> paymentIds = items.stream().filter(i -> "PAYMENT".equals(i.type())).map(ReconcileItem::id).toList();
         List<UUID> transferIds = items.stream().filter(i -> i.type().startsWith("TRANSFER")).map(ReconcileItem::id).distinct().toList();

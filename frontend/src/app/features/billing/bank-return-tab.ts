@@ -104,7 +104,7 @@ export class BankReturnTab {
   protected readonly account = new FormControl<string | null>(null);
 
   protected readonly canEdit = computed(() => this.context.can('BILLING_EDIT') && this.context.can('FINANCE_EDIT')
-    && this.context.selected()?.status === 'ACTIVE');
+    && this.context.selected()?.situacao === 'ACTIVE');
   private readonly source = combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(filter(([c]) => !!c));
   protected readonly accounts = toSignal(toObservable(this.context.id).pipe(filter((c) => !!c),
     switchMap((c) => this.api.bankAccounts(c!).pipe(map((list) => list.filter((a) => a.kind !== 'CASH' && a.active)),
