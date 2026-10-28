@@ -15,6 +15,7 @@ import jakarta.persistence.Table;
 public class BudgetLine {
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "organization_id", nullable = false, updatable = false)
@@ -23,16 +24,16 @@ public class BudgetLine {
     @Column(name = "condominium_id", nullable = false, updatable = false)
     private UUID condominiumId;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "year", nullable = false, updatable = false)
     private int year;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "month", nullable = false, updatable = false)
     private int month;
 
     @Column(name = "chart_account_id", nullable = false, updatable = false)
     private UUID chartAccountId;
 
-    @Column(nullable = false)
+    @Column(name = "amount", nullable = false)
     private BigDecimal amount;
 
     @Column(name = "updated_at", nullable = false)

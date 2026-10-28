@@ -10,17 +10,19 @@ import jakarta.persistence.Table;
 @Table(name = "organization")
 public class Organization extends AuditableEntity {
 
-    @Column(nullable = false)
+    @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(nullable = false)
+    @Column(name = "cnpj", nullable = false)
     private String cnpj;
 
+    @Column(name = "email")
     private String email;
 
+    @Column(name = "phone")
     private String phone;
 
-    @Column(nullable = false)
+    @Column(name = "active", nullable = false)
     private boolean active = true;
 
     protected Organization() {

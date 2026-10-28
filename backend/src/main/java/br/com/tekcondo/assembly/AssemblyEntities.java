@@ -43,11 +43,11 @@ public final class AssemblyEntities {
         @Column(name = "condominium_id", nullable = false, updatable = false)
         private UUID condominiumId;
 
-        @Column(nullable = false)
+        @Column(name = "title", nullable = false)
         private String title;
 
         @Enumerated(EnumType.STRING)
-        @Column(nullable = false)
+        @Column(name = "kind", nullable = false)
         private Kind kind;
 
         @Column(name = "scheduled_at", nullable = false)
@@ -56,7 +56,7 @@ public final class AssemblyEntities {
         @Column(name = "second_call_at")
         private Instant secondCallAt;
 
-        @Column(nullable = false)
+        @Column(name = "location", nullable = false)
         private String location;
 
         @Enumerated(EnumType.STRING)
@@ -64,9 +64,10 @@ public final class AssemblyEntities {
         private VoteWeight voteWeight;
 
         @Enumerated(EnumType.STRING)
-        @Column(nullable = false)
+        @Column(name = "status", nullable = false)
         private Status status = Status.DRAFT;
 
+        @Column(name = "minutes")
         private String minutes;
 
         @Column(name = "called_at")
@@ -205,26 +206,31 @@ public final class AssemblyEntities {
     public static class AgendaItem {
 
         @Id
+        @Column(name = "id")
         private UUID id = UUID.randomUUID();
 
         @Column(name = "assembly_id", nullable = false, updatable = false)
         private UUID assemblyId;
 
-        @Column(nullable = false)
+        @Column(name = "position", nullable = false)
         private int position;
 
-        @Column(nullable = false)
+        @Column(name = "title", nullable = false)
         private String title;
 
+        @Column(name = "description")
         private String description;
 
-        @Column(nullable = false)
+        @Column(name = "voting", nullable = false)
         private boolean voting;
 
+        @Column(name = "deliberation")
         private String deliberation;
 
+        @Column(name = "responsible")
         private String responsible;
 
+        @Column(name = "deadline")
         private LocalDate deadline;
 
         protected AgendaItem() {
@@ -286,6 +292,7 @@ public final class AssemblyEntities {
     public static class Attendance {
 
         @Id
+        @Column(name = "id")
         private UUID id = UUID.randomUUID();
 
         @Column(name = "assembly_id", nullable = false, updatable = false)
@@ -367,6 +374,7 @@ public final class AssemblyEntities {
         }
 
         @Id
+        @Column(name = "id")
         private UUID id = UUID.randomUUID();
 
         @Column(name = "assembly_id", nullable = false, updatable = false)
@@ -379,10 +387,10 @@ public final class AssemblyEntities {
         private UUID unitId;
 
         @Enumerated(EnumType.STRING)
-        @Column(nullable = false, updatable = false)
+        @Column(name = "choice", nullable = false, updatable = false)
         private Choice choice;
 
-        @Column(nullable = false, updatable = false)
+        @Column(name = "weight", nullable = false, updatable = false)
         private BigDecimal weight;
 
         @Column(name = "registered_at", nullable = false, updatable = false)

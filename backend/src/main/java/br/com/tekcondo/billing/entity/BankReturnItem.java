@@ -28,6 +28,7 @@ public class BankReturnItem {
     }
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "organization_id", nullable = false, updatable = false)
@@ -42,7 +43,7 @@ public class BankReturnItem {
     @Column(name = "file_id", nullable = false, updatable = false)
     private UUID fileId;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "sequence", nullable = false, updatable = false)
     private int sequence;
 
     @Column(name = "movement_code", nullable = false, updatable = false)
@@ -60,10 +61,10 @@ public class BankReturnItem {
     @Column(name = "face_value", nullable = false, updatable = false)
     private BigDecimal faceValue;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "fees", nullable = false, updatable = false)
     private BigDecimal fees;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "discount", nullable = false, updatable = false)
     private BigDecimal discount;
 
     @Column(name = "paid_amount", nullable = false, updatable = false)
@@ -79,7 +80,7 @@ public class BankReturnItem {
     private LocalDate creditDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private Status status;
 
     @Column(name = "entry_id")
@@ -88,6 +89,7 @@ public class BankReturnItem {
     @Column(name = "payment_id")
     private UUID paymentId;
 
+    @Column(name = "message")
     private String message;
 
     @Column(name = "resolved_at")

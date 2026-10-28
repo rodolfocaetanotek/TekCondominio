@@ -19,27 +19,30 @@ public class Condominium extends AuditableEntity {
     @Column(name = "organization_id", nullable = false, updatable = false)
     private UUID organizationId;
 
-    @Column(nullable = false)
+    @Column(name = "name", nullable = false)
     private String name;
 
     @Column(name = "legal_name")
     private String legalName;
 
+    @Column(name = "cnpj")
     private String cnpj;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "type", nullable = false)
     private CondominiumType type;
 
     @Embedded
     private Address address;
 
+    @Column(name = "email")
     private String email;
 
+    @Column(name = "phone")
     private String phone;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private CondominiumStatus status = CondominiumStatus.ACTIVE;
 
     @Column(name = "inactivated_at")

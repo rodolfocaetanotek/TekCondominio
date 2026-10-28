@@ -26,19 +26,20 @@ public class Role extends AuditableEntity {
     @Column(name = "organization_id")
     private UUID organizationId;
 
-    @Column(nullable = false)
+    @Column(name = "code", nullable = false)
     private String code;
 
-    @Column(nullable = false)
+    @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "description")
     private String description;
 
     @Column(name = "system_role", nullable = false)
     private boolean systemRole;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "scope", nullable = false)
     private RoleScope scope;
 
     @ElementCollection(fetch = FetchType.EAGER)

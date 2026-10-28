@@ -14,6 +14,7 @@ import jakarta.persistence.Table;
 public class RefreshToken {
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "user_id", nullable = false)

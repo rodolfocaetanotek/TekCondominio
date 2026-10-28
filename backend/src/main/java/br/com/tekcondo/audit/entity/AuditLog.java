@@ -19,6 +19,7 @@ import org.hibernate.type.SqlTypes;
 public class AuditLog {
 
     @Id
+    @Column(name = "id")
     private UUID id;
 
     @Column(name = "organization_id")
@@ -30,7 +31,7 @@ public class AuditLog {
     @Column(name = "user_email")
     private String userEmail;
 
-    @Column(nullable = false)
+    @Column(name = "action", nullable = false)
     private String action;
 
     @Column(name = "entity_type")
@@ -40,6 +41,7 @@ public class AuditLog {
     private String entityId;
 
     @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "details")
     private Map<String, Object> details;
 
     @Column(name = "ip_address")

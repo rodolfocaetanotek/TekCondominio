@@ -17,6 +17,7 @@ import jakarta.persistence.Table;
 public class OccurrenceInteraction {
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "occurrence_id", nullable = false, updatable = false)
@@ -28,14 +29,14 @@ public class OccurrenceInteraction {
     @Column(name = "author_name", nullable = false, updatable = false)
     private String authorName;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "message", nullable = false, updatable = false)
     private String message;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status_change", updatable = false)
     private Occurrence.Status statusChange;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "internal", nullable = false, updatable = false)
     private boolean internal;
 
     @Column(name = "created_at", nullable = false, updatable = false)

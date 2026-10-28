@@ -32,23 +32,26 @@ public class Unit extends AuditableEntity {
     @JoinColumn(name = "building_id")
     private Building building;
 
-    @Column(nullable = false)
+    @Column(name = "identifier", nullable = false)
     private String identifier;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "type", nullable = false)
     private Type type;
 
+    @Column(name = "floor")
     private String floor;
 
+    @Column(name = "area")
     private BigDecimal area;
 
     @Column(name = "ideal_fraction", nullable = false)
     private BigDecimal idealFraction = BigDecimal.ZERO;
 
+    @Column(name = "notes")
     private String notes;
 
-    @Column(nullable = false)
+    @Column(name = "active", nullable = false)
     private boolean active = true;
 
     protected Unit() {

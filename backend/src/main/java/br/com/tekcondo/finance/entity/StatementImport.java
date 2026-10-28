@@ -16,6 +16,7 @@ import jakarta.persistence.Table;
 public class StatementImport {
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "organization_id", nullable = false, updatable = false)

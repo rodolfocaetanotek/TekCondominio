@@ -25,6 +25,7 @@ public class Allocation {
     }
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "organization_id", nullable = false, updatable = false)
@@ -33,17 +34,17 @@ public class Allocation {
     @Column(name = "condominium_id", nullable = false, updatable = false)
     private UUID condominiumId;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "competence", nullable = false, updatable = false)
     private LocalDate competence;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "description", nullable = false, updatable = false)
     private String description;
 
     @Column(name = "chart_account_id", nullable = false, updatable = false)
     private UUID chartAccountId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, updatable = false)
+    @Column(name = "method", nullable = false, updatable = false)
     private AllocationCalculator.Method method;
 
     @Column(name = "base_amount", nullable = false, updatable = false)
@@ -59,7 +60,7 @@ public class Allocation {
     private BigDecimal generatedAmount;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private Status status = Status.GENERATED;
 
     @Column(name = "cancel_reason")

@@ -16,6 +16,7 @@ import jakarta.persistence.Table;
 public class BankReturnFile {
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "organization_id", nullable = false, updatable = false)
@@ -42,10 +43,10 @@ public class BankReturnFile {
     @Column(name = "items_total", nullable = false)
     private int itemsTotal;
 
-    @Column(nullable = false)
+    @Column(name = "settled", nullable = false)
     private int settled;
 
-    @Column(nullable = false)
+    @Column(name = "pending", nullable = false)
     private int pending;
 
     @Column(name = "created_at", nullable = false, updatable = false)

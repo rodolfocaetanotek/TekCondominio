@@ -22,6 +22,7 @@ public class CollectionNote {
     }
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "organization_id", nullable = false, updatable = false)
@@ -43,7 +44,7 @@ public class CollectionNote {
     @Column(name = "contact_date", nullable = false, updatable = false)
     private LocalDate contactDate;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "note", nullable = false, updatable = false)
     private String note;
 
     @Column(name = "created_at", nullable = false, updatable = false)

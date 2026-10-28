@@ -25,6 +25,7 @@ public class PeriodClosing {
     }
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "organization_id", nullable = false, updatable = false)
@@ -34,7 +35,7 @@ public class PeriodClosing {
     private UUID condominiumId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, updatable = false)
+    @Column(name = "action", nullable = false, updatable = false)
     private Action action;
 
     @Column(name = "closed_until", updatable = false)
@@ -43,11 +44,11 @@ public class PeriodClosing {
     @Column(name = "previous_until", updatable = false)
     private LocalDate previousUntil;
 
-    @Column(updatable = false)
+    @Column(name = "notes", updatable = false)
     private String notes;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(updatable = false)
+    @Column(name = "snapshot", updatable = false)
     private Map<String, Object> snapshot;
 
     @Column(name = "created_at", nullable = false, updatable = false)

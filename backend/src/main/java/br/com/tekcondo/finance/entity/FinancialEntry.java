@@ -49,6 +49,7 @@ public class FinancialEntry {
     }
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "organization_id", nullable = false, updatable = false)
@@ -58,10 +59,10 @@ public class FinancialEntry {
     private UUID condominiumId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, updatable = false)
+    @Column(name = "kind", nullable = false, updatable = false)
     private Kind kind;
 
-    @Column(nullable = false)
+    @Column(name = "description", nullable = false)
     private String description;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -84,7 +85,7 @@ public class FinancialEntry {
     @JoinColumn(name = "person_id")
     private Person person;
 
-    @Column(nullable = false)
+    @Column(name = "amount", nullable = false)
     private BigDecimal amount;
 
     @Column(name = "paid_amount", nullable = false)
@@ -93,20 +94,21 @@ public class FinancialEntry {
     @Column(name = "due_date", nullable = false)
     private LocalDate dueDate;
 
-    @Column(nullable = false)
+    @Column(name = "competence", nullable = false)
     private LocalDate competence;
 
     @Column(name = "document_number")
     private String documentNumber;
 
+    @Column(name = "notes")
     private String notes;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private Status status = Status.OPEN;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "approval", nullable = false)
     private Approval approval = Approval.NOT_REQUIRED;
 
     @Column(name = "approved_by")
@@ -119,16 +121,16 @@ public class FinancialEntry {
     private String approvalNote;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, updatable = false)
+    @Column(name = "origin", nullable = false, updatable = false)
     private Origin origin = Origin.MANUAL;
 
     @Column(name = "recurrence_group", updatable = false)
     private UUID recurrenceGroup;
 
-    @Column(updatable = false)
+    @Column(name = "installment", updatable = false)
     private Integer installment;
 
-    @Column(updatable = false)
+    @Column(name = "installments", updatable = false)
     private Integer installments;
 
     @Column(name = "allocation_id", updatable = false)
@@ -170,6 +172,7 @@ public class FinancialEntry {
     private Long collectionNumber;
 
     @Version
+    @Column(name = "version")
     private Long version;
 
     protected FinancialEntry() {

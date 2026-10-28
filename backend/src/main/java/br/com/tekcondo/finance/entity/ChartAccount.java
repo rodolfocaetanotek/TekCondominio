@@ -21,21 +21,21 @@ public class ChartAccount extends AuditableEntity {
     @Column(name = "organization_id", updatable = false)
     private UUID organizationId;
 
-    @Column(nullable = false)
+    @Column(name = "code", nullable = false)
     private String code;
 
-    @Column(nullable = false)
+    @Column(name = "name", nullable = false)
     private String name;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "nature", nullable = false)
     private Nature nature;
 
     /** Analítica = aceita lançamentos; sintética = apenas agrupa. */
-    @Column(nullable = false)
+    @Column(name = "analytic", nullable = false)
     private boolean analytic = true;
 
-    @Column(nullable = false)
+    @Column(name = "active", nullable = false)
     private boolean active = true;
 
     protected ChartAccount() {

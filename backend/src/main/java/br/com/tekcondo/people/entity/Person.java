@@ -21,25 +21,29 @@ public class Person extends AuditableEntity {
     @Column(name = "organization_id", nullable = false, updatable = false)
     private UUID organizationId;
 
-    @Column(nullable = false)
+    @Column(name = "name", nullable = false)
     private String name;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "kind", nullable = false)
     private Kind kind;
 
+    @Column(name = "document")
     private String document;
 
+    @Column(name = "email")
     private String email;
 
+    @Column(name = "phone")
     private String phone;
 
     @Column(name = "secondary_phone")
     private String secondaryPhone;
 
+    @Column(name = "notes")
     private String notes;
 
-    @Column(nullable = false)
+    @Column(name = "active", nullable = false)
     private boolean active = true;
 
     protected Person() {

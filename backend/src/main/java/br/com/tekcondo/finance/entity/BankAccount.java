@@ -26,16 +26,17 @@ public class BankAccount extends AuditableEntity {
     @Column(name = "condominium_id", nullable = false, updatable = false)
     private UUID condominiumId;
 
-    @Column(nullable = false)
+    @Column(name = "name", nullable = false)
     private String name;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "kind", nullable = false)
     private Kind kind;
 
     @Column(name = "bank_code")
     private String bankCode;
 
+    @Column(name = "agency")
     private String agency;
 
     @Column(name = "account_number")
@@ -47,7 +48,7 @@ public class BankAccount extends AuditableEntity {
     @Column(name = "opening_date", nullable = false, updatable = false)
     private LocalDate openingDate;
 
-    @Column(nullable = false)
+    @Column(name = "active", nullable = false)
     private boolean active = true;
 
     protected BankAccount() {

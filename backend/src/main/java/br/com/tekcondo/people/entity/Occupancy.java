@@ -27,6 +27,7 @@ public class Occupancy {
     }
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "organization_id", nullable = false, updatable = false)
@@ -41,7 +42,7 @@ public class Occupancy {
     private Person person;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "role", nullable = false)
     private Role role;
 
     @Column(name = "financial_responsible", nullable = false)

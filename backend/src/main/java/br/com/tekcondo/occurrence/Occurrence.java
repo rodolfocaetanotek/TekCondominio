@@ -38,25 +38,25 @@ public class Occurrence extends AuditableEntity {
     @Column(name = "condominium_id", nullable = false, updatable = false)
     private UUID condominiumId;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "number", nullable = false, updatable = false)
     private int number;
 
-    @Column(nullable = false)
+    @Column(name = "title", nullable = false)
     private String title;
 
-    @Column(nullable = false)
+    @Column(name = "description", nullable = false)
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "category", nullable = false)
     private Category category;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "priority", nullable = false)
     private Priority priority;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private Status status = Status.OPEN;
 
     @Column(name = "unit_id")
@@ -74,6 +74,7 @@ public class Occurrence extends AuditableEntity {
     @Column(name = "due_date")
     private LocalDate dueDate;
 
+    @Column(name = "resolution")
     private String resolution;
 
     @Column(name = "resolved_at")

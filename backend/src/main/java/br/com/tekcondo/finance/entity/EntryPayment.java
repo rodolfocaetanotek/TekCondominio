@@ -27,6 +27,7 @@ public class EntryPayment {
     }
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "organization_id", nullable = false, updatable = false)
@@ -46,25 +47,26 @@ public class EntryPayment {
     @Column(name = "paid_on", nullable = false, updatable = false)
     private LocalDate paidOn;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "principal", nullable = false, updatable = false)
     private BigDecimal principal;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "fine", nullable = false, updatable = false)
     private BigDecimal fine;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "interest", nullable = false, updatable = false)
     private BigDecimal interest;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "discount", nullable = false, updatable = false)
     private BigDecimal discount;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "total", nullable = false, updatable = false)
     private BigDecimal total;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, updatable = false)
+    @Column(name = "method", nullable = false, updatable = false)
     private Method method;
 
+    @Column(name = "notes")
     private String notes;
 
     @Column(name = "reconciled_at")

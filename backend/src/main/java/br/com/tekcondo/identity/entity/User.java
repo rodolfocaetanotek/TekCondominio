@@ -16,10 +16,10 @@ public class User extends AuditableEntity {
     @Column(name = "organization_id")
     private UUID organizationId;
 
-    @Column(nullable = false)
+    @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(nullable = false)
+    @Column(name = "email", nullable = false)
     private String email;
 
     @Column(name = "password_hash", nullable = false)
@@ -28,7 +28,7 @@ public class User extends AuditableEntity {
     @Column(name = "platform_admin", nullable = false)
     private boolean platformAdmin;
 
-    @Column(nullable = false)
+    @Column(name = "active", nullable = false)
     private boolean active = true;
 
     @Column(name = "failed_login_attempts", nullable = false)

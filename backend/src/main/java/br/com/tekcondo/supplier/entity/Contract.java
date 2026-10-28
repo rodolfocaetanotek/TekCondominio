@@ -38,16 +38,17 @@ public class Contract extends AuditableEntity {
     @JoinColumn(name = "supplier_id")
     private Supplier supplier;
 
-    @Column(nullable = false)
+    @Column(name = "title", nullable = false)
     private String title;
 
+    @Column(name = "description")
     private String description;
 
-    @Column(nullable = false)
+    @Column(name = "amount", nullable = false)
     private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "periodicity", nullable = false)
     private Periodicity periodicity;
 
     @Column(name = "start_date", nullable = false)
@@ -66,7 +67,7 @@ public class Contract extends AuditableEntity {
     private int noticeDays = 30;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private Status status = Status.ACTIVE;
 
     @Column(name = "terminated_on")

@@ -21,16 +21,19 @@ public class CommonArea extends AuditableEntity {
     @Column(name = "condominium_id", nullable = false, updatable = false)
     private UUID condominiumId;
 
-    @Column(nullable = false)
+    @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "description")
     private String description;
 
+    @Column(name = "rules")
     private String rules;
 
+    @Column(name = "capacity")
     private Integer capacity;
 
-    @Column(nullable = false)
+    @Column(name = "fee", nullable = false)
     private BigDecimal fee = BigDecimal.ZERO;
 
     @Column(name = "requires_approval", nullable = false)
@@ -59,7 +62,7 @@ public class CommonArea extends AuditableEntity {
     @Column(name = "max_per_unit_month")
     private Integer maxPerUnitMonth;
 
-    @Column(nullable = false)
+    @Column(name = "active", nullable = false)
     private boolean active = true;
 
     protected CommonArea() {

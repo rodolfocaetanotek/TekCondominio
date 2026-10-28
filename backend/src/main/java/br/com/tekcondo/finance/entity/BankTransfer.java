@@ -20,6 +20,7 @@ import jakarta.persistence.Table;
 public class BankTransfer {
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "organization_id", nullable = false, updatable = false)
@@ -36,12 +37,13 @@ public class BankTransfer {
     @JoinColumn(name = "to_account_id", updatable = false)
     private BankAccount toAccount;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "amount", nullable = false, updatable = false)
     private BigDecimal amount;
 
     @Column(name = "transfer_date", nullable = false, updatable = false)
     private LocalDate transferDate;
 
+    @Column(name = "description")
     private String description;
 
     @Column(name = "reconciled_at")

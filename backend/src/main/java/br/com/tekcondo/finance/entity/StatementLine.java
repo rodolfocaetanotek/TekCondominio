@@ -24,6 +24,7 @@ public class StatementLine {
     }
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "organization_id", nullable = false, updatable = false)
@@ -44,17 +45,17 @@ public class StatementLine {
     @Column(name = "posted_on", nullable = false, updatable = false)
     private LocalDate postedOn;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "amount", nullable = false, updatable = false)
     private BigDecimal amount;
 
     @Column(name = "trn_type", updatable = false)
     private String trnType;
 
-    @Column(updatable = false)
+    @Column(name = "memo", updatable = false)
     private String memo;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private Status status = Status.UNMATCHED;
 
     @Column(name = "payment_id")
@@ -63,6 +64,7 @@ public class StatementLine {
     @Column(name = "transfer_id")
     private UUID transferId;
 
+    @Column(name = "note")
     private String note;
 
     @Column(name = "resolved_at")
@@ -72,6 +74,7 @@ public class StatementLine {
     private UUID resolvedBy;
 
     @Version
+    @Column(name = "version")
     private Long version;
 
     protected StatementLine() {

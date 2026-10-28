@@ -25,6 +25,7 @@ public class Agreement {
     }
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "organization_id", nullable = false, updatable = false)
@@ -45,22 +46,23 @@ public class Agreement {
     @Column(name = "charges_amount", nullable = false, updatable = false)
     private BigDecimal chargesAmount;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "discount", nullable = false, updatable = false)
     private BigDecimal discount;
 
     @Column(name = "total_amount", nullable = false, updatable = false)
     private BigDecimal totalAmount;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "installments", nullable = false, updatable = false)
     private int installments;
 
     @Column(name = "first_due_date", nullable = false, updatable = false)
     private LocalDate firstDueDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private Status status = Status.ACTIVE;
 
+    @Column(name = "notes")
     private String notes;
 
     @Column(name = "cancel_reason")
@@ -79,6 +81,7 @@ public class Agreement {
     private UUID createdBy;
 
     @Version
+    @Column(name = "version")
     private Long version;
 
     protected Agreement() {

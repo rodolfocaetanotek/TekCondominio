@@ -51,15 +51,17 @@ public class Reservation extends AuditableEntity {
     @Column(name = "end_minute", nullable = false, updatable = false)
     private LocalTime endTime;
 
+    @Column(name = "guests")
     private Integer guests;
 
+    @Column(name = "notes")
     private String notes;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private Status status;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "fee", nullable = false, updatable = false)
     private BigDecimal fee;
 
     @Column(name = "entry_id")

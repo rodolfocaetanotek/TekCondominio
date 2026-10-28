@@ -22,6 +22,7 @@ public class Announcement {
     }
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "organization_id", nullable = false, updatable = false)
@@ -30,14 +31,14 @@ public class Announcement {
     @Column(name = "condominium_id", nullable = false, updatable = false)
     private UUID condominiumId;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "title", nullable = false, updatable = false)
     private String title;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "body", nullable = false, updatable = false)
     private String body;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, updatable = false)
+    @Column(name = "audience", nullable = false, updatable = false)
     private Audience audience;
 
     @Column(name = "building_id", updatable = false)
@@ -46,7 +47,7 @@ public class Announcement {
     @Column(name = "unit_id", updatable = false)
     private UUID unitId;
 
-    @Column(nullable = false)
+    @Column(name = "pinned", nullable = false)
     private boolean pinned;
 
     @Column(name = "send_email", nullable = false, updatable = false)

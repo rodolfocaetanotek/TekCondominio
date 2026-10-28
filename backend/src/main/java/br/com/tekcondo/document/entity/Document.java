@@ -29,6 +29,7 @@ public class Document {
     }
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "organization_id", nullable = false, updatable = false)
@@ -38,12 +39,13 @@ public class Document {
     private UUID condominiumId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "category", nullable = false)
     private Category category;
 
-    @Column(nullable = false)
+    @Column(name = "title", nullable = false)
     private String title;
 
+    @Column(name = "description")
     private String description;
 
     @Column(name = "file_name", nullable = false, updatable = false)
@@ -55,14 +57,14 @@ public class Document {
     @Column(name = "size_bytes", nullable = false, updatable = false)
     private long sizeBytes;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "sha256", nullable = false, updatable = false)
     private String sha256;
 
     @Column(name = "storage_key", nullable = false, updatable = false)
     private String storageKey;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "visibility", nullable = false)
     private Visibility visibility;
 
     @Column(name = "entity_type", updatable = false)

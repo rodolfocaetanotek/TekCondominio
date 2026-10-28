@@ -14,12 +14,13 @@ import jakarta.persistence.Table;
 public class ContractHistory {
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "contract_id", nullable = false, updatable = false)
     private UUID contractId;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "change", nullable = false, updatable = false)
     private String change;
 
     @Column(name = "created_at", nullable = false, updatable = false)

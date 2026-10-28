@@ -35,14 +35,16 @@ public class VisitorPass extends AuditableEntity {
     private UUID unitId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, updatable = false)
+    @Column(name = "kind", nullable = false, updatable = false)
     private Kind kind;
 
-    @Column(nullable = false)
+    @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "document")
     private String document;
 
+    @Column(name = "company")
     private String company;
 
     @Column(name = "vehicle_plate")
@@ -58,7 +60,7 @@ public class VisitorPass extends AuditableEntity {
     private String accessCode;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private Status status;
 
     @Column(name = "by_resident", nullable = false, updatable = false)
@@ -82,6 +84,7 @@ public class VisitorPass extends AuditableEntity {
     @Column(name = "left_by_name")
     private String leftByName;
 
+    @Column(name = "notes")
     private String notes;
 
     @Column(name = "anonymized_at")

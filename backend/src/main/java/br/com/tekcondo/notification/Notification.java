@@ -15,6 +15,7 @@ import jakarta.persistence.Table;
 public class Notification {
 
     @Id
+    @Column(name = "id")
     private UUID id = UUID.randomUUID();
 
     @Column(name = "organization_id", nullable = false, updatable = false)
@@ -23,13 +24,13 @@ public class Notification {
     @Column(name = "user_id", nullable = false, updatable = false)
     private UUID userId;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "title", nullable = false, updatable = false)
     private String title;
 
-    @Column(updatable = false)
+    @Column(name = "body", updatable = false)
     private String body;
 
-    @Column(updatable = false)
+    @Column(name = "link", updatable = false)
     private String link;
 
     @Column(name = "dedup_key", updatable = false)
