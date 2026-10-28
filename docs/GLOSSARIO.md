@@ -51,7 +51,7 @@ seletores), mais as decisões tomadas para o Tek Condomínio._
   proprietario; documento; email; telefone`) e os apelidos da coluna `tipo` já são em português e continuam aceitos
   como estão (não quebram as planilhas dos usuários).
 - **Caminhos de outros módulos sob `/condominios/{id}`.** O recurso raiz passou a `/api/v1/condominios`; os
-  subcaminhos dos módulos ainda não padronizados (`/billing`, `/announcements`...) mudam no lote de cada módulo.
+  subcaminhos dos módulos ainda não padronizados (`/announcements`, `/reservations`...) mudam no lote de cada módulo.
 
 ## Módulos (pacotes Java / pastas)
 
@@ -190,3 +190,35 @@ seletores), mais as decisões tomadas para o Tek Condomínio._
 | StatementMatcher (Line, Candidate, autoMatch) | ConciliacaoExtratoMatcher (Linha, Candidato, paresInequivocos) | | FinanceQueries / FinanceSetupService | ConsultasFinanceiras / ConfiguracaoFinanceiraService |
 | CashProjection (asOf, currentBalance, overdueReceivables/Payables, lowest…) | ProjecaoCaixa (dataBase, saldoAtual, aReceberVencido/aPagarVencido, menorSaldoProjetado, dataMenorSaldo) | | Week (expectedIn/Out, projectedBalance) | Semana (entradasPrevistas/saidasPrevistas, saldoProjetado) |
 | ExpenseAnomaly (historicalMean, ratio, explanation) | DespesaForaDoPadrao (mediaHistorica, razao, explicacao) | | Due / Deviation (mean, stdDev) | Vencimento / Desvio (media, desvioPadrao) |
+
+## Cobrança e fornecedores (lote 4)
+
+| Inglês | Português | | Inglês | Português |
+|---|---|---|---|---|
+| AllocationCalculator (Method, Share, allocate) | RateioCalculator (Criterio, Cota, ratear) | | Allocation.Status / Agreement.Status / BankReturnItem.Status | Rateio.Situacao / Acordo.Situacao / ItemRetorno.Situacao |
+| method (rateio) / consumption | criterio / consumo | | baseAmount / generatedAmount / unitsCount | valorBase / valorGerado / quantidadeUnidades |
+| paidCount / receivedAmount | quantidadePagas / valorRecebido | | AllocationPreview / AllocationLine / unitsWithoutResponsible | SimulacaoRateio / LinhaRateio / unidadesSemResponsavel |
+| preview / generate (rateio) | simular / gerar | | CollectionService | InadimplenciaService |
+| DelinquencyReport / DelinquencyRow | Inadimplencia / LinhaInadimplencia | | asOf (data de referência) | dataBase |
+| totalCharges / charges (multa + juros) | totalEncargos / encargos | | issuedLast12Months / delinquencyRate | emitidoUltimos12Meses / indiceInadimplencia |
+| unitsInDebt / overdueCount / oldestDueDate / maxDaysLate | unidadesEmDebito / quantidadeVencidas / vencimentoMaisAntigo / maximoDiasAtraso | | lastContactDate / responsibleName/Email/Phone | dataUltimoContato / nomeResponsavel/emailResponsavel/telefoneResponsavel |
+| UnitDebt (openPrincipal, openCharges, openTotal) | DebitosUnidade (principalAberto, encargosAbertos, totalAberto) | | DebtLine (entryId, paid, remaining, daysLate, updatedTotal) | LinhaDebito (idLancamento, valorPago, valorAberto, diasAtraso, totalAtualizado) |
+| CollectionNote.ContactType / contactDate / note | NotaCobranca.TipoContato / dataContato / observacao | | buildUnitDebt / addNote | montarDebitosUnidade / registrarNota |
+| Agreement (originalAmount, chargesAmount, totalAmount) | Acordo (valorOriginal, valorEncargos, valorTotal) | | installments / firstDueDate / paidInstallments | totalParcelas / dataPrimeiroVencimento / parcelasPagas |
+| installmentEntries / entryIds / includeCharges | parcelas / idsLancamentos / incluirEncargos | | createAgreement / cancelAgreement | cadastrarAcordo / cancelarAcordo |
+| BankReturnService / FileSummary / ItemView | RetornoBancarioService / ResumoArquivo / ItemRetornoResponse | | SettleRequest / IgnoreRequest | BaixarItemRequest / IgnorarItemRequest |
+| BankReturnFile (generatedOn, itemsTotal, settled, pending) | ArquivoRetorno (dataGeracao, totalItens, baixados, pendentes) | | BankReturnItem (fileId, sequence, movementCode, movementLabel) | ItemRetorno (idArquivo, sequencia, codigoMovimento, descricaoMovimento) |
+| ourNumber / yourNumber / faceValue / fees / bankFee | nossoNumero / seuNumero / valorTitulo / encargos / tarifa | | occurrenceDate / creditDate / message / settlementDate | dataOcorrencia / dataCredito / mensagem / dataLiquidacao |
+| settle / ignore (item do retorno) | baixar / ignorar | | process (retorno) / locate | processar / localizar |
+| Supplier (contactName, category) | Fornecedor (nomeContato, categoria) | | Contract.Periodicity / Contract.Status | Contrato.Periodicidade / Contrato.Situacao |
+| title / startDate / endDate (contrato) | titulo / dataInicio / dataFim | | readjustmentIndex / readjustmentMonth / noticeDays | indiceReajuste / mesReajuste / diasAvisoPrevio |
+| expiring / expired | aVencer / vencido | | terminatedOn / terminationReason / terminate | dataEncerramento / motivoEncerramento / encerrar |
+| ContractHistory (change) / history | HistoricoContrato (alteracao) / historico | | TerminateRequest | EncerramentoRequest |
+
+Rotas: `/condominios/{idCondominio}/cobranca/rateios` (`/simular`, `/{id}/cancelar`), `/cobranca/inadimplencia?dataBase=`,
+`/cobranca/unidades/{idUnidade}/debitos` e `/notas`, `/cobranca/acordos` (`/{id}/cancelar`),
+`/cobranca/retornos-bancarios?idContaBancaria=` (multipart `arquivo`; `/{id}/itens`),
+`/cobranca/itens-retorno/pendentes`, `/itens-retorno/{id}/baixar` e `/ignorar`; `/fornecedores?busca=&ativo=`;
+`/condominios/{idCondominio}/contratos` (`/{id}/encerrar`). Os critérios de rateio (`IDEAL_FRACTION`, `EQUAL`, `FIXED`,
+`CONSUMPTION`), tipos de contato, periodicidades e situações continuam como códigos gravados em inglês, assim como o
+`entityType` `Contract` dos anexos de contrato (valor gravado do módulo de documentos).

@@ -16,7 +16,7 @@ import { DocPipe } from '../../shared/format/doc.pipe';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { openForm } from '../../shared/ui/form-dialog';
 import { PageHeader } from '../../shared/ui/page-header';
-import { FinanceApi, Supplier } from './finance-api';
+import { FinanceApi, Fornecedor } from './finance-api';
 
 @Component({
   selector: 'tc-supplier-list',
@@ -39,12 +39,12 @@ import { FinanceApi, Supplier } from './finance-api';
           <div class="table-scroll">
             <table mat-table [dataSource]="page()?.conteudo ?? []">
               <ng-container matColumnDef="name"><th mat-header-cell *matHeaderCellDef>Fornecedor</th>
-                <td mat-cell *matCellDef="let s"><strong>{{ s.name }}</strong><br /><span class="tc-muted">{{ s.document ? (s.document | doc: 'cpfCnpj') : '' }}</span></td></ng-container>
-              <ng-container matColumnDef="category"><th mat-header-cell *matHeaderCellDef>Categoria</th><td mat-cell *matCellDef="let s">{{ s.category ?? '—' }}</td></ng-container>
+                <td mat-cell *matCellDef="let s"><strong>{{ s.nome }}</strong><br /><span class="tc-muted">{{ s.documento ? (s.documento | doc: 'cpfCnpj') : '' }}</span></td></ng-container>
+              <ng-container matColumnDef="category"><th mat-header-cell *matHeaderCellDef>Categoria</th><td mat-cell *matCellDef="let s">{{ s.categoria ?? '—' }}</td></ng-container>
               <ng-container matColumnDef="contact"><th mat-header-cell *matHeaderCellDef>Contato</th>
-                <td mat-cell *matCellDef="let s">{{ s.contactName ?? '' }} {{ s.phone ? (s.phone | doc: 'phone') : '' }}<br /><span class="tc-muted">{{ s.email ?? '' }}</span></td></ng-container>
+                <td mat-cell *matCellDef="let s">{{ s.nomeContato ?? '' }} {{ s.telefone ? (s.telefone | doc: 'phone') : '' }}<br /><span class="tc-muted">{{ s.email ?? '' }}</span></td></ng-container>
               <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Situação</th>
-                <td mat-cell *matCellDef="let s"><span class="tc-status" [class.is-active]="s.active" [class.is-inactive]="!s.active">{{ s.active ? 'Ativo' : 'Inativo' }}</span></td></ng-container>
+                <td mat-cell *matCellDef="let s"><span class="tc-status" [class.is-active]="s.ativo" [class.is-inactive]="!s.ativo">{{ s.ativo ? 'Ativo' : 'Inativo' }}</span></td></ng-container>
               <tr mat-header-row *matHeaderRowDef="columns"></tr>
               <tr mat-row *matRowDef="let row; columns: columns" [class.is-clickable]="canEdit()" (click)="canEdit() && edit(row)"
                 [attr.tabindex]="canEdit() ? 0 : null" (keydown.enter)="canEdit() && edit(row)"></tr>
@@ -72,22 +72,22 @@ export class SupplierList {
     this.search.valueChanges.pipe(debounceTime(300), takeUntilDestroyed()).subscribe((v) => this.term.set(v.trim()));
   }
 
-  edit(s?: Supplier): void {
+  edit(s?: Fornecedor): void {
     openForm(this.dialog, {
       title: s ? 'Editar fornecedor' : 'Novo fornecedor',
       fields: [
-        { key: 'name', label: 'Nome / razão social', required: true, value: s?.name, span: 8, maxLength: 150 },
-        { key: 'document', label: 'CPF/CNPJ', value: formatCpfCnpj(s?.document), span: 4, mask: 'cpfCnpj' },
-        { key: 'category', label: 'Categoria', value: s?.category, span: 6, hint: 'Ex.: Elevadores, Limpeza, Jardinagem', maxLength: 80 },
-        { key: 'contactName', label: 'Pessoa de contato', value: s?.contactName, span: 6, maxLength: 120 },
+        { key: 'nome', label: 'Nome / razão social', required: true, value: s?.nome, span: 8, maxLength: 150 },
+        { key: 'documento', label: 'CPF/CNPJ', value: formatCpfCnpj(s?.documento), span: 4, mask: 'cpfCnpj' },
+        { key: 'categoria', label: 'Categoria', value: s?.categoria, span: 6, hint: 'Ex.: Elevadores, Limpeza, Jardinagem', maxLength: 80 },
+        { key: 'nomeContato', label: 'Pessoa de contato', value: s?.nomeContato, span: 6, maxLength: 120 },
         { key: 'email', label: 'E-mail', type: 'email', value: s?.email, span: 6 },
-        { key: 'phone', label: 'Telefone', value: formatPhone(s?.phone), span: 6, mask: 'phone' },
-        { key: 'notes', label: 'Observações', type: 'textarea', value: s?.notes, maxLength: 500 },
-        ...(s ? [{ key: 'active', label: 'Ativo', type: 'checkbox' as const, value: s.active }] : []),
+        { key: 'telefone', label: 'Telefone', value: formatPhone(s?.telefone), span: 6, mask: 'phone' },
+        { key: 'observacoes', label: 'Observações', type: 'textarea', value: s?.observacoes, maxLength: 500 },
+        ...(s ? [{ key: 'ativo', label: 'Ativo', type: 'checkbox' as const, value: s.ativo }] : []),
       ],
       submit: (v) => {
-        const { active, ...body } = v;
-        return this.api.saveSupplier(body, s?.id, s ? Boolean(active) : undefined);
+        const { ativo, ...body } = v;
+        return this.api.saveSupplier(body, s?.id, s ? Boolean(ativo) : undefined);
       },
     }, '640px').pipe(filter((r) => !!r)).subscribe(() => { this.notify.success('Fornecedor salvo.'); this.tick.update((t) => t + 1); });
   }

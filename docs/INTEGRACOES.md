@@ -21,10 +21,10 @@ deve ser homologado antes do uso em produção.
 
 | Item | Detalhe |
 |---|---|
-| Código | `integration/bank/Cnab240ReturnParser.java`, `billing/service/BankReturnService.java` |
-| Endpoint | `POST /api/v1/condominios/{c}/billing/bank-returns?bankAccountId=…` (multipart `file`) |
+| Código | `integracao/banco/RetornoCnab240Parser.java`, `cobranca/service/RetornoBancarioService.java` |
+| Endpoint | `POST /api/v1/condominios/{idCondominio}/cobranca/retornos-bancarios?idContaBancaria=…` (multipart `arquivo`) |
 | Layout | registro 0 (header), segmentos T e U (detalhe), FEBRABAN v10. Posições usadas: T 16-17 (movimento), 38-57 (nosso nº), 59-73 (seu nº), 74-81 (vencimento), 82-96 (valor), 199-213 (tarifa); U 18-32 (juros/multa), 33-47 (desconto), 48-62 (abatimento), 78-92 (pago), 138-145 (ocorrência), 146-153 (crédito). |
-| Identificação | `financial_entry.collection_number` (sequência do banco de dados), procurado primeiro no "seu número" e depois no nosso número. **Ao registrar o boleto no banco, informe esse número no campo "seu número/número do documento".** Ele aparece em cada título (`collectionNumber` na API). |
+| Identificação | `financial_entry.collection_number` (sequência do banco de dados), procurado primeiro no "seu número" e depois no nosso número. **Ao registrar o boleto no banco, informe esse número no campo "seu número/número do documento".** Ele aparece em cada título (`numeroCobranca` na API). |
 | Baixa | liquidação (movimentos 06 e 17); data = data de crédito (ou ocorrência). Multa até o valor calculado pelo título e o restante como juros. Pagamento a maior é registrado como encargo. Forma de pagamento BOLETO. |
 | Segurança contra duplicidade | hash do arquivo + verificação do mesmo movimento já baixado + índice único parcial no banco |
 | Pendências | título não localizado, já pago, período fechado ou valor insuficiente ficam **pendentes** com o motivo, para baixa manual ou descarte com justificativa |
@@ -37,9 +37,9 @@ Pedir ao banco ou PSP: contrato de cobrança, credenciais OAuth2/mTLS, ambiente 
 de boletos e PIX (cobrança com vencimento, `cobv`).
 
 Arquitetura prevista:
-- porta `CollectionProvider` no módulo `billing` com `register(charge)`, `cancel(charge)` e `status(charge)`;
+- porta `CollectionProvider` no módulo `cobranca` com `register(charge)`, `cancel(charge)` e `status(charge)`;
 - um adaptador por banco em `integration/bank/<banco>`;
-- webhook de liquidação reutilizando a mesma rotina de baixa do retorno CNAB (`BankReturnService.settle`), que já é idempotente.
+- webhook de liquidação reutilizando a mesma rotina de baixa do retorno CNAB (`RetornoBancarioService.baixar`), que já é idempotente.
 
 Enquanto isso, o fluxo suportado é: registrar o boleto no banco (portal ou remessa) com o número de cobrança e
 importar o retorno.

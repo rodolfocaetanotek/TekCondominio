@@ -15,7 +15,7 @@ import br.com.tekcondo.acesso.entity.Usuario;
 import br.com.tekcondo.jobs.DailyRemindersJob;
 import br.com.tekcondo.notificacao.NotificacaoService;
 import br.com.tekcondo.administradora.entity.Administradora;
-import br.com.tekcondo.supplier.repository.ContractRepository;
+import br.com.tekcondo.fornecedor.repository.ContratoRepository;
 import br.com.tekcondo.support.IntegrationTest;
 import br.com.tekcondo.support.GravacaoEmailGateway;
 import br.com.tekcondo.support.TestData;
@@ -46,7 +46,7 @@ class OperationsIT extends IntegrationTest {
     @Autowired
     GravacaoEmailGateway mail;
     @Autowired
-    ContractRepository contractRepository;
+    ContratoRepository contratoRepository;
     @Autowired
     LancamentoRepository entryRepository;
     @Autowired
@@ -211,26 +211,26 @@ class OperationsIT extends IntegrationTest {
     }
 
     @Test
-    void contractsHistoryExpirationAndReminderJob() throws Exception {
-        String supplier = call("POST", "/api/v1/suppliers", Map.of("name", "Elevadores Sobe Desce"), 201).get("id").asText();
-        JsonNode created = call("POST", base + "/contracts", Map.of("supplierId", supplier, "title", "Manutenção de elevadores",
-                "amount", "1200.00", "periodicity", "MONTHLY", "startDate", LocalDate.now().minusYears(1).toString(),
-                "endDate", LocalDate.now().plusDays(10).toString(), "readjustmentIndex", "IPCA", "noticeDays", 30), 201);
-        assertThat(created.get("expiring").asBoolean()).isTrue();
-        String id = created.get("id").asText();
-        JsonNode updated = call("PUT", base + "/contracts/" + id, Map.of("supplierId", supplier, "title", "Manutenção de elevadores",
-                "amount", "1290.00", "periodicity", "MONTHLY", "startDate", LocalDate.now().minusYears(1).toString(),
-                "endDate", LocalDate.now().plusDays(10).toString(), "version", created.get("version").asLong()), 200);
-        assertThat(updated.get("history").get(0).get("change").asText()).contains("1200.00 → 1290.00");
+    void contratosHistoricoVencimentoERotinaDeLembretes() throws Exception {
+        String fornecedor = call("POST", "/api/v1/fornecedores", Map.of("nome", "Elevadores Sobe Desce"), 201).get("id").asText();
+        JsonNode criado = call("POST", base + "/contratos", Map.of("idFornecedor", fornecedor, "titulo", "Manutenção de elevadores",
+                "valor", "1200.00", "periodicidade", "MONTHLY", "dataInicio", LocalDate.now().minusYears(1).toString(),
+                "dataFim", LocalDate.now().plusDays(10).toString(), "indiceReajuste", "IPCA", "diasAvisoPrevio", 30), 201);
+        assertThat(criado.get("aVencer").asBoolean()).isTrue();
+        String id = criado.get("id").asText();
+        JsonNode atualizado = call("PUT", base + "/contratos/" + id, Map.of("idFornecedor", fornecedor, "titulo", "Manutenção de elevadores",
+                "valor", "1290.00", "periodicidade", "MONTHLY", "dataInicio", LocalDate.now().minusYears(1).toString(),
+                "dataFim", LocalDate.now().plusDays(10).toString(), "versao", criado.get("versao").asLong()), 200);
+        assertThat(atualizado.get("historico").get(0).get("alteracao").asText()).contains("1200.00 → 1290.00");
 
-        DailyRemindersJob job = new DailyRemindersJob(contractRepository, entryRepository, announcementRepository,
+        DailyRemindersJob job = new DailyRemindersJob(contratoRepository, entryRepository, announcementRepository,
                 notificationService, Clock.systemUTC());
         tx.executeWithoutResult(s -> job.run());
         tx.executeWithoutResult(s -> job.run()); // não duplica
         assertThat(jdbc.queryForObject("select count(*) from notification where user_id = ? and title like 'Contrato a vencer%'",
                 Integer.class, admin.getId())).isEqualTo(1);
 
-        call("POST", base + "/contracts/" + id + "/terminate", Map.of("terminatedOn", LocalDate.now().toString(), "reason", "Troca de fornecedor"), 200);
-        assertThat(call("GET", base + "/contracts", null, 200).get(0).get("status").asText()).isEqualTo("TERMINATED");
+        call("POST", base + "/contratos/" + id + "/encerrar", Map.of("dataEncerramento", LocalDate.now().toString(), "motivo", "Troca de fornecedor"), 200);
+        assertThat(call("GET", base + "/contratos", null, 200).get(0).get("situacao").asText()).isEqualTo("TERMINATED");
     }
 }

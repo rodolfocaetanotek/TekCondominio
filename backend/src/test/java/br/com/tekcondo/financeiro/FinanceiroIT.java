@@ -91,7 +91,7 @@ class FinanceiroIT extends IntegrationTest {
 
     @Test
     void contaAPagarExigeAprovacaoAceitaBaixasParciaisEEstorno() throws Exception {
-        String fornecedor = chamar("POST", "/api/v1/suppliers", Map.of("name", "Portões Ltda", "document", "11.222.333/0001-81"), 201)
+        String fornecedor = chamar("POST", "/api/v1/fornecedores", Map.of("nome", "Portões Ltda", "documento", "11.222.333/0001-81"), 201)
                 .get("id").asText();
         JsonNode criado = chamar("POST", base + "/lancamentos", despesa("500.00", fornecedor, "NF-123"), 201).get(0);
         String id = criado.get("resumo").get("id").asText();

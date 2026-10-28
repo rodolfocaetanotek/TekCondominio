@@ -48,8 +48,9 @@ describe('APIs dos novos módulos', () => {
   it('processa retorno CNAB na conta escolhida', () => {
     const api = TestBed.inject(FinanceApi);
     api.processReturn('c1', 'a1', new File(['x'], 'COB.RET')).subscribe();
-    const req = backend.expectOne((r) => r.url === '/api/v1/condominios/c1/billing/bank-returns');
-    expect(req.request.params.get('bankAccountId')).toBe('a1');
+    const req = backend.expectOne((r) => r.url === '/api/v1/condominios/c1/cobranca/retornos-bancarios');
+    expect(req.request.params.get('idContaBancaria')).toBe('a1');
+    expect((req.request.body as FormData).has('arquivo')).toBe(true);
     req.flush({});
   });
 

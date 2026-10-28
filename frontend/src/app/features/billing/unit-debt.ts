@@ -18,7 +18,7 @@ import { EmptyState } from '../../shared/ui/empty-state';
 import { openForm } from '../../shared/ui/form-dialog';
 import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
 import { PageHeader } from '../../shared/ui/page-header';
-import { FinanceApi, UnitDebt } from '../finance/finance-api';
+import { DebitosUnidade, FinanceApi } from '../finance/finance-api';
 
 @Component({
   selector: 'tc-unit-debt',
@@ -30,20 +30,20 @@ import { FinanceApi, UnitDebt } from '../finance/finance-api';
       @if (error(); as message) {
         <section class="tc-card"><tc-empty-state icon="error" title="Não foi possível carregar" [description]="message" /></section>
       } @else if (debt(); as d) {
-        <tc-page-header eyebrow="Demonstrativo de débitos" [title]="'Unidade ' + d.unitLabel"
-          [subtitle]="(d.responsibleName ?? 'sem responsável financeiro') + ' · posição em ' + (d.asOf | isoDate)" />
+        <tc-page-header eyebrow="Demonstrativo de débitos" [title]="'Unidade ' + d.rotuloUnidade"
+          [subtitle]="(d.nomeResponsavel ?? 'sem responsável financeiro') + ' · posição em ' + (d.dataBase | isoDate)" />
         <section class="tc-kpis" aria-label="Resumo do débito">
           <div class="tc-kpi tc-card">
             <span class="icon"><mat-icon aria-hidden="true">account_balance_wallet</mat-icon></span>
-            <span class="label">Principal em aberto</span><span class="value">{{ d.openPrincipal | currency: 'BRL' }}</span>
+            <span class="label">Principal em aberto</span><span class="value">{{ d.principalAberto | currency: 'BRL' }}</span>
           </div>
           <div class="tc-kpi tc-card tone-warning">
             <span class="icon"><mat-icon aria-hidden="true">percent</mat-icon></span>
-            <span class="label">Multa + juros</span><span class="value">{{ d.openCharges | currency: 'BRL' }}</span>
+            <span class="label">Multa + juros</span><span class="value">{{ d.encargosAbertos | currency: 'BRL' }}</span>
           </div>
           <div class="tc-kpi tc-card tone-danger">
             <span class="icon"><mat-icon aria-hidden="true">priority_high</mat-icon></span>
-            <span class="label">Total atualizado</span><span class="value">{{ d.openTotal | currency: 'BRL' }}</span>
+            <span class="label">Total atualizado</span><span class="value">{{ d.totalAberto | currency: 'BRL' }}</span>
           </div>
         </section>
 
@@ -58,20 +58,20 @@ import { FinanceApi, UnitDebt } from '../finance/finance-api';
             <table class="lines tc-cards-mobile">
               <thead><tr><th></th><th>Vencimento</th><th>Descrição</th><th class="money">Valor</th><th class="money">Pago</th><th class="money">Atualizado</th><th>Situação</th></tr></thead>
               <tbody>
-                @for (l of d.lines; track l.entryId) {
+                @for (l of d.linhas; track l.idLancamento) {
                   <tr>
-                    <td>@if (canEdit() && (l.status === 'OPEN' || l.status === 'PARTIAL')) {
-                      <mat-checkbox [checked]="selected().includes(l.entryId)" (change)="toggle(l.entryId)" [attr.aria-label]="'Selecionar ' + l.description" /> }</td>
-                    <td [class.late]="l.daysLate > 0">{{ l.dueDate | isoDate }}</td>
-                    <td><a [routerLink]="['/financeiro/lancamentos', l.entryId]">{{ l.description }}</a>
-                      @if (l.daysLate > 0) { <small class="tc-muted"> · {{ l.daysLate }} dias</small> }</td>
-                    <td class="money">{{ l.amount | currency: 'BRL' }}</td>
-                    <td class="money">{{ l.paid | currency: 'BRL' }}</td>
-                    <td class="money">{{ l.remaining > 0 ? (l.updatedTotal | currency: 'BRL') : '—' }}</td>
-                    <td><span class="tc-status" [class.is-active]="l.status === 'PAID'"
-                      [class.is-pending]="(l.status === 'OPEN' || l.status === 'PARTIAL') && l.daysLate <= 0"
-                      [class.is-danger]="(l.status === 'OPEN' || l.status === 'PARTIAL') && l.daysLate > 0"
-                      [class.is-inactive]="l.status === 'CANCELLED' || l.status === 'RENEGOTIATED'">{{ l.status | label: 'entryStatus' }}</span></td>
+                    <td>@if (canEdit() && (l.situacao === 'OPEN' || l.situacao === 'PARTIAL')) {
+                      <mat-checkbox [checked]="selected().includes(l.idLancamento)" (change)="toggle(l.idLancamento)" [attr.aria-label]="'Selecionar ' + l.descricao" /> }</td>
+                    <td [class.late]="l.diasAtraso > 0">{{ l.dataVencimento | isoDate }}</td>
+                    <td><a [routerLink]="['/financeiro/lancamentos', l.idLancamento]">{{ l.descricao }}</a>
+                      @if (l.diasAtraso > 0) { <small class="tc-muted"> · {{ l.diasAtraso }} dias</small> }</td>
+                    <td class="money">{{ l.valor | currency: 'BRL' }}</td>
+                    <td class="money">{{ l.valorPago | currency: 'BRL' }}</td>
+                    <td class="money">{{ l.valorAberto > 0 ? (l.totalAtualizado | currency: 'BRL') : '—' }}</td>
+                    <td><span class="tc-status" [class.is-active]="l.situacao === 'PAID'"
+                      [class.is-pending]="(l.situacao === 'OPEN' || l.situacao === 'PARTIAL') && l.diasAtraso <= 0"
+                      [class.is-danger]="(l.situacao === 'OPEN' || l.situacao === 'PARTIAL') && l.diasAtraso > 0"
+                      [class.is-inactive]="l.situacao === 'CANCELLED' || l.situacao === 'RENEGOTIATED'">{{ l.situacao | label: 'entryStatus' }}</span></td>
                   </tr>
                 } @empty { <tr><td colspan="7" class="tc-muted">Nenhuma cobrança.</td></tr> }
               </tbody>
@@ -83,16 +83,16 @@ import { FinanceApi, UnitDebt } from '../finance/finance-api';
           <section class="tc-card">
             <div class="tc-card-head"><h3 class="tc-section-title">Histórico de cobrança</h3>
               @if (canEdit()) { <button mat-button (click)="note()"><mat-icon>add_comment</mat-icon> Registrar contato</button> }</div>
-            @for (n of d.notes; track n.id) {
-              <div class="note"><strong>{{ n.contactDate | isoDate }} · {{ n.contactType | label: 'contactType' }}</strong>
-                <p>{{ n.note }}</p><small class="tc-muted">{{ n.createdByName }}</small></div>
+            @for (n of d.notas; track n.id) {
+              <div class="note"><strong>{{ n.dataContato | isoDate }} · {{ n.tipoContato | label: 'contactType' }}</strong>
+                <p>{{ n.observacao }}</p><small class="tc-muted">{{ n.nomeCriadoPor }}</small></div>
             } @empty { <p class="tc-muted">Nenhum contato registrado.</p> }
           </section>
           <section class="tc-card">
             <h3 class="tc-section-title">Acordos</h3>
-            @for (a of d.agreements; track a.id) {
-              <div class="note"><strong>{{ a.totalAmount | currency: 'BRL' }} em {{ a.installments }}x — {{ a.status | label: 'agreementStatus' }}</strong>
-                <p class="tc-muted">{{ a.paidInstallments }}/{{ a.installments }} parcelas pagas · 1ª em {{ a.firstDueDate | isoDate }}</p></div>
+            @for (a of d.acordos; track a.id) {
+              <div class="note"><strong>{{ a.valorTotal | currency: 'BRL' }} em {{ a.totalParcelas }}x — {{ a.situacao | label: 'agreementStatus' }}</strong>
+                <p class="tc-muted">{{ a.parcelasPagas }}/{{ a.totalParcelas }} parcelas pagas · 1ª em {{ a.dataPrimeiroVencimento | isoDate }}</p></div>
             } @empty { <p class="tc-muted">Nenhum acordo.</p> }
           </section>
         </div>
@@ -139,28 +139,28 @@ export class UnitDebtPage {
     openForm(this.dialog, {
       title: 'Registrar contato de cobrança',
       fields: [
-        { key: 'contactType', label: 'Tipo', type: 'select', required: true, value: 'PHONE', span: 6, options: options('contactType') },
-        { key: 'contactDate', label: 'Data', type: 'date', required: true, value: todayIso(), span: 6 },
-        { key: 'note', label: 'Descrição do contato', type: 'textarea', required: true, maxLength: 1000 },
+        { key: 'tipoContato', label: 'Tipo', type: 'select', required: true, value: 'PHONE', span: 6, options: options('contactType') },
+        { key: 'dataContato', label: 'Data', type: 'date', required: true, value: todayIso(), span: 6 },
+        { key: 'observacao', label: 'Descrição do contato', type: 'textarea', required: true, maxLength: 1000 },
       ],
       submit: (v) => this.api.addNote(this.context.id()!, this.unitId(), v),
     }).pipe(filter((r) => !!r)).subscribe(() => { this.notify.success('Contato registrado.'); this.tick.update((t) => t + 1); });
   }
 
-  agreement(d: UnitDebt): void {
-    const total = d.lines.filter((l) => this.selected().includes(l.entryId)).reduce((s, l) => s + l.updatedTotal, 0);
+  agreement(d: DebitosUnidade): void {
+    const total = d.linhas.filter((l) => this.selected().includes(l.idLancamento)).reduce((s, l) => s + l.totalAtualizado, 0);
     openForm(this.dialog, {
       title: 'Acordo de parcelamento',
       intro: `${this.selected().length} débito(s), total atualizado R$ ${total.toFixed(2).replace('.', ',')}. Os débitos serão substituídos pelas parcelas do acordo.`,
       fields: [
-        { key: 'installments', label: 'Nº de parcelas', type: 'number', required: true, value: 3, span: 4, min: 1 },
-        { key: 'firstDueDate', label: '1º vencimento', type: 'date', required: true, value: todayIso(), span: 4 },
-        { key: 'discount', label: 'Desconto (R$)', type: 'number', value: 0, span: 4, min: 0 },
-        { key: 'includeCharges', label: 'Incluir multa e juros calculados até hoje', type: 'checkbox', value: true },
-        { key: 'notes', label: 'Observações', type: 'textarea', maxLength: 500 },
+        { key: 'totalParcelas', label: 'Nº de parcelas', type: 'number', required: true, value: 3, span: 4, min: 1 },
+        { key: 'dataPrimeiroVencimento', label: '1º vencimento', type: 'date', required: true, value: todayIso(), span: 4 },
+        { key: 'desconto', label: 'Desconto (R$)', type: 'number', value: 0, span: 4, min: 0 },
+        { key: 'incluirEncargos', label: 'Incluir multa e juros calculados até hoje', type: 'checkbox', value: true },
+        { key: 'observacoes', label: 'Observações', type: 'textarea', maxLength: 500 },
       ],
       submitLabel: 'Criar acordo',
-      submit: (v) => this.api.createAgreement(this.context.id()!, { ...v, unitId: this.unitId(), entryIds: this.selected() }),
+      submit: (v) => this.api.createAgreement(this.context.id()!, { ...v, idUnidade: this.unitId(), idsLancamentos: this.selected() }),
     }).pipe(filter((r) => !!r)).subscribe(() => {
       this.notify.success('Acordo criado.');
       this.selected.set([]);

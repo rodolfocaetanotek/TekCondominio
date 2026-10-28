@@ -37,8 +37,8 @@ desta etapa estão listadas no [RELATORIO-FINAL.md](RELATORIO-FINAL.md).
 | Pessoas e ocupações (proprietário, inquilino, morador, responsável financeiro) | Completo | histórico de vínculos |
 | Plano de contas, centros de custo, contas bancárias | Completo | `FinanceIT` |
 | Contas a pagar e a receber, aprovação, baixa parcial, estorno | Completo | `FinanceIT` |
-| Rateio (fração, igualitário, fixo, consumo) e cobranças | Completo | `BillingIT`, `AllocationCalculatorTest` |
-| Inadimplência, demonstrativo de débitos, acordos | Completo | `BillingIT` |
+| Rateio (fração, igualitário, fixo, consumo) e cobranças | Completo | `CobrancaIT`, `RateioCalculatorTest` |
+| Inadimplência, demonstrativo de débitos, acordos | Completo | `CobrancaIT` |
 | Conciliação bancária | **Parcial** | só marcação manual movimento a movimento; não havia importação de extrato |
 | Boleto, PIX e retorno bancário | **Ausente** | as cobranças eram baixadas à mão |
 | Fechamento mensal / bloqueio de período | **Ausente** | era possível lançar, estornar ou conciliar em meses já prestados |

@@ -16,7 +16,7 @@ import { CondominiumRequired } from '../../shared/ui/condominium-required';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
 import { PageHeader } from '../../shared/ui/page-header';
-import { Agreement, Allocation, Delinquency, FinanceApi } from '../finance/finance-api';
+import { Acordo, FinanceApi, Inadimplencia, Rateio } from '../finance/finance-api';
 import { AllocationDialog } from './allocation-dialog';
 import { BankReturnTab } from './bank-return-tab';
 
@@ -38,17 +38,17 @@ import { BankReturnTab } from './bank-return-tab';
           <mat-tab label="Rateios / competências">
             <section class="tc-table-card">
               @for (a of allocations() ?? []; track a.id) {
-                <div class="row" [class.off]="a.status === 'CANCELLED'">
+                <div class="row" [class.off]="a.situacao === 'CANCELLED'">
                   <div class="who">
-                    <strong>{{ a.description }}</strong>
-                    <span class="tc-muted">{{ a.competence.slice(5, 7) }}/{{ a.competence.slice(0, 4) }} · {{ a.method | label: 'allocationMethod' }} ·
-                      {{ a.unitsCount }} unidades · vence {{ a.dueDate | isoDate }}{{ a.cancelReason ? ' · cancelado: ' + a.cancelReason : '' }}</span>
+                    <strong>{{ a.descricao }}</strong>
+                    <span class="tc-muted">{{ a.competencia.slice(5, 7) }}/{{ a.competencia.slice(0, 4) }} · {{ a.criterio | label: 'allocationMethod' }} ·
+                      {{ a.quantidadeUnidades }} unidades · vence {{ a.dataVencimento | isoDate }}{{ a.motivoCancelamento ? ' · cancelado: ' + a.motivoCancelamento : '' }}</span>
                   </div>
                   <div class="nums">
-                    <span class="money">{{ a.generatedAmount | currency: 'BRL' }}</span>
-                    <small class="tc-muted">recebido {{ a.receivedAmount | currency: 'BRL' }} · {{ a.paidCount }}/{{ a.unitsCount }} pagas</small>
+                    <span class="money">{{ a.valorGerado | currency: 'BRL' }}</span>
+                    <small class="tc-muted">recebido {{ a.valorRecebido | currency: 'BRL' }} · {{ a.quantidadePagas }}/{{ a.quantidadeUnidades }} pagas</small>
                   </div>
-                  @if (a.status === 'GENERATED' && canEdit() && context.can('FINANCE_CANCEL') && a.receivedAmount === 0) {
+                  @if (a.situacao === 'GENERATED' && canEdit() && context.can('FINANCE_CANCEL') && a.valorRecebido === 0) {
                     <button mat-button (click)="cancelAllocation(a)">Cancelar</button>
                   }
                 </div>
@@ -68,25 +68,25 @@ import { BankReturnTab } from './bank-return-tab';
                   </div>
                   <div class="tc-kpi tc-card tone-warning">
                     <span class="icon"><mat-icon aria-hidden="true">percent</mat-icon></span>
-                    <span class="label">Multa + juros até hoje</span><span class="value">{{ d.totalCharges | currency: 'BRL' }}</span>
+                    <span class="label">Multa + juros até hoje</span><span class="value">{{ d.totalEncargos | currency: 'BRL' }}</span>
                   </div>
                   <div class="tc-kpi tc-card tone-info">
                     <span class="icon"><mat-icon aria-hidden="true">monitoring</mat-icon></span>
-                    <span class="label">Índice de inadimplência</span><span class="value">{{ d.delinquencyRate | number: '1.2-2' }}%</span>
+                    <span class="label">Índice de inadimplência</span><span class="value">{{ d.indiceInadimplencia | number: '1.2-2' }}%</span>
                     <span class="sub">vencido ÷ emitido em 12 meses</span>
                   </div>
                   <div class="tc-kpi tc-card">
                     <span class="icon"><mat-icon aria-hidden="true">door_front</mat-icon></span>
-                    <span class="label">Unidades em débito</span><span class="value">{{ d.unitsInDebt }} de {{ d.activeUnits }}</span>
+                    <span class="label">Unidades em débito</span><span class="value">{{ d.unidadesEmDebito }} de {{ d.unidadesAtivas }}</span>
                   </div>
                 </section>
                 <section class="tc-table-card">
-                  @for (r of d.rows; track r.unitId) {
-                    <a class="row link" [routerLink]="['/cobranca/unidades', r.unitId]">
+                  @for (r of d.linhas; track r.idUnidade) {
+                    <a class="row link" [routerLink]="['/cobranca/unidades', r.idUnidade]">
                       <div class="who">
-                        <strong>{{ r.unitLabel }}</strong>
-                        <span class="tc-muted">{{ r.responsibleName ?? 'sem responsável' }} · {{ r.overdueCount }} título(s) · {{ r.maxDaysLate }} dias de atraso
-                          {{ r.lastContactDate ? ' · último contato ' + (r.lastContactDate | isoDate) : '' }}</span>
+                        <strong>{{ r.rotuloUnidade }}</strong>
+                        <span class="tc-muted">{{ r.nomeResponsavel ?? 'sem responsável' }} · {{ r.quantidadeVencidas }} título(s) · {{ r.maximoDiasAtraso }} dias de atraso
+                          {{ r.dataUltimoContato ? ' · último contato ' + (r.dataUltimoContato | isoDate) : '' }}</span>
                       </div>
                       <div class="nums"><span class="money negative">{{ r.total | currency: 'BRL' }}</span>
                         <small class="tc-muted">principal {{ r.principal | currency: 'BRL' }}</small></div>
@@ -103,15 +103,15 @@ import { BankReturnTab } from './bank-return-tab';
             <ng-template matTabContent>
               <section class="tc-table-card">
                 @for (a of agreements() ?? []; track a.id) {
-                  <div class="row" [class.off]="a.status === 'CANCELLED'">
+                  <div class="row" [class.off]="a.situacao === 'CANCELLED'">
                     <div class="who">
-                      <a [routerLink]="['/cobranca/unidades', a.unitId]"><strong>{{ a.unitLabel }}</strong></a>
-                      <span class="tc-muted">{{ a.installments }}x a partir de {{ a.firstDueDate | isoDate }} · {{ a.paidInstallments }}/{{ a.installments }} pagas
-                        · original {{ a.originalAmount | currency: 'BRL' }} + encargos {{ a.chargesAmount | currency: 'BRL' }} − desconto {{ a.discount | currency: 'BRL' }}</span>
+                      <a [routerLink]="['/cobranca/unidades', a.idUnidade]"><strong>{{ a.rotuloUnidade }}</strong></a>
+                      <span class="tc-muted">{{ a.totalParcelas }}x a partir de {{ a.dataPrimeiroVencimento | isoDate }} · {{ a.parcelasPagas }}/{{ a.totalParcelas }} pagas
+                        · original {{ a.valorOriginal | currency: 'BRL' }} + encargos {{ a.valorEncargos | currency: 'BRL' }} − desconto {{ a.desconto | currency: 'BRL' }}</span>
                     </div>
-                    <div class="nums"><span class="money">{{ a.totalAmount | currency: 'BRL' }}</span>
-                      <small class="tc-status" [class.is-active]="a.status === 'ACTIVE'" [class.is-success]="a.status === 'COMPLETED'" [class.is-inactive]="a.status === 'CANCELLED'">{{ a.status | label: 'agreementStatus' }}</small></div>
-                    @if (a.status === 'ACTIVE' && a.paidInstallments === 0 && canEdit()) {
+                    <div class="nums"><span class="money">{{ a.valorTotal | currency: 'BRL' }}</span>
+                      <small class="tc-status" [class.is-active]="a.situacao === 'ACTIVE'" [class.is-success]="a.situacao === 'COMPLETED'" [class.is-inactive]="a.situacao === 'CANCELLED'">{{ a.situacao | label: 'agreementStatus' }}</small></div>
+                    @if (a.situacao === 'ACTIVE' && a.parcelasPagas === 0 && canEdit()) {
                       <button mat-button (click)="cancelAgreement(a)">Cancelar</button>
                     }
                   </div>
@@ -153,9 +153,9 @@ export class BillingPage {
   protected readonly canEdit = computed(() => this.context.can('BILLING_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   private readonly source = combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(filter(([c]) => !!c));
 
-  protected readonly allocations = toSignal(this.source.pipe(switchMap(([c]) => this.api.allocations(c!).pipe(catchError(() => of([] as Allocation[]))))));
-  protected readonly delinquency = toSignal(this.source.pipe(switchMap(([c]) => this.api.delinquency(c!).pipe(catchError(() => of(null as Delinquency | null))))));
-  protected readonly agreements = toSignal(this.source.pipe(switchMap(([c]) => this.api.agreements(c!).pipe(catchError(() => of([] as Agreement[]))))));
+  protected readonly allocations = toSignal(this.source.pipe(switchMap(([c]) => this.api.allocations(c!).pipe(catchError(() => of([] as Rateio[]))))));
+  protected readonly delinquency = toSignal(this.source.pipe(switchMap(([c]) => this.api.delinquency(c!).pipe(catchError(() => of(null as Inadimplencia | null))))));
+  protected readonly agreements = toSignal(this.source.pipe(switchMap(([c]) => this.api.agreements(c!).pipe(catchError(() => of([] as Acordo[]))))));
 
   generate(): void {
     this.dialog.open(AllocationDialog, { data: { condominiumId: this.context.id()! }, width: '760px', maxWidth: '95vw' })
@@ -165,16 +165,16 @@ export class BillingPage {
       });
   }
 
-  cancelAllocation(a: Allocation): void {
-    askReason(this.dialog, 'Cancelar cobranças', `Cancelar "${a.description}" e as ${a.unitsCount} cobranças geradas?`, 'Cancelar cobranças')
-      .pipe(switchMap((reason) => this.api.cancelAllocation(this.context.id()!, a.id, reason)))
+  cancelAllocation(a: Rateio): void {
+    askReason(this.dialog, 'Cancelar cobranças', `Cancelar "${a.descricao}" e as ${a.quantidadeUnidades} cobranças geradas?`, 'Cancelar cobranças')
+      .pipe(switchMap((motivo) => this.api.cancelAllocation(this.context.id()!, a.id, motivo)))
       .subscribe({ next: () => { this.notify.success('Cobranças canceladas.'); this.tick.update((t) => t + 1); },
         error: (err: unknown) => this.notify.error(toProblem(err).detail) });
   }
 
-  cancelAgreement(a: Agreement): void {
+  cancelAgreement(a: Acordo): void {
     askReason(this.dialog, 'Cancelar acordo', 'As parcelas serão canceladas e os débitos originais voltarão a ficar em aberto.', 'Cancelar acordo')
-      .pipe(switchMap((reason) => this.api.cancelAgreement(this.context.id()!, a.id, reason)))
+      .pipe(switchMap((motivo) => this.api.cancelAgreement(this.context.id()!, a.id, motivo)))
       .subscribe({ next: () => { this.notify.success('Acordo cancelado.'); this.tick.update((t) => t + 1); },
         error: (err: unknown) => this.notify.error(toProblem(err).detail) });
   }

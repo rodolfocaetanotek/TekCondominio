@@ -10,8 +10,8 @@ import br.com.tekcondo.financeiro.entity.Lancamento;
 import br.com.tekcondo.financeiro.repository.LancamentoRepository;
 import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.notificacao.NotificacaoService;
-import br.com.tekcondo.supplier.entity.Contract;
-import br.com.tekcondo.supplier.repository.ContractRepository;
+import br.com.tekcondo.fornecedor.entity.Contrato;
+import br.com.tekcondo.fornecedor.repository.ContratoRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -32,13 +32,13 @@ public class DailyRemindersJob {
     private static final DateTimeFormatter BR = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final int DAYS_AHEAD = 3;
 
-    private final ContractRepository contracts;
+    private final ContratoRepository contracts;
     private final LancamentoRepository entries;
     private final AnnouncementRepository announcements;
     private final NotificacaoService notifications;
     private final Clock clock;
 
-    public DailyRemindersJob(ContractRepository contracts, LancamentoRepository entries,
+    public DailyRemindersJob(ContratoRepository contracts, LancamentoRepository entries,
                              AnnouncementRepository announcements, NotificacaoService notifications, Clock clock) {
         this.contracts = contracts;
         this.entries = entries;
@@ -57,13 +57,13 @@ public class DailyRemindersJob {
 
     int contractsExpiring(LocalDate today) {
         int sent = 0;
-        for (Contract c : contracts.findActiveWithEndDate()) {
-            if (c.isExpiring(today) || c.isExpired(today)) {
-                sent += notifications.notificar(c.getOrganizationId(),
-                        notifications.usuariosComPermissao(c.getOrganizationId(), c.getCondominiumId(), Permissao.SUPPLIER_VIEW),
-                        (c.isExpired(today) ? "Contrato vencido: " : "Contrato a vencer: ") + c.getTitle(),
-                        c.getSupplier().getName() + " — término em " + BR.format(c.getEndDate()),
-                        "/contratos", "contract-expiring:" + c.getId() + ":" + c.getEndDate());
+        for (Contrato c : contracts.buscarAtivosComTermino()) {
+            if (c.isAVencer(today) || c.isVencido(today)) {
+                sent += notifications.notificar(c.getIdAdministradora(),
+                        notifications.usuariosComPermissao(c.getIdAdministradora(), c.getIdCondominio(), Permissao.SUPPLIER_VIEW),
+                        (c.isVencido(today) ? "Contrato vencido: " : "Contrato a vencer: ") + c.getTitulo(),
+                        c.getFornecedor().getNome() + " — término em " + BR.format(c.getDataFim()),
+                        "/contratos", "contract-expiring:" + c.getId() + ":" + c.getDataFim());
             }
         }
         return sent;

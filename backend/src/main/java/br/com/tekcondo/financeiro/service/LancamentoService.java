@@ -35,8 +35,8 @@ import br.com.tekcondo.comum.exception.ApiException;
 import br.com.tekcondo.comum.web.PaginaResponse;
 import br.com.tekcondo.estrutura.entity.Unidade;
 import br.com.tekcondo.estrutura.repository.UnidadeRepository;
-import br.com.tekcondo.supplier.entity.Supplier;
-import br.com.tekcondo.supplier.repository.SupplierRepository;
+import br.com.tekcondo.fornecedor.entity.Fornecedor;
+import br.com.tekcondo.fornecedor.repository.FornecedorRepository;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Pageable;
@@ -53,7 +53,7 @@ public class LancamentoService {
 
     private final LancamentoRepository lancamentoRepository;
     private final BaixaRepository baixaRepository;
-    private final SupplierRepository supplierRepository;
+    private final FornecedorRepository fornecedorRepository;
     private final UnidadeRepository unidadeRepository;
     private final PessoaRepository pessoaRepository;
     private final ConfiguracaoFinanceiraService configuracao;
@@ -63,13 +63,13 @@ public class LancamentoService {
     private final Clock clock;
 
     public LancamentoService(LancamentoRepository lancamentoRepository, BaixaRepository baixaRepository,
-                             SupplierRepository supplierRepository, UnidadeRepository unidadeRepository,
+                             FornecedorRepository fornecedorRepository, UnidadeRepository unidadeRepository,
                              PessoaRepository pessoaRepository, ConfiguracaoFinanceiraService configuracao,
                              BloqueioPeriodo bloqueioPeriodo, AcessoCondominio acesso, AuditoriaService auditoriaService,
                              Clock clock) {
         this.lancamentoRepository = lancamentoRepository;
         this.baixaRepository = baixaRepository;
-        this.supplierRepository = supplierRepository;
+        this.fornecedorRepository = fornecedorRepository;
         this.unidadeRepository = unidadeRepository;
         this.pessoaRepository = pessoaRepository;
         this.configuracao = configuracao;
@@ -284,15 +284,15 @@ public class LancamentoService {
                 .orElseThrow(() -> ApiException.naoEncontrado("Lançamento"));
     }
 
-    private record Referencias(ContaPlano conta, CentroCusto centroCusto, Supplier fornecedor, Unidade unidade, Pessoa pessoa) {
+    private record Referencias(ContaPlano conta, CentroCusto centroCusto, Fornecedor fornecedor, Unidade unidade, Pessoa pessoa) {
     }
 
     private Referencias resolver(UUID idCondominio, LancamentoRequest r) {
         ContaPlano conta = configuracao.contaAnalitica(r.idContaPlano(), r.natureza() == Lancamento.Natureza.INCOME
                 ? ContaPlano.Natureza.INCOME : ContaPlano.Natureza.EXPENSE);
         CentroCusto centroCusto = r.idCentroCusto() == null ? null : configuracao.carregarCentroCusto(idCondominio, r.idCentroCusto());
-        Supplier fornecedor = r.idFornecedor() == null ? null
-                : supplierRepository.findByIdAndOrganizationId(r.idFornecedor(), acesso.idAdministradora())
+        Fornecedor fornecedor = r.idFornecedor() == null ? null
+                : fornecedorRepository.findByIdAndIdAdministradora(r.idFornecedor(), acesso.idAdministradora())
                 .orElseThrow(() -> ApiException.naoEncontrado("Fornecedor"));
         Unidade unidade = r.idUnidade() == null ? null : unidadeRepository.findByIdAndIdCondominio(r.idUnidade(), idCondominio)
                 .orElseThrow(() -> ApiException.naoEncontrado("Unidade"));
@@ -317,7 +317,7 @@ public class LancamentoService {
     public LancamentoResumo resumo(Lancamento e, LocalDate hoje) {
         String parcela = e.getParcela() == null ? null : e.getParcela() + "/" + e.getTotalParcelas();
         return new LancamentoResumo(e.getId(), e.getNatureza(), e.getDescricao(), e.getContaPlano().getCodigo(),
-                e.getContaPlano().getNome(), e.getFornecedor() == null ? null : e.getFornecedor().getName(),
+                e.getContaPlano().getNome(), e.getFornecedor() == null ? null : e.getFornecedor().getNome(),
                 e.getUnidade() == null ? null : e.getUnidade().rotulo(), e.getPessoa() == null ? null : e.getPessoa().getNome(),
                 e.getValor(), e.getValorPago(), e.valorAberto(), e.getDataVencimento(), e.getCompetencia(), e.getSituacao(),
                 e.getAprovacao(), e.isVencido(hoje), parcela, e.getNumeroDocumento(), e.getNumeroCobranca());

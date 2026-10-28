@@ -18,9 +18,9 @@ import br.com.tekcondo.announcement.AnnouncementRepository;
 import br.com.tekcondo.announcement.AnnouncementService;
 import br.com.tekcondo.assembly.AssemblyEntities.Assembly;
 import br.com.tekcondo.assembly.AssemblyRepository;
-import br.com.tekcondo.billing.dto.BillingDtos.DebtLine;
-import br.com.tekcondo.billing.dto.BillingDtos.UnitDebt;
-import br.com.tekcondo.billing.service.CollectionService;
+import br.com.tekcondo.cobranca.dto.CobrancaDtos.LinhaDebito;
+import br.com.tekcondo.cobranca.dto.CobrancaDtos.DebitosUnidade;
+import br.com.tekcondo.cobranca.service.InadimplenciaService;
 import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.condominio.repository.CondominioRepository;
 import br.com.tekcondo.document.entity.Document;
@@ -63,7 +63,7 @@ public class PortalService {
     public record Me(String name, String email, List<PortalCondominium> condominiums) {
     }
 
-    public record UnitCharges(UUID unitId, String unitLabel, java.math.BigDecimal openTotal, List<DebtLine> lines) {
+    public record UnitCharges(UUID unitId, String unitLabel, java.math.BigDecimal openTotal, List<LinhaDebito> lines) {
     }
 
     public record CalendarEvent(LocalDate date, String type, String title) {
@@ -85,7 +85,7 @@ public class PortalService {
     private final AcessoService accessService;
     private final CondominioRepository condominiums;
     private final VinculoRepository occupancies;
-    private final CollectionService collection;
+    private final InadimplenciaService collection;
     private final AnnouncementRepository announcements;
     private final AnnouncementService announcementService;
     private final DocumentRepository documents;
@@ -99,7 +99,7 @@ public class PortalService {
     private final Clock clock;
 
     public PortalService(UsuarioAtualProvider currentUserProvider, UsuarioRepository users, AcessoService accessService,
-                         CondominioRepository condominiums, VinculoRepository occupancies, CollectionService collection,
+                         CondominioRepository condominiums, VinculoRepository occupancies, InadimplenciaService collection,
                          AnnouncementRepository announcements, AnnouncementService announcementService,
                          DocumentRepository documents, DocumentService documentService, OccurrenceRepository occurrences,
                          OccurrenceInteractionRepository interactions, OccurrenceService occurrenceService,
@@ -143,12 +143,12 @@ public class PortalService {
         LocalDate today = LocalDate.now(clock);
         return ctx.occupancies().stream().filter(o -> toUnit(o).seesCharges()).map(o -> o.getUnidade()).distinct()
                 .map(unit -> {
-                    UnitDebt debt = collection.buildUnitDebt(condominiumId, unit, today);
+                    DebitosUnidade debt = collection.montarDebitosUnidade(condominiumId, unit, today);
                     // Histórico dos últimos 24 meses + tudo que estiver em aberto. Notas internas de cobrança não são expostas.
-                    List<DebtLine> lines = debt.lines().stream()
-                            .filter(l -> l.remaining().signum() > 0 || !l.dueDate().isBefore(today.minusMonths(24)))
-                            .sorted(Comparator.comparing(DebtLine::dueDate).reversed()).toList();
-                    return new UnitCharges(unit.getId(), unit.rotulo(), debt.openTotal(), lines);
+                    List<LinhaDebito> lines = debt.linhas().stream()
+                            .filter(l -> l.valorAberto().signum() > 0 || !l.dataVencimento().isBefore(today.minusMonths(24)))
+                            .sorted(Comparator.comparing(LinhaDebito::dataVencimento).reversed()).toList();
+                    return new UnitCharges(unit.getId(), unit.rotulo(), debt.totalAberto(), lines);
                 }).toList();
     }
 
@@ -310,9 +310,9 @@ public class PortalService {
             }
         }
         for (UnitCharges u : charges(condominiumId)) {
-            for (DebtLine l : u.lines()) {
-                if (l.remaining().signum() > 0 && !l.dueDate().isBefore(today.minusDays(30)) && !l.dueDate().isAfter(today.plusDays(90))) {
-                    events.add(new CalendarEvent(l.dueDate(), "CHARGE", l.description() + " · " + u.unitLabel()));
+            for (LinhaDebito l : u.lines()) {
+                if (l.valorAberto().signum() > 0 && !l.dataVencimento().isBefore(today.minusDays(30)) && !l.dataVencimento().isAfter(today.plusDays(90))) {
+                    events.add(new CalendarEvent(l.dataVencimento(), "CHARGE", l.descricao() + " · " + u.unitLabel()));
                 }
             }
         }

@@ -14,8 +14,8 @@ import java.util.UUID;
 
 import br.com.tekcondo.auditoria.service.AcaoAuditoria;
 import br.com.tekcondo.auditoria.service.AuditoriaService;
-import br.com.tekcondo.billing.dto.BillingDtos;
-import br.com.tekcondo.billing.service.CollectionService;
+import br.com.tekcondo.cobranca.dto.CobrancaDtos;
+import br.com.tekcondo.cobranca.service.InadimplenciaService;
 import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.condominio.service.AcessoCondominio;
 import br.com.tekcondo.financeiro.dto.FinanceiroDtos;
@@ -28,7 +28,7 @@ import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.administradora.repository.AdministradoraRepository;
 import br.com.tekcondo.report.ReportTable.Column;
 import br.com.tekcondo.comum.exception.ApiException;
-import br.com.tekcondo.supplier.service.ContractService;
+import br.com.tekcondo.fornecedor.service.ContratoService;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -55,10 +55,10 @@ public class ReportService {
 
     private final NamedParameterJdbcTemplate jdbc;
     private final AcessoCondominio access;
-    private final CollectionService collection;
+    private final InadimplenciaService collection;
     private final OrcamentoService budget;
     private final TesourariaService treasury;
-    private final ContractService contracts;
+    private final ContratoService contracts;
     private final ConsultasFinanceiras queries;
     private final ContaBancariaRepository bankAccounts;
     private final AdministradoraRepository organizations;
@@ -66,8 +66,8 @@ public class ReportService {
     private final AuditoriaService auditService;
     private final Clock clock;
 
-    public ReportService(NamedParameterJdbcTemplate jdbc, AcessoCondominio access, CollectionService collection,
-                         OrcamentoService budget, TesourariaService treasury, ContractService contracts, ConsultasFinanceiras queries,
+    public ReportService(NamedParameterJdbcTemplate jdbc, AcessoCondominio access, InadimplenciaService collection,
+                         OrcamentoService budget, TesourariaService treasury, ContratoService contracts, ConsultasFinanceiras queries,
                          ContaBancariaRepository bankAccounts, AdministradoraRepository organizations, ReportExporter exporter,
                          AuditoriaService auditService, Clock clock) {
         this.jdbc = jdbc;
@@ -202,16 +202,16 @@ public class ReportService {
     }
 
     private ReportTable delinquency(UUID condominiumId, String condoName, LocalDate asOf) {
-        BillingDtos.DelinquencyReport r = collection.delinquency(condominiumId, asOf);
-        List<List<Object>> rows = r.rows().stream().map(x -> row(x.unitLabel(), x.responsibleName(), x.overdueCount(),
-                x.oldestDueDate(), x.maxDaysLate(), x.principal(), x.charges(), x.total())).toList();
+        CobrancaDtos.Inadimplencia r = collection.inadimplencia(condominiumId, asOf);
+        List<List<Object>> rows = r.linhas().stream().map(x -> row(x.rotuloUnidade(), x.nomeResponsavel(), x.quantidadeVencidas(),
+                x.vencimentoMaisAntigo(), x.maximoDiasAtraso(), x.principal(), x.encargos(), x.total())).toList();
         return new ReportTable("Inadimplência", condoName + " · posição em " + BR.format(asOf),
                 List.of(Column.text("unit", "Unidade"), Column.text("responsible", "Responsável"), Column.number("count", "Títulos"),
                         Column.date("oldest", "Venc. mais antigo"), Column.number("days", "Dias de atraso"),
                         Column.money("principal", "Principal"), Column.money("charges", "Multa + juros"), Column.money("total", "Total atualizado")),
-                rows, row("Total", "", "", null, "", r.totalPrincipal(), r.totalCharges(), r.total()),
+                rows, row("Total", "", "", null, "", r.totalPrincipal(), r.totalEncargos(), r.total()),
                 List.of("Índice de inadimplência (principal vencido ÷ emitido nos últimos 12 meses): "
-                        + r.delinquencyRate().toPlainString().replace('.', ',') + "% · " + r.unitsInDebt() + " de " + r.activeUnits() + " unidades."));
+                        + r.indiceInadimplencia().toPlainString().replace('.', ',') + "% · " + r.unidadesEmDebito() + " de " + r.unidadesAtivas() + " unidades."));
     }
 
     private ReportTable entries(String period, MapSqlParameterSource params, String kind) {
@@ -356,9 +356,9 @@ public class ReportService {
     }
 
     private ReportTable contracts(UUID condominiumId, String condoName) {
-        List<List<Object>> rows = contracts.list(condominiumId).stream().map(c -> row(c.supplierName(), c.title(), c.amount(),
-                c.periodicity().name(), c.startDate(), c.endDate(), c.status() == br.com.tekcondo.supplier.entity.Contract.Status.TERMINATED
-                        ? "Encerrado" : c.expired() ? "Vencido" : c.expiring() ? "A vencer" : "Vigente")).toList();
+        List<List<Object>> rows = contracts.listar(condominiumId).stream().map(c -> row(c.nomeFornecedor(), c.titulo(), c.valor(),
+                c.periodicidade().name(), c.dataInicio(), c.dataFim(), c.situacao() == br.com.tekcondo.fornecedor.entity.Contrato.Situacao.TERMINATED
+                        ? "Encerrado" : c.vencido() ? "Vencido" : c.aVencer() ? "A vencer" : "Vigente")).toList();
         return new ReportTable("Contratos", condoName,
                 List.of(Column.text("supplier", "Fornecedor"), Column.text("title", "Objeto"), Column.money("amount", "Valor"),
                         Column.text("periodicity", "Periodicidade"), Column.date("start", "Início"), Column.date("end", "Término"),

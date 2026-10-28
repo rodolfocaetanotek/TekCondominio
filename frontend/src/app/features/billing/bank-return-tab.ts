@@ -14,7 +14,7 @@ import { CondominiumContext } from '../../core/context/condominium-context';
 import { NotificationService } from '../../core/notify/notification.service';
 import { openForm } from '../../shared/ui/form-dialog';
 import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
-import { ContaBancaria, FinanceApi, ReturnItem } from '../finance/finance-api';
+import { ContaBancaria, FinanceApi, ItemRetorno } from '../finance/finance-api';
 
 /**
  * Retorno de cobrança (CNAB 240): o arquivo baixado do banco dá baixa automática nas cobranças liquidadas,
@@ -48,10 +48,10 @@ import { ContaBancaria, FinanceApi, ReturnItem } from '../finance/finance-api';
         <tbody>
           @for (i of pending() ?? []; track i.id) {
             <tr>
-              <td>{{ i.occurrenceDate | isoDate }}</td>
-              <td>{{ i.yourNumber || '—' }} / {{ i.ourNumber || '—' }}</td>
-              <td class="money">{{ i.paidAmount | currency: 'BRL' }}</td>
-              <td>{{ i.message }}{{ i.entryDescription ? ' · ' + i.entryDescription : '' }}</td>
+              <td>{{ i.dataOcorrencia | isoDate }}</td>
+              <td>{{ i.seuNumero || '—' }} / {{ i.nossoNumero || '—' }}</td>
+              <td class="money">{{ i.valorPago | currency: 'BRL' }}</td>
+              <td>{{ i.mensagem }}{{ i.descricaoLancamento ? ' · ' + i.descricaoLancamento : '' }}</td>
               <td class="acts">
                 @if (canEdit()) {
                   <button mat-icon-button (click)="settle(i)" matTooltip="Baixar em uma cobrança" aria-label="Baixar"><mat-icon>task_alt</mat-icon></button>
@@ -74,8 +74,8 @@ import { ContaBancaria, FinanceApi, ReturnItem } from '../finance/finance-api';
         <thead><tr><th>Processado em</th><th>Arquivo</th><th>Banco</th><th>Títulos</th><th>Baixados</th><th>Pendentes</th><th>Por</th></tr></thead>
         <tbody>
           @for (f of files() ?? []; track f.id) {
-            <tr><td>{{ f.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td><td>{{ f.fileName }}</td><td>{{ f.bankCode }}</td>
-              <td>{{ f.itemsTotal }}</td><td>{{ f.settled }}</td><td [class.warn]="f.pending > 0">{{ f.pending }}</td><td>{{ f.createdByName }}</td></tr>
+            <tr><td>{{ f.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</td><td>{{ f.nomeArquivo }}</td><td>{{ f.codigoBanco }}</td>
+              <td>{{ f.totalItens }}</td><td>{{ f.baixados }}</td><td [class.warn]="f.pendentes > 0">{{ f.pendentes }}</td><td>{{ f.nomeCriadoPor }}</td></tr>
           } @empty {
             <tr><td colspan="7" class="tc-muted">Nenhum retorno processado.</td></tr>
           }
@@ -110,7 +110,7 @@ export class BankReturnTab {
     switchMap((c) => this.api.bankAccounts(c!).pipe(map((list) => list.filter((a) => a.tipo !== 'CASH' && a.ativo)),
       catchError(() => of([] as ContaBancaria[]))))));
   protected readonly files = toSignal(this.source.pipe(switchMap(([c]) => this.api.returnFiles(c!).pipe(catchError(() => of([]))))));
-  protected readonly pending = toSignal(this.source.pipe(switchMap(([c]) => this.api.pendingReturnItems(c!).pipe(catchError(() => of([] as ReturnItem[]))))));
+  protected readonly pending = toSignal(this.source.pipe(switchMap(([c]) => this.api.pendingReturnItems(c!).pipe(catchError(() => of([] as ItemRetorno[]))))));
 
   upload(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -121,7 +121,7 @@ export class BankReturnTab {
     this.api.processReturn(this.context.id()!, this.account.value!, file).subscribe({
       next: (r) => {
         this.busy.set(false);
-        this.notify.success(`Retorno processado: ${r.settled} cobrança(s) baixada(s), ${r.pending} pendente(s).`);
+        this.notify.success(`Retorno processado: ${r.baixados} cobrança(s) baixada(s), ${r.pendentes} pendente(s).`);
         this.tick.update((t) => t + 1);
       },
       error: (err: unknown) => {
@@ -131,26 +131,26 @@ export class BankReturnTab {
     });
   }
 
-  settle(item: ReturnItem): void {
+  settle(item: ItemRetorno): void {
     const c = this.context.id()!;
     this.api.entries(c, { natureza: 'INCOME', situacao: ['OPEN', 'PARTIAL'], tamanho: 200, ordem: 'dataVencimento,asc' }).subscribe((page) =>
       openForm(this.dialog, {
         title: 'Baixar pagamento do retorno',
-        intro: `Valor pago: R$ ${item.paidAmount.toFixed(2).replace('.', ',')}. Escolha a cobrança correspondente.`,
-        fields: [{ key: 'entryId', label: 'Cobrança', type: 'select', required: true,
+        intro: `Valor pago: R$ ${item.valorPago.toFixed(2).replace('.', ',')}. Escolha a cobrança correspondente.`,
+        fields: [{ key: 'idLancamento', label: 'Cobrança', type: 'select', required: true,
           options: page.conteudo.map((e) => ({ value: e.id, label: `${e.rotuloUnidade ?? '—'} · ${e.descricao} · venc. ${e.dataVencimento.split('-').reverse().join('/')} · R$ ${e.valorAberto.toFixed(2).replace('.', ',')}` })) }],
-        submit: (v) => this.api.settleReturnItem(c, item.id, v['entryId'] as string),
+        submit: (v) => this.api.settleReturnItem(c, item.id, v['idLancamento'] as string),
       }).pipe(filter((r) => !!r)).subscribe(() => {
         this.notify.success('Pagamento baixado.');
         this.tick.update((t) => t + 1);
       }));
   }
 
-  ignore(item: ReturnItem): void {
+  ignore(item: ItemRetorno): void {
     openForm(this.dialog, {
       title: 'Descartar pendência do retorno',
-      fields: [{ key: 'note', label: 'Motivo', required: true, maxLength: 255 }],
-      submit: (v) => this.api.ignoreReturnItem(this.context.id()!, item.id, v['note'] as string),
+      fields: [{ key: 'observacao', label: 'Motivo', required: true, maxLength: 255 }],
+      submit: (v) => this.api.ignoreReturnItem(this.context.id()!, item.id, v['observacao'] as string),
     }).pipe(filter((r) => !!r)).subscribe(() => this.tick.update((t) => t + 1));
   }
 }

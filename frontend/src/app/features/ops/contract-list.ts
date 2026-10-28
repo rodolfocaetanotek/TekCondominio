@@ -18,7 +18,7 @@ import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
 import { PageHeader } from '../../shared/ui/page-header';
 import { FinanceApi } from '../finance/finance-api';
 import { Attachments } from './attachments';
-import { Contract, OpsApi } from './ops-api';
+import { Contrato, OpsApi } from './ops-api';
 
 @Component({
   selector: 'tc-contract-list',
@@ -36,24 +36,24 @@ import { Contract, OpsApi } from './ops-api';
           @for (c of list() ?? []; track c.id) {
             <mat-expansion-panel (opened)="openHistory(c)">
               <mat-expansion-panel-header>
-                <mat-panel-title>{{ c.title }}</mat-panel-title>
+                <mat-panel-title>{{ c.titulo }}</mat-panel-title>
                 <mat-panel-description>
-                  <span class="meta">{{ c.supplierName }} · <span class="money">{{ c.amount | currency: 'BRL' }}</span> {{ c.periodicity | label: 'periodicity' }}</span>
-                  <span class="tc-status" [class.is-active]="c.status === 'ACTIVE' && !c.expiring && !c.expired"
-                    [class.is-pending]="c.status !== 'TERMINATED' && !c.expired && c.expiring" [class.is-danger]="c.status !== 'TERMINATED' && c.expired"
-                    [class.is-inactive]="c.status === 'TERMINATED'">{{ c.status === 'TERMINATED' ? 'Encerrado' : c.expired ? 'Vencido' : c.expiring ? 'A vencer' : 'Vigente' }}</span>
+                  <span class="meta">{{ c.nomeFornecedor }} · <span class="money">{{ c.valor | currency: 'BRL' }}</span> {{ c.periodicidade | label: 'periodicity' }}</span>
+                  <span class="tc-status" [class.is-active]="c.situacao === 'ACTIVE' && !c.aVencer && !c.vencido"
+                    [class.is-pending]="c.situacao !== 'TERMINATED' && !c.vencido && c.aVencer" [class.is-danger]="c.situacao !== 'TERMINATED' && c.vencido"
+                    [class.is-inactive]="c.situacao === 'TERMINATED'">{{ c.situacao === 'TERMINATED' ? 'Encerrado' : c.vencido ? 'Vencido' : c.aVencer ? 'A vencer' : 'Vigente' }}</span>
                 </mat-panel-description>
               </mat-expansion-panel-header>
-              <p class="terms">Vigência: {{ c.startDate | isoDate }} a {{ c.endDate ? (c.endDate | isoDate) : 'indeterminado' }} · aviso prévio {{ c.noticeDays }} dias
-                {{ c.readjustmentIndex ? ' · reajuste ' + c.readjustmentIndex + (c.readjustmentMonth ? ' em ' + c.readjustmentMonth + '/ano' : '') : '' }}</p>
-              @if (c.description) { <p class="pre">{{ c.description }}</p> }
-              @if (c.terminationReason) { <p class="tc-muted">Encerrado em {{ c.terminatedOn | isoDate }}: {{ c.terminationReason }}</p> }
+              <p class="terms">Vigência: {{ c.dataInicio | isoDate }} a {{ c.dataFim ? (c.dataFim | isoDate) : 'indeterminado' }} · aviso prévio {{ c.diasAvisoPrevio }} dias
+                {{ c.indiceReajuste ? ' · reajuste ' + c.indiceReajuste + (c.mesReajuste ? ' em ' + c.mesReajuste + '/ano' : '') : '' }}</p>
+              @if (c.descricao) { <p class="pre">{{ c.descricao }}</p> }
+              @if (c.motivoEncerramento) { <p class="tc-muted">Encerrado em {{ c.dataEncerramento | isoDate }}: {{ c.motivoEncerramento }}</p> }
               <h4 class="tc-section-label">Histórico</h4>
-              @for (h of history()[c.id] ?? []; track h.createdAt) {
-                <p class="small hist"><strong>{{ h.createdAt | date: 'dd/MM/yy HH:mm' }}</strong> {{ h.createdByName }}: {{ h.change }}</p>
+              @for (h of history()[c.id] ?? []; track h.criadoEm) {
+                <p class="small hist"><strong>{{ h.criadoEm | date: 'dd/MM/yy HH:mm' }}</strong> {{ h.nomeCriadoPor }}: {{ h.alteracao }}</p>
               }
               <tc-attachments [condominiumId]="context.id()!" entityType="Contract" [entityId]="c.id" category="CONTRACT" [canEdit]="canEdit()" />
-              @if (canEdit() && c.status === 'ACTIVE') {
+              @if (canEdit() && c.situacao === 'ACTIVE') {
                 <div class="tc-actions foot">
                   <button mat-button (click)="terminate(c)">Encerrar contrato</button>
                   <button mat-stroked-button (click)="edit(c)">Editar</button>
@@ -86,42 +86,42 @@ export class ContractList {
   private readonly dialog = inject(MatDialog);
   private readonly notify = inject(NotificationService);
   private readonly tick = signal(0);
-  protected readonly history = signal<Record<string, Contract['history']>>({});
+  protected readonly history = signal<Record<string, Contrato['historico']>>({});
   protected readonly canEdit = computed(() => this.context.can('SUPPLIER_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   protected readonly list = toSignal(combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(
-    filter(([c]) => !!c), switchMap(([c]) => this.api.contracts(c!).pipe(catchError(() => of([] as Contract[]))))));
+    filter(([c]) => !!c), switchMap(([c]) => this.api.contracts(c!).pipe(catchError(() => of([] as Contrato[]))))));
 
-  openHistory(c: Contract): void {
-    this.api.contract(this.context.id()!, c.id).subscribe((full) => this.history.update((h) => ({ ...h, [c.id]: full.history })));
+  openHistory(c: Contrato): void {
+    this.api.contract(this.context.id()!, c.id).subscribe((full) => this.history.update((h) => ({ ...h, [c.id]: full.historico })));
   }
 
-  edit(c?: Contract): void {
+  edit(c?: Contrato): void {
     this.finance.suppliers('', 0, 100).pipe(map((p) => p.conteudo)).subscribe((suppliers) => openForm(this.dialog, {
       title: c ? 'Editar contrato' : 'Novo contrato',
       fields: [
-        { key: 'supplierId', label: 'Fornecedor', type: 'select', required: true, value: c?.supplierId, span: 6,
-          options: suppliers.filter((s) => s.active || s.id === c?.supplierId).map((s) => ({ value: s.id, label: s.name })),
+        { key: 'idFornecedor', label: 'Fornecedor', type: 'select', required: true, value: c?.idFornecedor, span: 6,
+          options: suppliers.filter((s) => s.ativo || s.id === c?.idFornecedor).map((s) => ({ value: s.id, label: s.nome })),
           hint: 'Cadastre o fornecedor em Fornecedores, se necessário.' },
-        { key: 'title', label: 'Objeto', required: true, value: c?.title, span: 6, maxLength: 200 },
-        { key: 'amount', label: 'Valor (R$)', type: 'number', required: true, value: c?.amount, span: 4, min: 0 },
-        { key: 'periodicity', label: 'Periodicidade', type: 'select', required: true, value: c?.periodicity ?? 'MONTHLY', span: 4, options: options('periodicity') },
-        { key: 'noticeDays', label: 'Aviso prévio (dias)', type: 'number', value: c?.noticeDays ?? 30, span: 4, min: 0 },
-        { key: 'startDate', label: 'Início', type: 'date', required: true, value: c?.startDate ?? todayIso(), span: 6 },
-        { key: 'endDate', label: 'Término', type: 'date', value: c?.endDate, span: 6 },
-        { key: 'readjustmentIndex', label: 'Índice de reajuste', value: c?.readjustmentIndex, span: 6, hint: 'Ex.: IPCA, IGP-M', maxLength: 20 },
-        { key: 'readjustmentMonth', label: 'Mês do reajuste (1–12)', type: 'number', value: c?.readjustmentMonth, span: 6, min: 1 },
-        { key: 'description', label: 'Descrição / cláusulas', type: 'textarea', value: c?.description, maxLength: 2000 },
+        { key: 'titulo', label: 'Objeto', required: true, value: c?.titulo, span: 6, maxLength: 200 },
+        { key: 'valor', label: 'Valor (R$)', type: 'number', required: true, value: c?.valor, span: 4, min: 0 },
+        { key: 'periodicidade', label: 'Periodicidade', type: 'select', required: true, value: c?.periodicidade ?? 'MONTHLY', span: 4, options: options('periodicity') },
+        { key: 'diasAvisoPrevio', label: 'Aviso prévio (dias)', type: 'number', value: c?.diasAvisoPrevio ?? 30, span: 4, min: 0 },
+        { key: 'dataInicio', label: 'Início', type: 'date', required: true, value: c?.dataInicio ?? todayIso(), span: 6 },
+        { key: 'dataFim', label: 'Término', type: 'date', value: c?.dataFim, span: 6 },
+        { key: 'indiceReajuste', label: 'Índice de reajuste', value: c?.indiceReajuste, span: 6, hint: 'Ex.: IPCA, IGP-M', maxLength: 20 },
+        { key: 'mesReajuste', label: 'Mês do reajuste (1–12)', type: 'number', value: c?.mesReajuste, span: 6, min: 1 },
+        { key: 'descricao', label: 'Descrição / cláusulas', type: 'textarea', value: c?.descricao, maxLength: 2000 },
       ],
-      submit: (v) => this.api.saveContract(this.context.id()!, { ...v, version: c?.version }, c?.id),
+      submit: (v) => this.api.saveContract(this.context.id()!, { ...v, versao: c?.versao }, c?.id),
     }, '680px').pipe(filter((r) => !!r)).subscribe(() => { this.notify.success('Contrato salvo.'); this.tick.update((t) => t + 1); }));
   }
 
-  terminate(c: Contract): void {
+  terminate(c: Contrato): void {
     openForm(this.dialog, {
       title: 'Encerrar contrato',
       fields: [
-        { key: 'terminatedOn', label: 'Data de encerramento', type: 'date', required: true, value: todayIso() },
-        { key: 'reason', label: 'Motivo', required: true, maxLength: 255 },
+        { key: 'dataEncerramento', label: 'Data de encerramento', type: 'date', required: true, value: todayIso() },
+        { key: 'motivo', label: 'Motivo', required: true, maxLength: 255 },
       ],
       submitLabel: 'Encerrar',
       submit: (v) => this.api.terminateContract(this.context.id()!, c.id, v),

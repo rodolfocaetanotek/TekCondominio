@@ -13,7 +13,7 @@ import { options } from '../../shared/labels';
 import { FieldError } from '../../shared/forms/field-error';
 import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
 import { StructureService } from '../structure/structure.service';
-import { AllocationPreview, AllocationRequest, FinanceApi } from '../finance/finance-api';
+import { FinanceApi, RateioRequest, SimulacaoRateio } from '../finance/finance-api';
 import { DialogClose } from '../../shared/ui/dialog-close';
 
 /** Geração das cobranças da competência: simula o rateio por unidade e só grava após confirmação. */
@@ -26,25 +26,25 @@ import { DialogClose } from '../../shared/ui/dialog-close';
     <mat-dialog-content>
       @if (error(); as message) { <p class="tc-alert" role="alert">{{ message }}</p> }
       <form [formGroup]="form" class="tc-grid">
-        <mat-form-field class="span-4"><mat-label>Competência</mat-label><input matInput type="month" formControlName="competence" required /></mat-form-field>
-        <mat-form-field class="span-8"><mat-label>Descrição</mat-label><input matInput formControlName="description" required maxlength="200" />
-          <mat-error><tc-field-error [control]="form.controls.description" /></mat-error></mat-form-field>
+        <mat-form-field class="span-4"><mat-label>Competência</mat-label><input matInput type="month" formControlName="competencia" required /></mat-form-field>
+        <mat-form-field class="span-8"><mat-label>Descrição</mat-label><input matInput formControlName="descricao" required maxlength="200" />
+          <mat-error><tc-field-error [control]="form.controls.descricao" /></mat-error></mat-form-field>
         <mat-form-field class="span-6"><mat-label>Conta de receita</mat-label>
-          <mat-select formControlName="chartAccountId" required>
+          <mat-select formControlName="idContaPlano" required>
             @for (a of accounts(); track a.value) { <mat-option [value]="a.value">{{ a.label }}</mat-option> }
           </mat-select></mat-form-field>
         <mat-form-field class="span-6"><mat-label>Critério de rateio</mat-label>
-          <mat-select formControlName="method">
+          <mat-select formControlName="criterio">
             @for (m of methods; track m.value) { <mat-option [value]="m.value">{{ m.label }}</mat-option> }
           </mat-select></mat-form-field>
-        @if (form.controls.method.value !== 'CONSUMPTION') {
-          <mat-form-field class="span-6"><mat-label>{{ form.controls.method.value === 'FIXED' ? 'Valor por unidade (R$)' : 'Valor total a ratear (R$)' }}</mat-label>
-            <input matInput type="number" step="0.01" min="0.01" formControlName="amount" /></mat-form-field>
+        @if (form.controls.criterio.value !== 'CONSUMPTION') {
+          <mat-form-field class="span-6"><mat-label>{{ form.controls.criterio.value === 'FIXED' ? 'Valor por unidade (R$)' : 'Valor total a ratear (R$)' }}</mat-label>
+            <input matInput type="number" step="0.01" min="0.01" formControlName="valor" /></mat-form-field>
         }
-        <mat-form-field class="span-6"><mat-label>Vencimento</mat-label><input matInput type="date" formControlName="dueDate" />
+        <mat-form-field class="span-6"><mat-label>Vencimento</mat-label><input matInput type="date" formControlName="dataVencimento" />
           <mat-hint>Padrão: dia configurado do mês da competência</mat-hint></mat-form-field>
       </form>
-      @if (form.controls.method.value === 'CONSUMPTION' && units().length) {
+      @if (form.controls.criterio.value === 'CONSUMPTION' && units().length) {
         <p class="tc-muted">Informe o consumo (R$) de cada unidade; deixe em branco para não cobrar.</p>
         <div class="consumption">
           @for (u of units(); track u.id) {
@@ -54,13 +54,13 @@ import { DialogClose } from '../../shared/ui/dialog-close';
       }
       @if (preview(); as p) {
         <div class="preview">
-          <p><strong>{{ p.units }} cobrança(s)</strong> totalizando <strong>{{ p.total | currency: 'BRL' }}</strong>, vencimento {{ p.dueDate | isoDate }}.
-            @if (p.unitsWithoutResponsible) { <span class="warn">{{ p.unitsWithoutResponsible }} unidade(s) sem responsável financeiro cadastrado.</span> }</p>
+          <p><strong>{{ p.unidades }} cobrança(s)</strong> totalizando <strong>{{ p.total | currency: 'BRL' }}</strong>, vencimento {{ p.dataVencimento | isoDate }}.
+            @if (p.unidadesSemResponsavel) { <span class="warn">{{ p.unidadesSemResponsavel }} unidade(s) sem responsável financeiro cadastrado.</span> }</p>
           <table class="lines">
             <thead><tr><th>Unidade</th><th>Fração</th><th>Responsável</th><th class="money">Valor</th></tr></thead>
             <tbody>
-              @for (l of p.lines; track l.unitId) {
-                <tr><td>{{ l.unitLabel }}</td><td>{{ l.idealFraction | number: '1.2-6' }}%</td><td>{{ l.responsibleName ?? '—' }}</td><td class="money">{{ l.amount | currency: 'BRL' }}</td></tr>
+              @for (l of p.linhas; track l.idUnidade) {
+                <tr><td>{{ l.rotuloUnidade }}</td><td>{{ l.fracaoIdeal | number: '1.2-6' }}%</td><td>{{ l.nomeResponsavel ?? '—' }}</td><td class="money">{{ l.valor | currency: 'BRL' }}</td></tr>
               }
             </tbody>
           </table>
@@ -71,7 +71,7 @@ import { DialogClose } from '../../shared/ui/dialog-close';
       <button mat-button mat-dialog-close>Cancelar</button>
       @if (preview()) {
         <button mat-stroked-button (click)="preview.set(null)">Ajustar</button>
-        <button mat-flat-button (click)="confirm()" [disabled]="busy()">Gerar {{ preview()!.units }} cobranças</button>
+        <button mat-flat-button (click)="confirm()" [disabled]="busy()">Gerar {{ preview()!.unidades }} cobranças</button>
       } @else {
         <button mat-flat-button (click)="simulate()" [disabled]="busy()">Simular rateio</button>
       }
@@ -94,7 +94,7 @@ export class AllocationDialog {
   private readonly ref = inject(MatDialogRef<AllocationDialog, boolean>);
   private readonly api = inject(FinanceApi);
   protected readonly methods = options('allocationMethod');
-  protected readonly preview = signal<AllocationPreview | null>(null);
+  protected readonly preview = signal<SimulacaoRateio | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
   protected consumption: Record<string, number> = {};
@@ -107,12 +107,12 @@ export class AllocationDialog {
 
   private readonly month = new Date().toISOString().slice(0, 7);
   protected readonly form = inject(FormBuilder).nonNullable.group({
-    competence: [this.month, Validators.required],
-    description: ['Taxa condominial ' + this.month.slice(5) + '/' + this.month.slice(0, 4), [Validators.required, Validators.maxLength(200)]],
-    chartAccountId: ['20000000-0000-0000-0000-000000000101', Validators.required],
-    method: ['IDEAL_FRACTION'],
-    amount: [null as number | null],
-    dueDate: [''],
+    competencia: [this.month, Validators.required],
+    descricao: ['Taxa condominial ' + this.month.slice(5) + '/' + this.month.slice(0, 4), [Validators.required, Validators.maxLength(200)]],
+    idContaPlano: ['20000000-0000-0000-0000-000000000101', Validators.required],
+    criterio: ['IDEAL_FRACTION'],
+    valor: [null as number | null],
+    dataVencimento: [''],
   });
 
   setConsumption(unitId: string, event: Event): void {
@@ -121,11 +121,11 @@ export class AllocationDialog {
     else delete this.consumption[unitId];
   }
 
-  private request(): AllocationRequest {
+  private request(): RateioRequest {
     const v = this.form.getRawValue();
-    return { competence: v.competence, description: v.description.trim(), chartAccountId: v.chartAccountId, method: v.method,
-      amount: v.method === 'CONSUMPTION' ? null : v.amount, dueDate: v.dueDate || null,
-      consumption: v.method === 'CONSUMPTION' ? this.consumption : undefined };
+    return { competencia: v.competencia, descricao: v.descricao.trim(), idContaPlano: v.idContaPlano, criterio: v.criterio,
+      valor: v.criterio === 'CONSUMPTION' ? null : v.valor, dataVencimento: v.dataVencimento || null,
+      consumo: v.criterio === 'CONSUMPTION' ? this.consumption : undefined };
   }
 
   simulate(): void {

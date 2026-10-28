@@ -42,7 +42,7 @@ Legenda: ✅ implementado e testado · 🟡 implementado parcialmente · ⬜ pen
 
 ## Integridade financeira (novos controles)
 - ✅ Fechamento mensal: nada retroativo (baixa, estorno, transferência, conciliação, lançamento) no período fechado; reabertura só com `FINANCE_CLOSE` e justificativa auditada — `PeriodClosingIT`
-- ✅ Importação de extrato e de retorno idempotentes (hash do arquivo + chaves únicas no banco) — `StatementImportIT`, `BankReturnIT`
+- ✅ Importação de extrato e de retorno idempotentes (hash do arquivo + chaves únicas no banco) — `StatementImportIT`, `RetornoBancarioIT`
 - ✅ Reservas sem sobreposição garantidas por restrição de exclusão no PostgreSQL — `ReservationIT`
 
 ## Arquivos e portal

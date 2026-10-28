@@ -61,13 +61,13 @@ import { PortalApi } from './portal-api';
               @for (u of charges() ?? []; track u.unitId) {
                 <section class="tc-card mt">
                   <h3 class="tc-section-title first">Unidade {{ u.unitLabel }} · em aberto <span class="money" [class.negative]="u.openTotal > 0">{{ u.openTotal | currency: 'BRL' }}</span></h3>
-                  @for (l of u.lines; track l.entryId) {
+                  @for (l of u.lines; track l.idLancamento) {
                     <div class="charge">
-                      <div class="who"><strong>{{ l.description }}</strong><br /><small class="tc-muted">vencimento {{ l.dueDate | isoDate }}{{ l.daysLate > 0 ? ' · ' + l.daysLate + ' dias em atraso' : '' }}</small></div>
-                      <div class="right"><span class="money">{{ (l.remaining > 0 ? l.updatedTotal : l.amount) | currency: 'BRL' }}</span>
-                        <span class="tc-status" [class.is-success]="l.status === 'PAID'"
-                          [class.is-danger]="l.remaining > 0 && l.daysLate > 0" [class.is-pending]="l.remaining > 0 && l.daysLate <= 0"
-                          [class.is-inactive]="l.status === 'CANCELLED' || l.status === 'RENEGOTIATED'">{{ l.status | label: 'entryStatus' }}</span></div>
+                      <div class="who"><strong>{{ l.descricao }}</strong><br /><small class="tc-muted">vencimento {{ l.dataVencimento | isoDate }}{{ l.diasAtraso > 0 ? ' · ' + l.diasAtraso + ' dias em atraso' : '' }}</small></div>
+                      <div class="right"><span class="money">{{ (l.valorAberto > 0 ? l.totalAtualizado : l.valor) | currency: 'BRL' }}</span>
+                        <span class="tc-status" [class.is-success]="l.situacao === 'PAID'"
+                          [class.is-danger]="l.valorAberto > 0 && l.diasAtraso > 0" [class.is-pending]="l.valorAberto > 0 && l.diasAtraso <= 0"
+                          [class.is-inactive]="l.situacao === 'CANCELLED' || l.situacao === 'RENEGOTIATED'">{{ l.situacao | label: 'entryStatus' }}</span></div>
                     </div>
                   }
                   <p class="tc-muted small note">Valores em atraso incluem multa e juros calculados até hoje. Para 2ª via ou negociação, fale com a administradora.</p>

@@ -67,9 +67,9 @@ class ReportsDashboardPortalIT extends IntegrationTest {
         String exp = call(token, "POST", base + "/financeiro/lancamentos", expense, 201).get(0).get("resumo").get("id").asText();
         call(token, "POST", base + "/financeiro/lancamentos/" + exp + "/baixas", Map.of("idContaBancaria", bank,
                 "dataPagamento", today.toString(), "principal", "300.00", "formaPagamento", "PIX"), 200);
-        call(token, "POST", base + "/billing/allocations", Map.of("competence", YearMonth.from(today).toString(),
-                "description", "Taxa " + YearMonth.from(today), "chartAccountId", ACC_CONDO_FEE, "method", "IDEAL_FRACTION",
-                "amount", "800.00", "dueDate", today.plusDays(5).toString()), 201);
+        call(token, "POST", base + "/cobranca/rateios", Map.of("competencia", YearMonth.from(today).toString(),
+                "descricao", "Taxa " + YearMonth.from(today), "idContaPlano", ACC_CONDO_FEE, "criterio", "IDEAL_FRACTION",
+                "valor", "800.00", "dataVencimento", today.plusDays(5).toString()), 201);
     }
 
     private JsonNode call(String auth, String method, String url, Object body, int expected) throws Exception {

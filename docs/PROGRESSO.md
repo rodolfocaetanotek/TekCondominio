@@ -28,9 +28,9 @@ _Atualizado em 28/10/2026._ Legenda: ✅ concluído e testado · 🟡 parcial ·
 | Contas a pagar/receber, recorrência, aprovação, baixas parciais, estorno, cancelamento, anexos | ✅ | ✅ | `FinanceIT` |
 | Transferências, extrato, conciliação bancária | ✅ | ✅ | `FinanceIT` |
 | Orçamento anual (previsto × realizado) | ✅ | ✅ | `FinanceIT` |
-| Rateio (fração ideal, igualitário, fixo, consumo) e geração de cobranças | ✅ | ✅ | `BillingIT`, `AllocationCalculatorTest` |
+| Rateio (fração ideal, igualitário, fixo, consumo) e geração de cobranças | ✅ | ✅ | `CobrancaIT`, `RateioCalculatorTest` |
 | Multa e juros configuráveis (fotografados na emissão) | ✅ | ✅ | `LateFeeCalculatorTest`, `FinanceIT` |
-| Inadimplência, demonstrativo de débitos, histórico de contatos, acordos | ✅ | ✅ | `BillingIT` |
+| Inadimplência, demonstrativo de débitos, histórico de contatos, acordos | ✅ | ✅ | `CobrancaIT` |
 | Fornecedores e contratos (vigência, reajuste, alertas, histórico) | ✅ | ✅ | `OperationsIT` |
 | Ocorrências (SLA, interações internas/públicas, indicadores) | ✅ | ✅ | `OperationsIT` |
 | Comunicados (público-alvo, e-mail, leitura) e notificações internas | ✅ | ✅ | `OperationsIT` |
@@ -43,7 +43,7 @@ _Atualizado em 28/10/2026._ Legenda: ✅ concluído e testado · 🟡 parcial ·
 | Auditoria | ✅ | ✅ | vários |
 | **Fechamento mensal** (bloqueio de período, conferência, fotografia de saldos, reabertura justificada) | ✅ | ✅ | `PeriodClosingIT` |
 | **Extrato OFX** (importação idempotente, conciliação automática inequívoca, casar/desfazer/ignorar/lançar tarifa) | ✅ | ✅ | `StatementImportIT`, `OfxParserTest`, `StatementMatcherTest` |
-| **Retorno de cobrança CNAB 240** (baixa automática, multa/juros, pendências, sem duplicidade) | ✅ | ✅ | `BankReturnIT`, `Cnab240ReturnParserTest` |
+| **Retorno de cobrança CNAB 240** (baixa automática, multa/juros, pendências, sem duplicidade) | ✅ | ✅ | `RetornoBancarioIT`, `Cnab240ReturnParserTest` |
 | **Reservas de áreas comuns** (regras por área, aprovação, taxa → cobrança, inadimplente, portal) | ✅ | ✅ | `ReservationIT` |
 | **Portaria** (pré-autorização com código, entrada/saída, aviso ao morador, anonimização LGPD) | ✅ | ✅ | `VisitorIT` |
 | **Indicadores** (projeção de caixa por vencimentos, despesas fora do padrão) | ✅ | ✅ | `InsightIT`, `InsightCalculatorTest` |

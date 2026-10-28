@@ -30,7 +30,7 @@ export function openEntryForm(dialog: MatDialog, api: FinanceApi, structure: Str
         { key: 'dataVencimento', label: 'Vencimento', type: 'date', required: true, value: s?.dataVencimento ?? todayIso(), span: 6 },
         kind === 'EXPENSE'
           ? { key: 'idFornecedor', label: 'Fornecedor', type: 'select', value: existing?.idFornecedor ?? null, span: 6,
-              options: [{ value: null, label: '—' }, ...suppliers.filter((x) => x.active).map((x) => ({ value: x.id, label: x.name }))] }
+              options: [{ value: null, label: '—' }, ...suppliers.filter((x) => x.ativo).map((x) => ({ value: x.id, label: x.nome }))] }
           : { key: 'idUnidade', label: 'Unidade', type: 'select', value: existing?.idUnidade ?? null, span: 6,
               options: [{ value: null, label: '— (receita geral)' }, ...units.map((u) => ({ value: u.id, label: u.rotulo }))] },
         { key: 'numeroDocumento', label: kind === 'EXPENSE' ? 'Nº da nota/boleto' : 'Documento', value: s?.numeroDocumento, span: 6, maxLength: 40 },

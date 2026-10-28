@@ -42,7 +42,7 @@ def call(method, path, token=None, body=None, expect=200, raw=None, content_type
     return json.loads(text) if text else None
 
 
-def multipart(path, token, filename, content, params='', field='file'):
+def multipart(path, token, filename, content, params='', field='arquivo'):
     boundary = uuid.uuid4().hex
     body = (f'--{boundary}\r\nContent-Disposition: form-data; name="{field}"; filename="{filename}"\r\n'
             f'Content-Type: application/octet-stream\r\n\r\n').encode('latin-1') + content + f'\r\n--{boundary}--\r\n'.encode()
@@ -135,12 +135,12 @@ def main():
                                                               'agencia': '4321', 'numeroConta': '12345-6', 'saldoInicial': '0',
                                                               'dataAbertura': (TODAY - dt.timedelta(days=120)).isoformat()}, expect=201)['id']
     comp = (TODAY.replace(day=1) - dt.timedelta(days=1)).replace(day=1)
-    alloc = {'competence': comp.strftime('%Y-%m'), 'description': 'Taxa condominial', 'chartAccountId': '20000000-0000-0000-0000-000000000101',
-             'method': 'IDEAL_FRACTION', 'amount': '1000.00', 'dueDate': (TODAY - dt.timedelta(days=12)).isoformat()}
-    preview = call('POST', b + '/billing/allocations/preview', admin, alloc)
+    alloc = {'competencia': comp.strftime('%Y-%m'), 'descricao': 'Taxa condominial', 'idContaPlano': '20000000-0000-0000-0000-000000000101',
+             'criterio': 'IDEAL_FRACTION', 'valor': '1000.00', 'dataVencimento': (TODAY - dt.timedelta(days=12)).isoformat()}
+    preview = call('POST', b + '/cobranca/rateios/simular', admin, alloc)
     ok('rateio por fração fecha o total exato (R$ 1000,00)', money(preview['total']) == '1000.00', str(preview['total']))
-    call('POST', b + '/billing/allocations', admin, alloc, expect=201)
-    call('POST', b + '/billing/allocations', admin, alloc, expect=409)
+    call('POST', b + '/cobranca/rateios', admin, alloc, expect=201)
+    call('POST', b + '/cobranca/rateios', admin, alloc, expect=409)
     ok('geração duplicada da mesma competência é bloqueada', True)
     charges = call('GET', b + '/financeiro/lancamentos?natureza=INCOME&tamanho=10&ordem=dataVencimento,asc', admin)['conteudo']
     ok('3 cobranças geradas, uma por unidade', len(charges) == 3)
@@ -156,8 +156,8 @@ def main():
              cnab_line([(0, '756'), (7, '3'), (8, '00002'), (13, 'U'), (17, n('8.00', 15)), (32, n(0, 15)), (47, n(0, 15)),
                         (77, n(float(c101['valor']) + 8, 15)), (92, n(float(c101['valor']) + 8, 15)), (137, d(paid_on)), (145, d(paid_on))]),
              cnab_line([(0, '756'), (7, '9')])]
-    ret = multipart(b + '/billing/bank-returns', admin, 'COB.RET', '\r\n'.join(lines).encode('latin-1'), f'?bankAccountId={bank}')
-    ok('retorno baixou 1 cobrança sem pendências', ret['settled'] == 1 and ret['pending'] == 0, str(ret))
+    ret = multipart(b + '/cobranca/retornos-bancarios', admin, 'COB.RET', '\r\n'.join(lines).encode('latin-1'), f'?idContaBancaria={bank}')
+    ok('retorno baixou 1 cobrança sem pendências', ret['baixados'] == 1 and ret['pendentes'] == 0, str(ret))
     detail = call('GET', b + f"/financeiro/lancamentos/{c101['id']}", admin)
     pay = detail['baixas'][0]
     ok('multa (2%) e juros separados e total = valor pago', money(pay['total']) == money(float(c101['valor']) + 8)
@@ -179,12 +179,12 @@ def main():
     ok('saldo do extrato = saldo conciliado após registrar a tarifa', money(st['saldoFinal']) == money(st['saldoConciliado']), str(st)[:200])
 
     print('6. Inadimplência e acordo')
-    delinquency = call('GET', b + '/billing/delinquency', admin)
-    ok('2 unidades inadimplentes (102 e 103)', delinquency['unitsInDebt'] == 2, str(delinquency['unitsInDebt']))
-    debt = call('GET', b + f'/billing/units/{units[1]}/debt', admin)
-    call('POST', b + '/billing/agreements', admin, {'unitId': units[1], 'entryIds': [l['entryId'] for l in debt['lines'] if l['remaining'] > 0],
-                                                    'installments': 2, 'firstDueDate': (TODAY + dt.timedelta(days=5)).isoformat(),
-                                                    'includeCharges': True}, expect=201)
+    delinquency = call('GET', b + '/cobranca/inadimplencia', admin)
+    ok('2 unidades inadimplentes (102 e 103)', delinquency['unidadesEmDebito'] == 2, str(delinquency['unidadesEmDebito']))
+    debt = call('GET', b + f'/cobranca/unidades/{units[1]}/debitos', admin)
+    call('POST', b + '/cobranca/acordos', admin, {'idUnidade': units[1], 'idsLancamentos': [l['idLancamento'] for l in debt['linhas'] if l['valorAberto'] > 0],
+                                                  'totalParcelas': 2, 'dataPrimeiroVencimento': (TODAY + dt.timedelta(days=5)).isoformat(),
+                                                  'incluirEncargos': True}, expect=201)
     ok('acordo de parcelamento criado para a 102', True)
 
     print('7. Fechamento mensal')

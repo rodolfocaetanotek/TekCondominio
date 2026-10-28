@@ -14,7 +14,7 @@ export interface AssemblySummary { id: string; title: string; kind: string; sche
 export interface AgendaItem { id: string; position: number; title: string; description?: string; voting: boolean; deliberation?: string; responsible?: string; deadline?: string; tally: { yes: number; no: number; abstain: number; votes: number }; }
 export interface Attendance { id: string; unitId: string; unitLabel: string; attendeeName: string; byProxy: boolean; proxyName?: string; registeredAt: string; }
 export interface AssemblyDetail { id: string; title: string; kind: string; scheduledAt: string; secondCallAt?: string; location: string; voteWeight: string; status: string; calledAt?: string; closedAt?: string; cancelReason?: string; minutes?: string; version: number; agenda: AgendaItem[]; attendance: Attendance[]; quorum: { unitsPresent: number; totalUnits: number; fractionPresent: number }; }
-export interface Contract { id: string; supplierId: string; supplierName: string; title: string; description?: string; amount: number; periodicity: string; startDate: string; endDate?: string; readjustmentIndex?: string; readjustmentMonth?: number; noticeDays: number; status: string; expiring: boolean; expired: boolean; terminatedOn?: string; terminationReason?: string; version: number; history: { change: string; createdAt: string; createdByName?: string }[]; }
+export interface Contrato { id: string; idFornecedor: string; nomeFornecedor: string; titulo: string; descricao?: string; valor: number; periodicidade: string; dataInicio: string; dataFim?: string; indiceReajuste?: string; mesReajuste?: number; diasAvisoPrevio: number; situacao: string; aVencer: boolean; vencido: boolean; dataEncerramento?: string; motivoEncerramento?: string; versao: number; historico: { alteracao: string; criadoEm: string; nomeCriadoPor?: string }[]; }
 export interface CaixaEntrada { naoLidas: number; itens: { id: string; titulo: string; texto?: string; link?: string; lida: boolean; criadoEm: string }[]; }
 export interface ReportTable { title: string; subtitle?: string; columns: { key: string; label: string; type: string }[]; rows: unknown[][]; totals?: unknown[]; notes?: string[]; }
 export interface Dashboard {
@@ -74,12 +74,12 @@ export class OpsApi {
   minutesDraft(c: string, id: string): Observable<{ minutes: string }> { return this.http.get<{ minutes: string }>(`${this.b(c)}/assemblies/${id}/minutes-draft`); }
 
   // contratos
-  contracts(c: string): Observable<Contract[]> { return this.http.get<Contract[]>(`${this.b(c)}/contracts`); }
-  contract(c: string, id: string): Observable<Contract> { return this.http.get<Contract>(`${this.b(c)}/contracts/${id}`); }
-  saveContract(c: string, body: Record<string, unknown>, id?: string): Observable<Contract> {
-    return id ? this.http.put<Contract>(`${this.b(c)}/contracts/${id}`, body) : this.http.post<Contract>(`${this.b(c)}/contracts`, body);
+  contracts(c: string): Observable<Contrato[]> { return this.http.get<Contrato[]>(`${this.b(c)}/contratos`); }
+  contract(c: string, id: string): Observable<Contrato> { return this.http.get<Contrato>(`${this.b(c)}/contratos/${id}`); }
+  saveContract(c: string, body: Record<string, unknown>, id?: string): Observable<Contrato> {
+    return id ? this.http.put<Contrato>(`${this.b(c)}/contratos/${id}`, body) : this.http.post<Contrato>(`${this.b(c)}/contratos`, body);
   }
-  terminateContract(c: string, id: string, body: Record<string, unknown>): Observable<Contract> { return this.http.post<Contract>(`${this.b(c)}/contracts/${id}/terminate`, body); }
+  terminateContract(c: string, id: string, body: Record<string, unknown>): Observable<Contrato> { return this.http.post<Contrato>(`${this.b(c)}/contratos/${id}/encerrar`, body); }
 
   // notificações, painel, relatórios
   inbox(): Observable<CaixaEntrada> { return this.http.get<CaixaEntrada>('/api/v1/notificacoes'); }

@@ -8,7 +8,7 @@ import java.util.UUID;
 import br.com.tekcondo.pessoa.entity.Pessoa;
 import br.com.tekcondo.comum.exception.ApiException;
 import br.com.tekcondo.estrutura.entity.Unidade;
-import br.com.tekcondo.supplier.entity.Supplier;
+import br.com.tekcondo.fornecedor.entity.Fornecedor;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -75,7 +75,7 @@ public class Lancamento {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id")
-    private Supplier fornecedor;
+    private Fornecedor fornecedor;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "unit_id")
@@ -200,7 +200,7 @@ public class Lancamento {
 
     // ------------------------------------------------------------------ regras
 
-    public void atualizar(String descricao, ContaPlano conta, CentroCusto centroCusto, Supplier fornecedor, Unidade unidade,
+    public void atualizar(String descricao, ContaPlano conta, CentroCusto centroCusto, Fornecedor fornecedor, Unidade unidade,
                           Pessoa pessoa, BigDecimal valor, LocalDate dataVencimento, LocalDate competencia,
                           String numeroDocumento, String observacoes, UUID por) {
         if (valorPago.signum() > 0) {
@@ -374,7 +374,7 @@ public class Lancamento {
         return centroCusto;
     }
 
-    public Supplier getFornecedor() {
+    public Fornecedor getFornecedor() {
         return fornecedor;
     }
 
