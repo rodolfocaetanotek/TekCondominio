@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -9,7 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { Router, RouterLink } from '@angular/router';
-import { Observable, filter, switchMap } from 'rxjs';
+import { Observable, distinctUntilChanged, filter, finalize, map, switchMap, tap } from 'rxjs';
 import { toProblem } from '../../core/api/api.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { CondominiumContext } from '../../core/context/condominium-context';
@@ -21,6 +22,7 @@ import { applyServerErrors } from '../../shared/forms/server-errors';
 import { ConfirmDialog, ConfirmDialogData } from '../../shared/ui/confirm-dialog';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { PageHeader } from '../../shared/ui/page-header';
+import { ViaCepService } from '../../shared/via-cep';
 import {
   BRAZILIAN_STATES,
   CONDOMINIUM_STATUS_LABELS,
@@ -60,6 +62,7 @@ export class CondominiumForm implements OnInit {
   private readonly notify = inject(NotificationService);
   protected readonly auth = inject(AuthService);
   private readonly context = inject(CondominiumContext);
+  private readonly viaCep = inject(ViaCepService);
 
   /** Parâmetro de rota; ausente em /condominios/novo. */
   readonly id = input<string>();
@@ -74,6 +77,8 @@ export class CondominiumForm implements OnInit {
   protected readonly loadError = signal<string | null>(null);
   protected readonly formError = signal<string | null>(null);
   protected readonly stale = signal(false);
+  protected readonly searchingZipCode = signal(false);
+  protected readonly zipCodeNotFound = signal(false);
 
   protected readonly isNew = computed(() => !this.id());
   protected readonly isInactive = computed(() => this.condominium()?.status === 'INACTIVE');
@@ -106,6 +111,29 @@ export class CondominiumForm implements OnInit {
       state: [''],
     }),
   });
+
+  constructor() {
+    const address = this.form.controls.address;
+    address.controls.zipCode.valueChanges
+      .pipe(
+        filter(() => address.controls.zipCode.dirty),
+        map((value) => value.replace(/\D/g, '')),
+        distinctUntilChanged(),
+        tap(() => this.zipCodeNotFound.set(false)),
+        filter((digits) => digits.length === 8),
+        tap(() => this.searchingZipCode.set(true)),
+        switchMap((digits) => this.viaCep.find(digits).pipe(finalize(() => this.searchingZipCode.set(false)))),
+        takeUntilDestroyed(),
+      )
+      .subscribe((found) => {
+        if (!found) {
+          this.zipCodeNotFound.set(true);
+          return;
+        }
+        address.patchValue(Object.fromEntries(Object.entries(found).filter(([, value]) => value)));
+        address.markAsDirty();
+      });
+  }
 
   ngOnInit(): void {
     const id = this.id();
