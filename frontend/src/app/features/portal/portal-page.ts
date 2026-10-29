@@ -1,5 +1,5 @@
-import { PortalReservations } from '../reservations/portal-reservations';
-import { PortalVisitors } from '../visitors/portal-visitors';
+import { PortalReservations } from '../reservas/portal-reservas';
+import { PortalVisitors } from '../portaria/portal-visitantes';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
@@ -15,14 +15,14 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { catchError, combineLatest, filter, of, switchMap } from 'rxjs';
 import { toProblem } from '../../core/api/api.models';
-import { NotificationService } from '../../core/notify/notification.service';
-import { LabelPipe } from '../../shared/label.pipe';
-import { options } from '../../shared/labels';
-import { EmptyState } from '../../shared/ui/empty-state';
-import { openForm } from '../../shared/ui/form-dialog';
-import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
-import { PageHeader } from '../../shared/ui/page-header';
-import { Comunicado, DetalheOcorrencia } from '../ops/ops-api';
+import { NotificationService } from '../../core/notificacao/notificacao.service';
+import { LabelPipe } from '../../comum/rotulo.pipe';
+import { options } from '../../comum/rotulos';
+import { EmptyState } from '../../comum/ui/estado-vazio';
+import { openForm } from '../../comum/ui/formulario-dialog';
+import { IsoDatePipe } from '../../comum/ui/data-iso.pipe';
+import { PageHeader } from '../../comum/ui/cabecalho-pagina';
+import { Comunicado, DetalheOcorrencia } from '../operacao/operacao-api';
 import { PortalApi } from './portal-api';
 
 /** Portal do morador: somente dados das unidades do próprio morador (o backend aplica a restrição). */

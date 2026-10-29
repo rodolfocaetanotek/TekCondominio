@@ -1,9 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { downloadFile } from '../../shared/download';
-import { LinhaDebito } from '../finance/finance-api';
-import { Comunicado, DetalheOcorrencia, Documento, ResumoOcorrencia } from '../ops/ops-api';
+import { downloadFile } from '../../comum/baixar-arquivo';
+import { LinhaDebito } from '../financeiro/financeiro-api';
+import { Comunicado, DetalheOcorrencia, Documento, ResumoOcorrencia } from '../operacao/operacao-api';
 
 export interface PerfilPortal { nome: string; email: string; condominios: { id: string; nome: string; unidades: { idUnidade: string; rotulo: string; tipo: string; responsavelFinanceiro: boolean; veCobrancas: boolean }[] }[]; }
 export interface CobrancasUnidade { idUnidade: string; rotuloUnidade: string; totalAberto: number; linhas: LinhaDebito[]; }

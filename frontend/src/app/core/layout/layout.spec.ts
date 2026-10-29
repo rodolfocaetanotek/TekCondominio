@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ResponsiveTables } from './responsive-tables';
-import { ThemeService } from './theme.service';
+import { ResponsiveTables } from './tabelas-responsivas';
+import { ThemeService } from './tema.service';
 
 describe('ThemeService', () => {
   beforeEach(() => {

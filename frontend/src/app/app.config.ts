@@ -15,8 +15,8 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthService } from './core/auth/auth.service';
-import { errorInterceptor } from './core/notify/error.interceptor';
-import { PtBrPaginatorIntl } from './shared/ui/paginator-intl';
+import { errorInterceptor } from './core/notificacao/erro.interceptor';
+import { PtBrPaginatorIntl } from './comum/ui/paginador-intl';
 
 registerLocaleData(localePt);
 

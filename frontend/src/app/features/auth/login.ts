@@ -8,7 +8,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Router, RouterLink } from '@angular/router';
 import { toProblem } from '../../core/api/api.models';
 import { AuthService } from '../../core/auth/auth.service';
-import { FieldError } from '../../shared/forms/field-error';
+import { FieldError } from '../../comum/formularios/erro-campo';
 
 @Component({
   selector: 'tc-login',

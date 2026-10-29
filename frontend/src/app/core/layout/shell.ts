@@ -13,14 +13,14 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
-import { ChangePasswordDialog } from '../../features/auth/change-password-dialog';
+import { ChangePasswordDialog } from '../../features/auth/alterar-senha-dialog';
 import { Permissao } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
-import { CondominiumContext } from '../context/condominium-context';
-import { NotificationBell } from '../notify/notification-bell';
-import { NotificationService } from '../notify/notification.service';
-import { ResponsiveTables } from './responsive-tables';
-import { ThemeMode, ThemeService } from './theme.service';
+import { CondominiumContext } from '../contexto/condominio-contexto';
+import { NotificationBell } from '../notificacao/sino-notificacoes';
+import { NotificationService } from '../notificacao/notificacao.service';
+import { ResponsiveTables } from './tabelas-responsivas';
+import { ThemeMode, ThemeService } from './tema.service';
 
 interface NavItem {
   label: string;
