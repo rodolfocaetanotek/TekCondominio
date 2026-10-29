@@ -2,57 +2,57 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, shareReplay } from 'rxjs';
 import { PaginaResponse } from '../../core/api/api.models';
-import { AtribuicaoRequest, PapelOpcao, UsuarioDetalhe, UserQuery, UsuarioResumo } from './usuario.models';
+import { AtribuicaoRequest, PapelOpcao, UsuarioDetalhe, ConsultaUsuario, UsuarioResumo } from './usuario.models';
 
 const BASE = '/api/v1/usuarios';
 
 @Injectable({ providedIn: 'root' })
-export class UserService {
+export class UsuarioService {
   private readonly http = inject(HttpClient);
-  private roles$?: Observable<PapelOpcao[]>;
+  private papeis$?: Observable<PapelOpcao[]>;
 
-  list(query: UserQuery): Observable<PaginaResponse<UsuarioResumo>> {
-    let params = new HttpParams().set('pagina', query.page).set('tamanho', query.size);
-    if (query.search?.trim()) params = params.set('busca', query.search.trim());
-    if (query.active) params = params.set('ativo', query.active);
-    return this.http.get<PaginaResponse<UsuarioResumo>>(BASE, { params });
+  listar(consulta: ConsultaUsuario): Observable<PaginaResponse<UsuarioResumo>> {
+    let parametros = new HttpParams().set('pagina', consulta.pagina).set('tamanho', consulta.tamanho);
+    if (consulta.busca?.trim()) parametros = parametros.set('busca', consulta.busca.trim());
+    if (consulta.ativo) parametros = parametros.set('ativo', consulta.ativo);
+    return this.http.get<PaginaResponse<UsuarioResumo>>(BASE, { params: parametros });
   }
 
-  get(id: string): Observable<UsuarioDetalhe> {
+  obter(id: string): Observable<UsuarioDetalhe> {
     return this.http.get<UsuarioDetalhe>(`${BASE}/${id}`);
   }
 
-  create(body: { nome: string; email: string; atribuicao: AtribuicaoRequest }): Observable<UsuarioDetalhe> {
-    return this.http.post<UsuarioDetalhe>(BASE, body);
+  cadastrar(corpo: { nome: string; email: string; atribuicao: AtribuicaoRequest }): Observable<UsuarioDetalhe> {
+    return this.http.post<UsuarioDetalhe>(BASE, corpo);
   }
 
-  rename(id: string, nome: string, versao: number): Observable<UsuarioDetalhe> {
+  renomear(id: string, nome: string, versao: number): Observable<UsuarioDetalhe> {
     return this.http.put<UsuarioDetalhe>(`${BASE}/${id}`, { nome, versao });
   }
 
-  deactivate(id: string): Observable<UsuarioDetalhe> {
+  desativar(id: string): Observable<UsuarioDetalhe> {
     return this.http.post<UsuarioDetalhe>(`${BASE}/${id}/desativar`, null);
   }
 
-  activate(id: string): Observable<UsuarioDetalhe> {
+  ativar(id: string): Observable<UsuarioDetalhe> {
     return this.http.post<UsuarioDetalhe>(`${BASE}/${id}/ativar`, null);
   }
 
-  addAssignment(id: string, body: AtribuicaoRequest): Observable<UsuarioDetalhe> {
-    return this.http.post<UsuarioDetalhe>(`${BASE}/${id}/atribuicoes`, body);
+  adicionarAtribuicao(id: string, corpo: AtribuicaoRequest): Observable<UsuarioDetalhe> {
+    return this.http.post<UsuarioDetalhe>(`${BASE}/${id}/atribuicoes`, corpo);
   }
 
-  removeAssignment(id: string, idAtribuicao: string): Observable<UsuarioDetalhe> {
+  removerAtribuicao(id: string, idAtribuicao: string): Observable<UsuarioDetalhe> {
     return this.http.delete<UsuarioDetalhe>(`${BASE}/${id}/atribuicoes/${idAtribuicao}`);
   }
 
-  resendInvite(id: string): Observable<void> {
+  reenviarConvite(id: string): Observable<void> {
     return this.http.post<void>(`${BASE}/${id}/convite`, null);
   }
 
   /** Catálogo de papéis (estável durante a sessão). */
-  roles(): Observable<PapelOpcao[]> {
-    this.roles$ ??= this.http.get<PapelOpcao[]>('/api/v1/papeis').pipe(shareReplay(1));
-    return this.roles$;
+  papeis(): Observable<PapelOpcao[]> {
+    this.papeis$ ??= this.http.get<PapelOpcao[]>('/api/v1/papeis').pipe(shareReplay(1));
+    return this.papeis$;
   }
 }

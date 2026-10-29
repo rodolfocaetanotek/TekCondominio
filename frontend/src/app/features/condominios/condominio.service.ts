@@ -2,39 +2,39 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { PaginaResponse } from '../../core/api/api.models';
-import { Condominio, CondominiumQuery, CondominioRequest, CondominioResumo } from './condominio.models';
+import { Condominio, ConsultaCondominio, CondominioRequest, CondominioResumo } from './condominio.models';
 
 const BASE = '/api/v1/condominios';
 
 @Injectable({ providedIn: 'root' })
-export class CondominiumService {
+export class CondominioService {
   private readonly http = inject(HttpClient);
 
-  list(query: CondominiumQuery): Observable<PaginaResponse<CondominioResumo>> {
-    let params = new HttpParams().set('pagina', query.page).set('tamanho', query.size);
-    if (query.search?.trim()) params = params.set('busca', query.search.trim());
-    if (query.status) params = params.set('situacao', query.status);
-    if (query.sort) params = params.set('ordem', query.sort);
-    return this.http.get<PaginaResponse<CondominioResumo>>(BASE, { params });
+  listar(consulta: ConsultaCondominio): Observable<PaginaResponse<CondominioResumo>> {
+    let parametros = new HttpParams().set('pagina', consulta.pagina).set('tamanho', consulta.tamanho);
+    if (consulta.busca?.trim()) parametros = parametros.set('busca', consulta.busca.trim());
+    if (consulta.situacao) parametros = parametros.set('situacao', consulta.situacao);
+    if (consulta.ordem) parametros = parametros.set('ordem', consulta.ordem);
+    return this.http.get<PaginaResponse<CondominioResumo>>(BASE, { params: parametros });
   }
 
-  get(id: string): Observable<Condominio> {
+  obter(id: string): Observable<Condominio> {
     return this.http.get<Condominio>(`${BASE}/${id}`);
   }
 
-  create(body: CondominioRequest): Observable<Condominio> {
-    return this.http.post<Condominio>(BASE, body);
+  cadastrar(corpo: CondominioRequest): Observable<Condominio> {
+    return this.http.post<Condominio>(BASE, corpo);
   }
 
-  update(id: string, body: CondominioRequest): Observable<Condominio> {
-    return this.http.put<Condominio>(`${BASE}/${id}`, body);
+  atualizar(id: string, corpo: CondominioRequest): Observable<Condominio> {
+    return this.http.put<Condominio>(`${BASE}/${id}`, corpo);
   }
 
-  inactivate(id: string, motivo: string): Observable<Condominio> {
+  inativar(id: string, motivo: string): Observable<Condominio> {
     return this.http.post<Condominio>(`${BASE}/${id}/inativar`, { motivo });
   }
 
-  activate(id: string): Observable<Condominio> {
+  ativar(id: string): Observable<Condominio> {
     return this.http.post<Condominio>(`${BASE}/${id}/ativar`, null);
   }
 }

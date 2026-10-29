@@ -13,31 +13,31 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { catchError, debounceTime, filter, finalize, of, switchMap, tap } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { LabelPipe } from '../../comum/rotulo.pipe';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { IsoDatePipe } from '../../comum/ui/data-iso.pipe';
-import { StructureService } from '../estrutura/estrutura.service';
-import { openEntryForm } from './lancamento-form';
-import { LancamentoResumo, FinanceApi } from './financeiro-api';
+import { paraProblema } from '../../core/api/api.models';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { RotuloPipe } from '../../comum/rotulo.pipe';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { DataIsoPipe } from '../../comum/ui/data-iso.pipe';
+import { EstruturaService } from '../estrutura/estrutura.service';
+import { abrirFormLancamento } from './lancamento-form';
+import { LancamentoResumo, FinanceiroApi } from './financeiro-api';
 
 /** Contas a pagar (EXPENSE) ou a receber (INCOME) do condomínio selecionado. */
 @Component({
-  selector: 'tc-entry-list',
+  selector: 'tc-lancamento-lista',
   imports: [CurrencyPipe, ReactiveFormsModule, MatTableModule, MatPaginatorModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, MatButtonModule, MatIconModule, MatProgressBarModule, EmptyState, IsoDatePipe, LabelPipe],
+    MatSelectModule, MatButtonModule, MatIconModule, MatProgressBarModule, EstadoVazio, DataIsoPipe, RotuloPipe],
   template: `
     <div class="filters">
       <mat-form-field class="search">
         <mat-label>Buscar</mat-label>
         <mat-icon matPrefix>search</mat-icon>
-        <input matInput [formControl]="search" placeholder="Descrição ou nº do documento" autocomplete="off" />
+        <input matInput [formControl]="busca" placeholder="Descrição ou nº do documento" autocomplete="off" />
       </mat-form-field>
       <mat-form-field>
         <mat-label>Situação</mat-label>
-        <mat-select [formControl]="status">
+        <mat-select [formControl]="situacao">
           <mat-option value="open">Em aberto</mat-option>
           <mat-option value="overdue">Vencidos</mat-option>
           <mat-option value="pending">Aguardando aprovação</mat-option>
@@ -45,26 +45,26 @@ import { LancamentoResumo, FinanceApi } from './financeiro-api';
           <mat-option value="all">Todos</mat-option>
         </mat-select>
       </mat-form-field>
-      <mat-form-field><mat-label>Vencimento de</mat-label><input matInput type="date" [formControl]="from" /></mat-form-field>
-      <mat-form-field><mat-label>até</mat-label><input matInput type="date" [formControl]="to" /></mat-form-field>
-      @if (canEdit()) {
-        <button mat-flat-button (click)="create()"><mat-icon>add</mat-icon>{{ kind() === 'EXPENSE' ? 'Nova despesa' : 'Nova receita' }}</button>
+      <mat-form-field><mat-label>Vencimento de</mat-label><input matInput type="date" [formControl]="de" /></mat-form-field>
+      <mat-form-field><mat-label>até</mat-label><input matInput type="date" [formControl]="ate" /></mat-form-field>
+      @if (podeEditar()) {
+        <button mat-flat-button (click)="cadastrar()"><mat-icon>add</mat-icon>{{ natureza() === 'EXPENSE' ? 'Nova despesa' : 'Nova receita' }}</button>
       }
     </div>
-    <section class="tc-table-card" aria-live="polite" [attr.aria-busy]="loading()">
-      <mat-progress-bar [mode]="loading() ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="!loading()" />
-      @if (error(); as message) {
-        <tc-empty-state icon="cloud_off" title="Não foi possível carregar" [description]="message" />
-      } @else if (page(); as p) {
+    <section class="tc-table-card" aria-live="polite" [attr.aria-busy]="carregando()">
+      <mat-progress-bar [mode]="carregando() ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="!carregando()" />
+      @if (erro(); as mensagem) {
+        <tc-estado-vazio icone="cloud_off" titulo="Não foi possível carregar" [descricao]="mensagem" />
+      } @else if (pagina(); as p) {
         @if (p.totalElementos === 0) {
-          <tc-empty-state icon="receipt_long" title="Nenhum lançamento encontrado" description="Ajuste os filtros ou cadastre um novo lançamento." />
+          <tc-estado-vazio icone="receipt_long" titulo="Nenhum lançamento encontrado" descricao="Ajuste os filtros ou cadastre um novo lançamento." />
         } @else {
           <div class="table-scroll">
             <table mat-table [dataSource]="p.conteudo">
               <caption class="sr-only">Lançamentos</caption>
               <ng-container matColumnDef="due">
                 <th mat-header-cell *matHeaderCellDef>Vencimento</th>
-                <td mat-cell *matCellDef="let e" [class.late]="e.vencido">{{ e.dataVencimento | isoDate }}</td>
+                <td mat-cell *matCellDef="let e" [class.late]="e.vencido">{{ e.dataVencimento | dataIso }}</td>
               </ng-container>
               <ng-container matColumnDef="description">
                 <th mat-header-cell *matHeaderCellDef>Descrição</th>
@@ -88,17 +88,17 @@ import { LancamentoResumo, FinanceApi } from './financeiro-api';
                     [class.is-pending]="e.aprovacao === 'PENDING' || (!e.vencido && (e.situacao === 'OPEN' || e.situacao === 'PARTIAL'))"
                     [class.is-danger]="e.aprovacao !== 'PENDING' && e.vencido"
                     [class.is-inactive]="e.situacao === 'CANCELLED' || e.situacao === 'RENEGOTIATED'">
-                    {{ e.aprovacao === 'PENDING' ? 'Aguardando aprovação' : e.vencido ? 'Vencido' : (e.situacao | label: 'entryStatus') }}
+                    {{ e.aprovacao === 'PENDING' ? 'Aguardando aprovação' : e.vencido ? 'Vencido' : (e.situacao | rotulo: 'entryStatus') }}
                   </span>
                 </td>
               </ng-container>
-              <tr mat-header-row *matHeaderRowDef="columns"></tr>
-              <tr mat-row *matRowDef="let row; columns: columns" class="is-clickable" tabindex="0" role="link"
-                [attr.aria-label]="'Abrir ' + row.descricao" (click)="open(row)" (keydown.enter)="open(row)"></tr>
+              <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+              <tr mat-row *matRowDef="let linha; colunas: colunas" class="is-clickable" tabindex="0" role="link"
+                [attr.aria-label]="'Abrir ' + linha.descricao" (click)="abrir(linha)" (keydown.enter)="abrir(linha)"></tr>
             </table>
           </div>
           <mat-paginator [length]="p.totalElementos" [pageIndex]="p.pagina" [pageSize]="p.tamanho" [pageSizeOptions]="[25, 50, 100]"
-            (page)="onPage($event)" aria-label="Paginação" />
+            (page)="aoPaginar($event)" aria-label="Paginação" />
         }
       }
     </section>
@@ -109,61 +109,61 @@ import { LancamentoResumo, FinanceApi } from './financeiro-api';
     .late { color: var(--tc-danger); font-weight: 600; }
   `,
 })
-export class EntryList {
-  readonly kind = input.required<'INCOME' | 'EXPENSE'>();
-  private readonly context = inject(CondominiumContext);
-  private readonly api = inject(FinanceApi);
-  private readonly structure = inject(StructureService);
+export class LancamentoLista {
+  readonly natureza = input.required<'INCOME' | 'EXPENSE'>();
+  private readonly contexto = inject(CondominioContexto);
+  private readonly api = inject(FinanceiroApi);
+  private readonly estrutura = inject(EstruturaService);
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
-  private readonly notify = inject(NotificationService);
+  private readonly notificacao = inject(NotificacaoService);
 
-  protected readonly columns = ['due', 'description', 'amount', 'remaining', 'status'];
-  protected readonly search = new FormControl('', { nonNullable: true });
-  protected readonly status = new FormControl('open', { nonNullable: true });
-  protected readonly from = new FormControl('', { nonNullable: true });
-  protected readonly to = new FormControl('', { nonNullable: true });
-  private readonly params = signal({ page: 0, size: 50, search: '', status: 'open', from: '', to: '', tick: 0 });
-  protected readonly loading = signal(false);
-  protected readonly error = signal<string | null>(null);
-  protected readonly canEdit = computed(() => this.context.can('FINANCE_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
-  private readonly query = computed(() => ({ c: this.context.id(), kind: this.kind(), ...this.params() }));
+  protected readonly colunas = ['due', 'description', 'amount', 'remaining', 'status'];
+  protected readonly busca = new FormControl('', { nonNullable: true });
+  protected readonly situacao = new FormControl('open', { nonNullable: true });
+  protected readonly de = new FormControl('', { nonNullable: true });
+  protected readonly ate = new FormControl('', { nonNullable: true });
+  private readonly parametros = signal({ pagina: 0, tamanho: 50, busca: '', situacao: 'open', de: '', ate: '', recarga: 0 });
+  protected readonly carregando = signal(false);
+  protected readonly erro = signal<string | null>(null);
+  protected readonly podeEditar = computed(() => this.contexto.pode('FINANCE_EDIT') && this.contexto.selecionado()?.situacao === 'ACTIVE');
+  private readonly consulta = computed(() => ({ c: this.contexto.id(), tipo: this.natureza(), ...this.parametros() }));
 
-  protected readonly page = toSignal(
-    toObservable(this.query).pipe(
+  protected readonly pagina = toSignal(
+    toObservable(this.consulta).pipe(
       filter((q) => !!q.c),
-      tap(() => { this.loading.set(true); this.error.set(null); }),
+      tap(() => { this.carregando.set(true); this.erro.set(null); }),
       switchMap((q) => {
-        const statusFilter: Record<string, Record<string, string | string[]>> = {
+        const filtroSituacao: Record<string, Record<string, string | string[]>> = {
           open: { situacao: ['OPEN', 'PARTIAL'] }, overdue: { vencido: 'true' }, pending: { aprovacao: 'PENDING', situacao: ['OPEN'] },
           paid: { situacao: ['PAID'] }, all: {},
         };
-        return this.api.entries(q.c!, { natureza: q.kind, busca: q.search, vencimentoDe: q.from, vencimentoAte: q.to, pagina: q.page, tamanho: q.size, ...statusFilter[q.status] })
-          .pipe(catchError((err: unknown) => { this.error.set(toProblem(err).detail); return of(null); }), finalize(() => this.loading.set(false)));
+        return this.api.lancamentos(q.c!, { natureza: q.tipo, busca: q.busca, vencimentoDe: q.de, vencimentoAte: q.ate, pagina: q.pagina, tamanho: q.tamanho, ...filtroSituacao[q.situacao] })
+          .pipe(catchError((err: unknown) => { this.erro.set(paraProblema(err).detail); return of(null); }), finalize(() => this.carregando.set(false)));
       }),
     ),
     { initialValue: null },
   );
 
   constructor() {
-    this.search.valueChanges.pipe(debounceTime(300), takeUntilDestroyed()).subscribe((search) => this.params.update((p) => ({ ...p, search, page: 0 })));
-    this.status.valueChanges.pipe(takeUntilDestroyed()).subscribe((status) => this.params.update((p) => ({ ...p, status, page: 0 })));
-    this.from.valueChanges.pipe(takeUntilDestroyed()).subscribe((from) => this.params.update((p) => ({ ...p, from, page: 0 })));
-    this.to.valueChanges.pipe(takeUntilDestroyed()).subscribe((to) => this.params.update((p) => ({ ...p, to, page: 0 })));
+    this.busca.valueChanges.pipe(debounceTime(300), takeUntilDestroyed()).subscribe((busca) => this.parametros.update((p) => ({ ...p, busca, pagina: 0 })));
+    this.situacao.valueChanges.pipe(takeUntilDestroyed()).subscribe((situacao) => this.parametros.update((p) => ({ ...p, situacao, pagina: 0 })));
+    this.de.valueChanges.pipe(takeUntilDestroyed()).subscribe((de) => this.parametros.update((p) => ({ ...p, de, pagina: 0 })));
+    this.ate.valueChanges.pipe(takeUntilDestroyed()).subscribe((ate) => this.parametros.update((p) => ({ ...p, ate, pagina: 0 })));
   }
 
-  onPage(e: PageEvent): void {
-    this.params.update((p) => ({ ...p, page: e.pageIndex, size: e.pageSize }));
+  aoPaginar(e: PageEvent): void {
+    this.parametros.update((p) => ({ ...p, pagina: e.pageIndex, tamanho: e.pageSize }));
   }
 
-  open(e: LancamentoResumo): void {
+  abrir(e: LancamentoResumo): void {
     void this.router.navigate(['/financeiro/lancamentos', e.id]);
   }
 
-  create(): void {
-    openEntryForm(this.dialog, this.api, this.structure, this.context.id()!, this.kind()).pipe(filter((r) => !!r)).subscribe(() => {
-      this.notify.success('Lançamento registrado.');
-      this.params.update((p) => ({ ...p, tick: p.tick + 1 }));
+  cadastrar(): void {
+    abrirFormLancamento(this.dialog, this.api, this.estrutura, this.contexto.id()!, this.natureza()).pipe(filter((r) => !!r)).subscribe(() => {
+      this.notificacao.sucesso('Lançamento registrado.');
+      this.parametros.update((p) => ({ ...p, recarga: p.recarga + 1 }));
     });
   }
 }

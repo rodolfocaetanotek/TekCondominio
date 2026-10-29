@@ -3,34 +3,34 @@ import { inject } from '@angular/core';
 import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 
-const AUTH_ENDPOINTS = ['/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/logout'];
+const ENDPOINTS_AUTH = ['/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/logout'];
 
 /**
  * Anexa o access token às chamadas da API e, ao receber 401, tenta renovar a sessão uma única vez
  * antes de repetir a requisição. Se a renovação falhar, encerra a sessão.
  */
-export const authInterceptor: HttpInterceptorFn = (req, next) => {
+export const authInterceptor: HttpInterceptorFn = (req, proximo) => {
   if (!req.url.startsWith('/api/')) {
-    return next(req);
+    return proximo(req);
   }
   const auth = inject(AuthService);
-  const isAuthEndpoint = AUTH_ENDPOINTS.some((url) => req.url.startsWith(url));
-  const withToken = (request: HttpRequest<unknown>) => {
+  const ehEndpointAuth = ENDPOINTS_AUTH.some((url) => req.url.startsWith(url));
+  const comToken = (solicitacao: HttpRequest<unknown>) => {
     const token = auth.accessToken();
-    return token && !isAuthEndpoint ? request.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : request;
+    return token && !ehEndpointAuth ? solicitacao.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : solicitacao;
   };
 
-  return next(withToken(req)).pipe(
-    catchError((error: unknown) => {
-      if (!(error instanceof HttpErrorResponse) || error.status !== 401 || isAuthEndpoint || !auth.accessToken()) {
-        return throwError(() => error);
+  return proximo(comToken(req)).pipe(
+    catchError((erro: unknown) => {
+      if (!(erro instanceof HttpErrorResponse) || erro.status !== 401 || ehEndpointAuth || !auth.accessToken()) {
+        return throwError(() => erro);
       }
-      return auth.refresh().pipe(
+      return auth.renovar().pipe(
         catchError(() => {
-          auth.endSession(true);
-          return throwError(() => error);
+          auth.encerrarSessao(true);
+          return throwError(() => erro);
         }),
-        switchMap(() => next(withToken(req))),
+        switchMap(() => proximo(comToken(req))),
       );
     }),
   );

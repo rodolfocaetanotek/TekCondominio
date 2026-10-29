@@ -13,22 +13,22 @@ import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, debounceTime, distinctUntilChanged, finalize, map, of, switchMap, tap } from 'rxjs';
-import { PaginaResponse, toProblem } from '../../core/api/api.models';
+import { PaginaResponse, paraProblema } from '../../core/api/api.models';
 import { AuthService } from '../../core/auth/auth.service';
-import { DocPipe } from '../../comum/formato/documento.pipe';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
+import { DocumentoPipe } from '../../comum/formato/documento.pipe';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
 import {
-  CONDOMINIUM_STATUS_LABELS,
-  CONDOMINIUM_TYPE_LABELS,
-  CondominiumQuery,
+  ROTULOS_SITUACAO_CONDOMINIO,
+  ROTULOS_TIPO_CONDOMINIO,
+  ConsultaCondominio,
   SituacaoCondominio,
   CondominioResumo,
 } from './condominio.models';
-import { CondominiumService } from './condominio.service';
+import { CondominioService } from './condominio.service';
 
 @Component({
-  selector: 'tc-condominium-list',
+  selector: 'tc-condominio-lista',
   imports: [
     ReactiveFormsModule,
     RouterLink,
@@ -41,94 +41,94 @@ import { CondominiumService } from './condominio.service';
     MatButtonModule,
     MatIconModule,
     MatProgressBarModule,
-    PageHeader,
-    EmptyState,
-    DocPipe,
+    CabecalhoPagina,
+    EstadoVazio,
+    DocumentoPipe,
   ],
   templateUrl: './condominio-lista.html',
   styleUrl: './condominio-lista.scss',
 })
-export class CondominiumList {
-  private readonly service = inject(CondominiumService);
+export class CondominioLista {
+  private readonly service = inject(CondominioService);
   private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);
 
-  protected readonly typeLabels = CONDOMINIUM_TYPE_LABELS;
-  protected readonly statusLabels = CONDOMINIUM_STATUS_LABELS;
+  protected readonly rotulosTipo = ROTULOS_TIPO_CONDOMINIO;
+  protected readonly rotulosSituacao = ROTULOS_SITUACAO_CONDOMINIO;
 
-  protected readonly search = new FormControl('', { nonNullable: true });
-  protected readonly status = new FormControl<SituacaoCondominio | ''>('', { nonNullable: true });
+  protected readonly busca = new FormControl('', { nonNullable: true });
+  protected readonly situacao = new FormControl<SituacaoCondominio | ''>('', { nonNullable: true });
 
-  protected readonly query = signal<CondominiumQuery>({ page: 0, size: 20, sort: 'nome,asc', search: '', status: '' });
-  protected readonly loading = signal(false);
-  protected readonly error = signal<string | null>(null);
+  protected readonly consulta = signal<ConsultaCondominio>({ pagina: 0, tamanho: 20, ordem: 'nome,asc', busca: '', situacao: '' });
+  protected readonly carregando = signal(false);
+  protected readonly erro = signal<string | null>(null);
 
-  private readonly isHandset = toSignal(
+  private readonly ehCelular = toSignal(
     inject(BreakpointObserver).observe('(max-width: 720px)').pipe(map((r) => r.matches)),
     { initialValue: false },
   );
-  protected readonly columns = computed(() =>
-    this.isHandset() ? ['nome', 'situacao'] : ['nome', 'tipo', 'cidade', 'situacao'],
+  protected readonly colunas = computed(() =>
+    this.ehCelular() ? ['nome', 'situacao'] : ['nome', 'tipo', 'cidade', 'situacao'],
   );
 
-  protected readonly result = toSignal(
-    toObservable(this.query).pipe(
+  protected readonly resultado = toSignal(
+    toObservable(this.consulta).pipe(
       tap(() => {
-        this.loading.set(true);
-        this.error.set(null);
+        this.carregando.set(true);
+        this.erro.set(null);
       }),
       switchMap((q) =>
-        this.service.list(q).pipe(
+        this.service.listar(q).pipe(
           catchError((err: unknown) => {
-            this.error.set(toProblem(err).detail);
+            this.erro.set(paraProblema(err).detail);
             return of<PaginaResponse<CondominioResumo> | null>(null);
           }),
-          finalize(() => this.loading.set(false)),
+          finalize(() => this.carregando.set(false)),
         ),
       ),
     ),
     { initialValue: null },
   );
 
-  protected readonly hasFilters = computed(() => !!this.query().search || !!this.query().status);
+  protected readonly temFiltros = computed(() => !!this.consulta().busca || !!this.consulta().situacao);
 
   constructor() {
-    this.search.valueChanges
+    this.busca.valueChanges
       .pipe(debounceTime(300), map((v) => v.trim()), distinctUntilChanged(), takeUntilDestroyed())
-      .subscribe((search) => this.query.update((q) => ({ ...q, search, page: 0 })));
-    this.status.valueChanges
+      .subscribe((busca) => this.consulta.update((q) => ({ ...q, busca, pagina: 0 })));
+    this.situacao.valueChanges
       .pipe(takeUntilDestroyed())
-      .subscribe((status) => this.query.update((q) => ({ ...q, status, page: 0 })));
+      .subscribe((situacao) => this.consulta.update((q) => ({ ...q, situacao, pagina: 0 })));
   }
 
-  onSort(sort: Sort): void {
-    const value = sort.direction ? `${sort.active},${sort.direction}` : 'nome,asc';
-    this.query.update((q) => ({ ...q, sort: value, page: 0 }));
+  aoOrdenar(ordem: Sort): void {
+    const valor = ordem.direction ? `${ordem.active},${ordem.direction}` : 'nome,asc';
+    this.consulta.update((q) => ({ ...q, ordem: valor, pagina: 0 }));
   }
 
-  onPage(event: PageEvent): void {
-    this.query.update((q) => ({ ...q, page: event.pageIndex, size: event.pageSize }));
+  aoPaginar(evento: PageEvent): void {
+    this.consulta.update((q) => ({ ...q, pagina: evento.pageIndex, tamanho: evento.pageSize }));
   }
 
-  clearFilters(): void {
-    this.search.setValue('', { emitEvent: false });
-    this.status.setValue('', { emitEvent: false });
-    this.query.update((q) => ({ ...q, search: '', status: '', page: 0 }));
+  limparFiltros(): void {
+    this.busca.setValue('', { emitEvent: false });
+    this.situacao.setValue('', { emitEvent: false });
+    this.consulta.update((q) => ({ ...q, busca: '', situacao: '', pagina: 0 }));
   }
 
-  retry(): void {
-    this.query.update((q) => ({ ...q }));
+  tentarNovamente(): void {
+    this.consulta.update((q) => ({ ...q }));
   }
 
-  typeLabel(c: CondominioResumo): string {
-    return this.typeLabels[c.tipo];
+  rotuloTipo(c: CondominioResumo): string {
+    return this.rotulosTipo[c.tipo];
   }
 
-  statusLabel(c: CondominioResumo): string {
-    return this.statusLabels[c.situacao];
+  rotuloSituacao(c: CondominioResumo): string {
+    return this.rotulosSituacao[c.situacao];
   }
 
-  open(row: CondominioResumo): void {
-    void this.router.navigate(['/condominios', row.id]);
+  abrir(linha: CondominioResumo): void {
+    void this.router.navigate(['/condominios', linha.id]);
   }
 }

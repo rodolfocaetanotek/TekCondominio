@@ -1,71 +1,71 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ResponsiveTables } from './tabelas-responsivas';
-import { ThemeService } from './tema.service';
+import { TabelasResponsivas } from './tabelas-responsivas';
+import { TemaService } from './tema.service';
 
-describe('ThemeService', () => {
+describe('TemaService', () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.removeAttribute('data-theme');
   });
 
   it('segue o sistema por padrão e aplica a escolha explícita no <html>', () => {
-    const theme = TestBed.inject(ThemeService);
-    expect(theme.mode()).toBe('system');
+    const tema = TestBed.inject(TemaService);
+    expect(tema.modo()).toBe('system');
     expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
 
-    theme.set('dark');
+    tema.definir('dark');
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
     expect(localStorage.getItem('tc-theme')).toBe('dark');
 
-    theme.set('system');
+    tema.definir('system');
     expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
     expect(localStorage.getItem('tc-theme')).toBeNull();
   });
 
   it('recupera a escolha guardada e ignora valores desconhecidos', () => {
     localStorage.setItem('tc-theme', 'light');
-    expect(TestBed.inject(ThemeService).mode()).toBe('light');
+    expect(TestBed.inject(TemaService).modo()).toBe('light');
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
 
     TestBed.resetTestingModule();
     localStorage.setItem('tc-theme', 'roxo');
-    expect(TestBed.inject(ThemeService).mode()).toBe('system');
+    expect(TestBed.inject(TemaService).modo()).toBe('system');
   });
 });
 
 @Component({
-  imports: [ResponsiveTables],
+  imports: [TabelasResponsivas],
   template: `
-    <div tcResponsiveTables>
+    <div tcTabelasResponsivas>
       <table>
         <thead><tr><th>Unidade</th><th>Situação</th><th></th></tr></thead>
         <tbody>
-          @for (r of rows(); track r) { <tr><td>{{ r }}</td><td>Ativa</td><td><button>Abrir</button></td></tr> }
+          @for (r of linhas(); track r) { <tr><td>{{ r }}</td><td>Ativa</td><td><button>Abrir</button></td></tr> }
         </tbody>
       </table>
     </div>
   `,
 })
-class Host {
-  readonly rows = signal(['101']);
+class Hospedeiro {
+  readonly linhas = signal(['101']);
 }
 
-describe('ResponsiveTables', () => {
-  const frame = () => new Promise((r) => requestAnimationFrame(() => r(null)));
+describe('TabelasResponsivas', () => {
+  const quadro = () => new Promise((r) => requestAnimationFrame(() => r(null)));
 
   it('copia o cabeçalho para data-label das células, inclusive de linhas novas', async () => {
-    const fixture = TestBed.createComponent(Host);
+    const fixture = TestBed.createComponent(Hospedeiro);
     fixture.detectChanges();
-    await frame();
-    const cells = () => Array.from(fixture.nativeElement.querySelectorAll('tbody tr:last-child td')) as HTMLElement[];
-    expect(cells().map((c) => c.getAttribute('data-label'))).toEqual(['Unidade', 'Situação', null]);
+    await quadro();
+    const celulas = () => Array.from(fixture.nativeElement.querySelectorAll('tbody tr:last-child td')) as HTMLElement[];
+    expect(celulas().map((c) => c.getAttribute('data-label'))).toEqual(['Unidade', 'Situação', null]);
 
-    fixture.componentInstance.rows.set(['101', '102']);
+    fixture.componentInstance.linhas.set(['101', '102']);
     fixture.detectChanges();
     await new Promise((r) => setTimeout(r)); // MutationObserver
-    await frame();
-    expect(cells()[0].textContent).toBe('102');
-    expect(cells()[1].getAttribute('data-label')).toBe('Situação');
+    await quadro();
+    expect(celulas()[0].textContent).toBe('102');
+    expect(celulas()[1].getAttribute('data-label')).toBe('Situação');
   });
 });

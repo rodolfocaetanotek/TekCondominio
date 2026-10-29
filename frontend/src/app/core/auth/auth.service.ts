@@ -5,7 +5,7 @@ import { Observable, catchError, finalize, firstValueFrom, map, of, shareReplay,
 import { Perfil, Permissao, TokenResponse } from './auth.models';
 
 /** Cabeçalho exigido pela API nos endpoints baseados em cookie (proteção CSRF). */
-const CLIENT_HEADERS = new HttpHeaders({ 'X-TekCondo-Client': 'web' });
+const CABECALHOS_CLIENTE = new HttpHeaders({ 'X-TekCondo-Client': 'web' });
 
 /**
  * Sessão do usuário. O access token fica somente em memória (nunca em localStorage);
@@ -17,11 +17,11 @@ export class AuthService {
   private readonly router = inject(Router);
 
   private readonly token = signal<string | null>(null);
-  private refreshInFlight: Observable<string> | null = null;
+  private renovacaoEmAndamento: Observable<string> | null = null;
 
-  readonly user = signal<Perfil | null>(null);
-  readonly isAuthenticated = computed(() => this.user() !== null);
-  readonly isOrganizationMember = computed(() => !!this.user()?.idAdministradora);
+  readonly usuario = signal<Perfil | null>(null);
+  readonly autenticado = computed(() => this.usuario() !== null);
+  readonly membroAdministradora = computed(() => !!this.usuario()?.idAdministradora);
 
   accessToken(): string | null {
     return this.token();
@@ -30,18 +30,18 @@ export class AuthService {
   login(email: string, senha: string): Observable<Perfil> {
     return this.http.post<TokenResponse>('/api/v1/auth/login', { email, senha }).pipe(
       tap((res) => this.token.set(res.accessToken)),
-      switchMap(() => this.loadProfile()),
+      switchMap(() => this.carregarPerfil()),
     );
   }
 
   /** Tenta restaurar a sessão a partir do cookie de refresh (ex.: recarga da página). */
-  restoreSession(): Promise<void> {
+  restaurarSessao(): Promise<void> {
     return firstValueFrom(
-      this.refresh().pipe(
-        switchMap(() => this.loadProfile()),
+      this.renovar().pipe(
+        switchMap(() => this.carregarPerfil()),
         map(() => undefined),
         catchError(() => {
-          this.clear();
+          this.limpar();
           return of(undefined);
         }),
       ),
@@ -49,62 +49,62 @@ export class AuthService {
   }
 
   /** Renova o access token; chamadas simultâneas compartilham a mesma requisição. */
-  refresh(): Observable<string> {
-    if (!this.refreshInFlight) {
-      this.refreshInFlight = this.http
-        .post<TokenResponse>('/api/v1/auth/refresh', null, { headers: CLIENT_HEADERS, withCredentials: true })
+  renovar(): Observable<string> {
+    if (!this.renovacaoEmAndamento) {
+      this.renovacaoEmAndamento = this.http
+        .post<TokenResponse>('/api/v1/auth/refresh', null, { headers: CABECALHOS_CLIENTE, withCredentials: true })
         .pipe(
           map((res) => res.accessToken),
           tap((token) => this.token.set(token)),
-          finalize(() => (this.refreshInFlight = null)),
+          finalize(() => (this.renovacaoEmAndamento = null)),
           shareReplay(1),
         );
     }
-    return this.refreshInFlight;
+    return this.renovacaoEmAndamento;
   }
 
   logout(): void {
     this.http
-      .post('/api/v1/auth/logout', null, { headers: CLIENT_HEADERS, withCredentials: true })
+      .post('/api/v1/auth/logout', null, { headers: CABECALHOS_CLIENTE, withCredentials: true })
       .pipe(catchError(() => of(null)))
-      .subscribe(() => this.endSession());
+      .subscribe(() => this.encerrarSessao());
   }
 
   /** Encerra a sessão local e volta ao login (ex.: refresh expirado). */
-  endSession(expired = false): void {
-    this.clear();
-    void this.router.navigate(['/login'], expired ? { queryParams: { expirada: 1 } } : undefined);
+  encerrarSessao(expirada = false): void {
+    this.limpar();
+    void this.router.navigate(['/login'], expirada ? { queryParams: { expirada: 1 } } : undefined);
   }
 
   /** Permissão válida para toda a organização. */
-  can(permission: Permissao): boolean {
-    return this.user()?.permissoesAdministradora.includes(permission) ?? false;
+  pode(permissao: Permissao): boolean {
+    return this.usuario()?.permissoesAdministradora.includes(permissao) ?? false;
   }
 
   /** Permissão em um condomínio específico (ou na organização inteira). */
-  canIn(permission: Permissao, condominiumId: string): boolean {
-    const me = this.user();
-    if (!me) {
+  podeEm(permissao: Permissao, idCondominio: string): boolean {
+    const perfil = this.usuario();
+    if (!perfil) {
       return false;
     }
-    return this.can(permission) || (me.permissoesCondominio[condominiumId]?.includes(permission) ?? false);
+    return this.pode(permissao) || (perfil.permissoesCondominio[idCondominio]?.includes(permissao) ?? false);
   }
 
   /** Possui a permissão em pelo menos um condomínio. */
-  canAny(permission: Permissao): boolean {
-    const me = this.user();
-    if (!me) {
+  podeAlgum(permissao: Permissao): boolean {
+    const perfil = this.usuario();
+    if (!perfil) {
       return false;
     }
-    return this.can(permission) || Object.values(me.permissoesCondominio).some((p) => p.includes(permission));
+    return this.pode(permissao) || Object.values(perfil.permissoesCondominio).some((p) => p.includes(permissao));
   }
 
-  private loadProfile(): Observable<Perfil> {
-    return this.http.get<Perfil>('/api/v1/auth/perfil').pipe(tap((me) => this.user.set(me)));
+  private carregarPerfil(): Observable<Perfil> {
+    return this.http.get<Perfil>('/api/v1/auth/perfil').pipe(tap((perfil) => this.usuario.set(perfil)));
   }
 
-  private clear(): void {
+  private limpar(): void {
     this.token.set(null);
-    this.user.set(null);
+    this.usuario.set(null);
   }
 }

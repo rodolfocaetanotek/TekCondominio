@@ -12,68 +12,68 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { catchError, debounceTime, distinctUntilChanged, filter, finalize, map, of, switchMap, tap } from 'rxjs';
-import { PaginaResponse, toProblem } from '../../core/api/api.models';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { DocPipe } from '../../comum/formato/documento.pipe';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
-import { PersonDialog } from './pessoa-dialog';
+import { PaginaResponse, paraProblema } from '../../core/api/api.models';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { DocumentoPipe } from '../../comum/formato/documento.pipe';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
+import { PessoaDialog } from './pessoa-dialog';
 import { PessoaDetalhe, PessoaResumo } from './estrutura.models';
-import { StructureService } from './estrutura.service';
+import { EstruturaService } from './estrutura.service';
 
 @Component({
-  selector: 'tc-person-list',
+  selector: 'tc-pessoa-lista',
   imports: [ReactiveFormsModule, MatTableModule, MatPaginatorModule, MatFormFieldModule, MatInputModule, MatButtonModule,
-    MatIconModule, MatProgressBarModule, MatCheckboxModule, PageHeader, EmptyState, DocPipe],
+    MatIconModule, MatProgressBarModule, MatCheckboxModule, CabecalhoPagina, EstadoVazio, DocumentoPipe],
   template: `
     <div class="tc-page">
-      <tc-page-header eyebrow="Cadastros" title="Pessoas" subtitle="Proprietários, inquilinos e moradores — cadastro único por CPF/CNPJ.">
-        @if (canEdit()) {
-          <button mat-flat-button (click)="create()"><mat-icon>person_add</mat-icon> Nova pessoa</button>
+      <tc-cabecalho-pagina sobretitulo="Cadastros" titulo="Pessoas" subtitulo="Proprietários, inquilinos e moradores — cadastro único por CPF/CNPJ.">
+        @if (podeEditar()) {
+          <button mat-flat-button (click)="cadastrar()"><mat-icon>person_add</mat-icon> Nova pessoa</button>
         }
-      </tc-page-header>
+      </tc-cabecalho-pagina>
       <div class="filters">
         <mat-form-field class="search">
           <mat-label>Buscar</mat-label>
           <mat-icon matPrefix>search</mat-icon>
-          <input matInput [formControl]="search" placeholder="Nome, e-mail ou CPF/CNPJ" autocomplete="off" />
+          <input matInput [formControl]="busca" placeholder="Nome, e-mail ou CPF/CNPJ" autocomplete="off" />
         </mat-form-field>
-        @if (context.id()) {
-          <mat-checkbox [formControl]="onlyCondo">Somente do condomínio selecionado</mat-checkbox>
+        @if (contexto.id()) {
+          <mat-checkbox [formControl]="apenasCondominio">Somente do condomínio selecionado</mat-checkbox>
         }
       </div>
-      <section class="tc-table-card" [attr.aria-busy]="loading()">
-        <mat-progress-bar [mode]="loading() ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="!loading()" />
-        @if (error(); as message) {
-          <tc-empty-state icon="cloud_off" title="Não foi possível carregar" [description]="message" />
-        } @else if (result(); as page) {
-          @if (page.totalElementos === 0) {
-            <tc-empty-state icon="contacts" title="Nenhuma pessoa encontrada" />
+      <section class="tc-table-card" [attr.aria-busy]="carregando()">
+        <mat-progress-bar [mode]="carregando() ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="!carregando()" />
+        @if (erro(); as mensagem) {
+          <tc-estado-vazio icone="cloud_off" titulo="Não foi possível carregar" [descricao]="mensagem" />
+        } @else if (resultado(); as pagina) {
+          @if (pagina.totalElementos === 0) {
+            <tc-estado-vazio icone="contacts" titulo="Nenhuma pessoa encontrada" />
           } @else {
             <div class="table-scroll">
-              <table mat-table [dataSource]="page.conteudo">
+              <table mat-table [dataSource]="pagina.conteudo">
                 <caption class="sr-only">Pessoas</caption>
                 <ng-container matColumnDef="name">
                   <th mat-header-cell *matHeaderCellDef>Nome</th>
                   <td mat-cell *matCellDef="let p"><strong class="block">{{ p.nome }}</strong>
-                    <span class="tc-muted mono">{{ p.documento ? (p.documento | doc: 'cpfCnpj') : '' }}</span></td>
+                    <span class="tc-muted mono">{{ p.documento ? (p.documento | documento: 'cpfCnpj') : '' }}</span></td>
                 </ng-container>
                 <ng-container matColumnDef="contact">
                   <th mat-header-cell *matHeaderCellDef>Contato</th>
-                  <td mat-cell *matCellDef="let p"><span class="block">{{ p.email ?? '' }}</span><span class="tc-muted">{{ p.telefone ? (p.telefone | doc: 'phone') : '' }}</span></td>
+                  <td mat-cell *matCellDef="let p"><span class="block">{{ p.email ?? '' }}</span><span class="tc-muted">{{ p.telefone ? (p.telefone | documento: 'telefone') : '' }}</span></td>
                 </ng-container>
                 <ng-container matColumnDef="units">
                   <th mat-header-cell *matHeaderCellDef>Unidades (vínculo vigente)</th>
-                  <td mat-cell *matCellDef="let p">{{ unitsOf(p) }}</td>
+                  <td mat-cell *matCellDef="let p">{{ unidadesDe(p) }}</td>
                 </ng-container>
-                <tr mat-header-row *matHeaderRowDef="columns"></tr>
-                <tr mat-row *matRowDef="let row; columns: columns" class="is-clickable" tabindex="0" role="link"
-                  [attr.aria-label]="'Abrir ' + row.nome" (click)="open(row)" (keydown.enter)="open(row)"></tr>
+                <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+                <tr mat-row *matRowDef="let linha; colunas: colunas" class="is-clickable" tabindex="0" role="link"
+                  [attr.aria-label]="'Abrir ' + linha.nome" (click)="abrir(linha)" (keydown.enter)="abrir(linha)"></tr>
               </table>
             </div>
-            <mat-paginator [length]="page.totalElementos" [pageIndex]="page.pagina" [pageSize]="page.tamanho"
-              [pageSizeOptions]="[20, 50, 100]" (page)="onPage($event)" aria-label="Paginação de pessoas" />
+            <mat-paginator [length]="pagina.totalElementos" [pageIndex]="pagina.pagina" [pageSize]="pagina.tamanho"
+              [pageSizeOptions]="[20, 50, 100]" (page)="aoPaginar($event)" aria-label="Paginação de pessoas" />
           }
         }
       </section>
@@ -83,35 +83,35 @@ import { StructureService } from './estrutura.service';
     .block { display: block; }
   `,
 })
-export class PersonList {
-  protected readonly context = inject(CondominiumContext);
-  private readonly service = inject(StructureService);
+export class PessoaLista {
+  protected readonly contexto = inject(CondominioContexto);
+  private readonly service = inject(EstruturaService);
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
-  private readonly notify = inject(NotificationService);
+  private readonly notificacao = inject(NotificacaoService);
 
-  protected readonly columns = ['name', 'contact', 'units'];
-  protected readonly search = new FormControl('', { nonNullable: true });
-  protected readonly onlyCondo = new FormControl(false, { nonNullable: true });
-  private readonly params = signal({ page: 0, size: 20, search: '', only: false });
-  protected readonly loading = signal(false);
-  protected readonly error = signal<string | null>(null);
-  protected readonly canEdit = computed(() => this.context.canAny('PEOPLE_EDIT'));
-  private readonly query = computed(() => ({ ...this.params(), condo: this.params().only ? this.context.id() : null }));
+  protected readonly colunas = ['name', 'contact', 'units'];
+  protected readonly busca = new FormControl('', { nonNullable: true });
+  protected readonly apenasCondominio = new FormControl(false, { nonNullable: true });
+  private readonly parametros = signal({ pagina: 0, tamanho: 20, busca: '', apenas: false });
+  protected readonly carregando = signal(false);
+  protected readonly erro = signal<string | null>(null);
+  protected readonly podeEditar = computed(() => this.contexto.podeAlgum('PEOPLE_EDIT'));
+  private readonly consulta = computed(() => ({ ...this.parametros(), condominio: this.parametros().apenas ? this.contexto.id() : null }));
 
-  protected readonly result = toSignal(
-    toObservable(this.query).pipe(
+  protected readonly resultado = toSignal(
+    toObservable(this.consulta).pipe(
       tap(() => {
-        this.loading.set(true);
-        this.error.set(null);
+        this.carregando.set(true);
+        this.erro.set(null);
       }),
       switchMap((q) =>
-        this.service.people({ search: q.search, page: q.page, size: q.size, condominiumId: q.condo ?? undefined }).pipe(
+        this.service.pessoas({ busca: q.busca, pagina: q.pagina, tamanho: q.tamanho, idCondominio: q.condominio ?? undefined }).pipe(
           catchError((err: unknown) => {
-            this.error.set(toProblem(err).detail);
+            this.erro.set(paraProblema(err).detail);
             return of<PaginaResponse<PessoaResumo> | null>(null);
           }),
-          finalize(() => this.loading.set(false)),
+          finalize(() => this.carregando.set(false)),
         ),
       ),
     ),
@@ -119,31 +119,31 @@ export class PersonList {
   );
 
   constructor() {
-    this.search.valueChanges
+    this.busca.valueChanges
       .pipe(debounceTime(300), map((v) => v.trim()), distinctUntilChanged(), takeUntilDestroyed())
-      .subscribe((search) => this.params.update((p) => ({ ...p, search, page: 0 })));
-    this.onlyCondo.valueChanges.pipe(takeUntilDestroyed()).subscribe((only) => this.params.update((p) => ({ ...p, only, page: 0 })));
+      .subscribe((busca) => this.parametros.update((p) => ({ ...p, busca, pagina: 0 })));
+    this.apenasCondominio.valueChanges.pipe(takeUntilDestroyed()).subscribe((apenas) => this.parametros.update((p) => ({ ...p, apenas, pagina: 0 })));
   }
 
-  unitsOf(p: PessoaResumo): string {
+  unidadesDe(p: PessoaResumo): string {
     return p.unidades.length ? p.unidades.join(', ') : '—';
   }
 
-  onPage(e: PageEvent): void {
-    this.params.update((p) => ({ ...p, page: e.pageIndex, size: e.pageSize }));
+  aoPaginar(e: PageEvent): void {
+    this.parametros.update((p) => ({ ...p, pagina: e.pageIndex, tamanho: e.pageSize }));
   }
 
-  open(p: PessoaResumo): void {
+  abrir(p: PessoaResumo): void {
     void this.router.navigate(['/pessoas', p.id]);
   }
 
-  create(): void {
+  cadastrar(): void {
     this.dialog
-      .open(PersonDialog, { data: {}, width: '680px', maxWidth: '95vw' })
+      .open(PessoaDialog, { data: {}, width: '680px', maxWidth: '95vw' })
       .afterClosed()
       .pipe(filter((p): p is PessoaDetalhe => !!p))
       .subscribe((p) => {
-        this.notify.success(`${p.nome} cadastrado(a).`);
+        this.notificacao.sucesso(`${p.nome} cadastrado(a).`);
         void this.router.navigate(['/pessoas', p.id]);
       });
   }

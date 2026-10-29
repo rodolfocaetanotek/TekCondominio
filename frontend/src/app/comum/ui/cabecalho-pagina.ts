@@ -1,16 +1,16 @@
 import { Component, input } from '@angular/core';
 
 @Component({
-  selector: 'tc-page-header',
+  selector: 'tc-cabecalho-pagina',
   template: `
     <header class="head">
       <div>
-        @if (eyebrow()) {
-          <p class="eyebrow">{{ eyebrow() }}</p>
+        @if (sobretitulo()) {
+          <p class="eyebrow">{{ sobretitulo() }}</p>
         }
-        <h1>{{ title() }}</h1>
-        @if (subtitle()) {
-          <p class="tc-muted sub">{{ subtitle() }}</p>
+        <h1>{{ titulo() }}</h1>
+        @if (subtitulo()) {
+          <p class="tc-muted sub">{{ subtitulo() }}</p>
         }
       </div>
       <div class="actions"><ng-content /></div>
@@ -30,8 +30,8 @@ import { Component, input } from '@angular/core';
     }
   `,
 })
-export class PageHeader {
-  readonly title = input.required<string>();
-  readonly subtitle = input<string>();
-  readonly eyebrow = input<string>();
+export class CabecalhoPagina {
+  readonly titulo = input.required<string>();
+  readonly subtitulo = input<string>();
+  readonly sobretitulo = input<string>();
 }

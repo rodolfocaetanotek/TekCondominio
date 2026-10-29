@@ -10,19 +10,19 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
 import { Observable, filter } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
+import { paraProblema } from '../../core/api/api.models';
 import { AuthService } from '../../core/auth/auth.service';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { FieldError } from '../../comum/formularios/erro-campo';
-import { ConfirmDialog, ConfirmDialogData } from '../../comum/ui/confirmacao-dialog';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
-import { RoleFields } from './campos-papel';
-import { Atribuicao, UsuarioDetalhe as User } from './usuario.models';
-import { UserService } from './usuario.service';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { MensagemErroCampo } from '../../comum/formularios/erro-campo';
+import { ConfirmacaoDialog, DadosConfirmacaoDialog } from '../../comum/ui/confirmacao-dialog';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
+import { CamposPapel } from './campos-papel';
+import { Atribuicao, UsuarioDetalhe } from './usuario.models';
+import { UsuarioService } from './usuario.service';
 
 @Component({
-  selector: 'tc-user-detail',
+  selector: 'tc-usuario-detalhe',
   imports: [
     DatePipe,
     ReactiveFormsModule,
@@ -33,144 +33,144 @@ import { UserService } from './usuario.service';
     MatIconModule,
     MatProgressBarModule,
     MatTooltipModule,
-    FieldError,
-    PageHeader,
-    EmptyState,
-    RoleFields,
+    MensagemErroCampo,
+    CabecalhoPagina,
+    EstadoVazio,
+    CamposPapel,
   ],
   templateUrl: './usuario-detalhe.html',
   styleUrl: './usuario-detalhe.scss',
 })
-export class UserDetail implements OnInit {
-  private readonly service = inject(UserService);
+export class UsuarioDetalhePage implements OnInit {
+  private readonly service = inject(UsuarioService);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
+  private readonly notificacao = inject(NotificacaoService);
   protected readonly auth = inject(AuthService);
 
   readonly id = input.required<string>();
 
-  protected readonly user = signal<User | null>(null);
-  protected readonly loading = signal(true);
-  protected readonly busy = signal(false);
-  protected readonly loadError = signal<string | null>(null);
-  protected readonly actionError = signal<string | null>(null);
+  protected readonly usuario = signal<UsuarioDetalhe | null>(null);
+  protected readonly carregando = signal(true);
+  protected readonly ocupado = signal(false);
+  protected readonly erroCarga = signal<string | null>(null);
+  protected readonly erroAcao = signal<string | null>(null);
 
-  protected readonly canManage = computed(() => this.auth.can('USER_MANAGE'));
-  protected readonly isSelf = computed(() => this.user()?.id === this.auth.user()?.id);
+  protected readonly podeGerenciar = computed(() => this.auth.pode('USER_MANAGE'));
+  protected readonly ehProprio = computed(() => this.usuario()?.id === this.auth.usuario()?.id);
 
-  protected readonly name = new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(150)] });
-  protected readonly roleCode = new FormControl('', { nonNullable: true, validators: [Validators.required] });
-  protected readonly condominiumId = new FormControl<string | null>(null);
+  protected readonly nome = new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(150)] });
+  protected readonly codigoPapel = new FormControl('', { nonNullable: true, validators: [Validators.required] });
+  protected readonly idCondominio = new FormControl<string | null>(null);
 
   ngOnInit(): void {
-    this.service.get(this.id()).subscribe({
+    this.service.obter(this.id()).subscribe({
       next: (u) => {
-        this.apply(u);
-        this.loading.set(false);
+        this.aplicar(u);
+        this.carregando.set(false);
       },
       error: (err: unknown) => {
-        this.loadError.set(toProblem(err).detail);
-        this.loading.set(false);
+        this.erroCarga.set(paraProblema(err).detail);
+        this.carregando.set(false);
       },
     });
   }
 
-  saveName(): void {
-    const u = this.user();
-    this.name.markAsTouched();
-    if (!u || this.name.invalid) return;
-    this.run(this.service.rename(u.id, this.name.value.trim(), u.versao), 'Nome atualizado.');
+  salvarNome(): void {
+    const u = this.usuario();
+    this.nome.markAsTouched();
+    if (!u || this.nome.invalid) return;
+    this.executar(this.service.renomear(u.id, this.nome.value.trim(), u.versao), 'Nome atualizado.');
   }
 
-  addAssignment(): void {
-    const u = this.user();
-    this.roleCode.markAsTouched();
-    this.condominiumId.markAsTouched();
-    if (!u || this.roleCode.invalid || this.condominiumId.invalid) return;
-    this.run(
-      this.service.addAssignment(u.id, { codigoPapel: this.roleCode.value, idCondominio: this.condominiumId.value }),
+  adicionarAtribuicao(): void {
+    const u = this.usuario();
+    this.codigoPapel.markAsTouched();
+    this.idCondominio.markAsTouched();
+    if (!u || this.codigoPapel.invalid || this.idCondominio.invalid) return;
+    this.executar(
+      this.service.adicionarAtribuicao(u.id, { codigoPapel: this.codigoPapel.value, idCondominio: this.idCondominio.value }),
       'Papel atribuído.',
       () => {
-        this.roleCode.reset('');
-        this.condominiumId.reset(null);
+        this.codigoPapel.reset('');
+        this.idCondominio.reset(null);
       },
     );
   }
 
-  removeAssignment(a: Atribuicao): void {
-    const u = this.user();
+  removerAtribuicao(a: Atribuicao): void {
+    const u = this.usuario();
     if (!u) return;
-    this.confirm({
-      title: 'Remover papel',
-      message: `Remover "${a.nomePapel}"${a.nomeCondominio ? ' em ' + a.nomeCondominio : ''} de ${u.nome}? O acesso correspondente é retirado imediatamente.`,
-      confirmLabel: 'Remover',
-      danger: true,
-    }).subscribe(() => this.run(this.service.removeAssignment(u.id, a.id), 'Papel removido.'));
+    this.confirmar({
+      titulo: 'Remover papel',
+      mensagem: `Remover "${a.nomePapel}"${a.nomeCondominio ? ' em ' + a.nomeCondominio : ''} de ${u.nome}? O acesso correspondente é retirado imediatamente.`,
+      rotuloConfirmar: 'Remover',
+      perigo: true,
+    }).subscribe(() => this.executar(this.service.removerAtribuicao(u.id, a.id), 'Papel removido.'));
   }
 
-  toggleActive(): void {
-    const u = this.user();
+  alternarAtivo(): void {
+    const u = this.usuario();
     if (!u) return;
-    const deactivating = u.ativo;
-    this.confirm(
-      deactivating
-        ? { title: 'Desativar usuário', message: `${u.nome} perderá o acesso imediatamente e todas as sessões serão encerradas.`, confirmLabel: 'Desativar', danger: true }
-        : { title: 'Reativar usuário', message: `Reativar o acesso de ${u.nome}?`, confirmLabel: 'Reativar' },
+    const desativando = u.ativo;
+    this.confirmar(
+      desativando
+        ? { titulo: 'Desativar usuário', mensagem: `${u.nome} perderá o acesso imediatamente e todas as sessões serão encerradas.`, rotuloConfirmar: 'Desativar', perigo: true }
+        : { titulo: 'Reativar usuário', mensagem: `Reativar o acesso de ${u.nome}?`, rotuloConfirmar: 'Reativar' },
     ).subscribe(() =>
-      this.run(deactivating ? this.service.deactivate(u.id) : this.service.activate(u.id), deactivating ? 'Usuário desativado.' : 'Usuário reativado.'),
+      this.executar(desativando ? this.service.desativar(u.id) : this.service.ativar(u.id), desativando ? 'Usuário desativado.' : 'Usuário reativado.'),
     );
   }
 
-  resendInvite(): void {
-    const u = this.user();
+  reenviarConvite(): void {
+    const u = this.usuario();
     if (!u) return;
-    this.busy.set(true);
-    this.actionError.set(null);
-    this.service.resendInvite(u.id).subscribe({
+    this.ocupado.set(true);
+    this.erroAcao.set(null);
+    this.service.reenviarConvite(u.id).subscribe({
       next: () => {
-        this.busy.set(false);
-        this.notify.success(`Novo convite enviado para ${u.email}. O convite anterior deixou de valer.`);
+        this.ocupado.set(false);
+        this.notificacao.sucesso(`Novo convite enviado para ${u.email}. O convite anterior deixou de valer.`);
       },
-      error: (err: unknown) => this.fail(err),
+      error: (err: unknown) => this.falhar(err),
     });
   }
 
-  private run(call$: Observable<User>, success: string, after?: () => void): void {
-    this.busy.set(true);
-    this.actionError.set(null);
-    call$.subscribe({
+  private executar(chamada$: Observable<UsuarioDetalhe>, sucesso: string, depois?: () => void): void {
+    this.ocupado.set(true);
+    this.erroAcao.set(null);
+    chamada$.subscribe({
       next: (u) => {
-        this.apply(u);
-        this.busy.set(false);
-        this.notify.success(success);
-        after?.();
+        this.aplicar(u);
+        this.ocupado.set(false);
+        this.notificacao.sucesso(sucesso);
+        depois?.();
       },
-      error: (err: unknown) => this.fail(err),
+      error: (err: unknown) => this.falhar(err),
     });
   }
 
-  private fail(err: unknown): void {
-    this.busy.set(false);
-    const problem = toProblem(err);
-    if (problem.status !== 403 && problem.status !== 0 && problem.status < 500) {
-      this.actionError.set(problem.codigo === 'VALIDATION_ERROR' ? (problem.erros ?? []).map((e) => e.mensagem).join(' ') : problem.detail);
+  private falhar(err: unknown): void {
+    this.ocupado.set(false);
+    const problema = paraProblema(err);
+    if (problema.status !== 403 && problema.status !== 0 && problema.status < 500) {
+      this.erroAcao.set(problema.codigo === 'VALIDATION_ERROR' ? (problema.erros ?? []).map((e) => e.mensagem).join(' ') : problema.detail);
     }
   }
 
-  private confirm(data: ConfirmDialogData): Observable<true> {
+  private confirmar(data: DadosConfirmacaoDialog): Observable<true> {
     return this.dialog
-      .open<ConfirmDialog, ConfirmDialogData, string | true>(ConfirmDialog, { data, width: '440px' })
+      .open<ConfirmacaoDialog, DadosConfirmacaoDialog, string | true>(ConfirmacaoDialog, { data, width: '440px' })
       .afterClosed()
       .pipe(filter((r): r is true => r === true));
   }
 
-  private apply(u: User): void {
-    this.user.set(u);
-    this.name.reset(u.nome);
-    if (this.canManage()) {
-      this.name.enable();
+  private aplicar(u: UsuarioDetalhe): void {
+    this.usuario.set(u);
+    this.nome.reset(u.nome);
+    if (this.podeGerenciar()) {
+      this.nome.enable();
     } else {
-      this.name.disable();
+      this.nome.disable();
     }
   }
 }

@@ -10,80 +10,80 @@ export interface OpcaoCondominio {
   permissoes: Permissao[];
 }
 
-const STORAGE_KEY = 'tc.condominio';
+const CHAVE_ARMAZENAMENTO = 'tc.condominio';
 
 /**
  * Condomínio em foco na interface (seletor da barra superior). As telas por condomínio usam esta seleção;
  * o backend continua validando cada acesso. A escolha é lembrada por navegador (preferência, não dado sensível).
  */
 @Injectable({ providedIn: 'root' })
-export class CondominiumContext {
+export class CondominioContexto {
   private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthService);
 
-  readonly options = signal<OpcaoCondominio[]>([]);
-  readonly loaded = signal(false);
-  private readonly selectedId = signal<string | null>(readStored());
+  readonly opcoes = signal<OpcaoCondominio[]>([]);
+  readonly carregado = signal(false);
+  private readonly idSelecionado = signal<string | null>(lerArmazenado());
 
-  readonly selected = computed(() => this.options().find((o) => o.id === this.selectedId()) ?? null);
-  readonly id = computed(() => this.selected()?.id ?? null);
+  readonly selecionado = computed(() => this.opcoes().find((o) => o.id === this.idSelecionado()) ?? null);
+  readonly id = computed(() => this.selecionado()?.id ?? null);
 
   constructor() {
     // Carrega ao entrar (membros de administradora) e limpa ao sair.
     effect(() => {
-      const user = this.auth.user();
+      const usuario = this.auth.usuario();
       untracked(() => {
-        if (user?.idAdministradora) {
-          this.reload();
+        if (usuario?.idAdministradora) {
+          this.recarregar();
         } else {
-          this.options.set([]);
-          this.loaded.set(false);
+          this.opcoes.set([]);
+          this.carregado.set(false);
         }
       });
     });
   }
 
-  reload(): void {
+  recarregar(): void {
     this.http.get<OpcaoCondominio[]>('/api/v1/condominios/acessiveis').subscribe({
-      next: (options) => {
-        this.options.set(options);
-        if (!options.some((o) => o.id === this.selectedId())) {
-          const first = options.find((o) => o.situacao === 'ACTIVE') ?? options[0];
-          this.select(first?.id ?? null);
+      next: (opcoes) => {
+        this.opcoes.set(opcoes);
+        if (!opcoes.some((o) => o.id === this.idSelecionado())) {
+          const primeiro = opcoes.find((o) => o.situacao === 'ACTIVE') ?? opcoes[0];
+          this.selecionar(primeiro?.id ?? null);
         }
-        this.loaded.set(true);
+        this.carregado.set(true);
       },
       error: () => {
-        this.options.set([]);
-        this.loaded.set(true);
+        this.opcoes.set([]);
+        this.carregado.set(true);
       },
     });
   }
 
-  select(id: string | null): void {
-    this.selectedId.set(id);
+  selecionar(id: string | null): void {
+    this.idSelecionado.set(id);
     try {
-      if (id) localStorage.setItem(STORAGE_KEY, id);
-      else localStorage.removeItem(STORAGE_KEY);
+      if (id) localStorage.setItem(CHAVE_ARMAZENAMENTO, id);
+      else localStorage.removeItem(CHAVE_ARMAZENAMENTO);
     } catch {
       // armazenamento indisponível: a seleção vale só para esta aba
     }
   }
 
   /** Permissão no condomínio selecionado (apenas para exibir/ocultar; o backend decide). */
-  can(permission: Permissao): boolean {
-    return this.selected()?.permissoes.includes(permission) ?? false;
+  pode(permissao: Permissao): boolean {
+    return this.selecionado()?.permissoes.includes(permissao) ?? false;
   }
 
   /** Permissão em algum condomínio acessível. */
-  canAny(permission: Permissao): boolean {
-    return this.options().some((o) => o.permissoes.includes(permission));
+  podeAlgum(permissao: Permissao): boolean {
+    return this.opcoes().some((o) => o.permissoes.includes(permissao));
   }
 }
 
-function readStored(): string | null {
+function lerArmazenado(): string | null {
   try {
-    return localStorage.getItem(STORAGE_KEY);
+    return localStorage.getItem(CHAVE_ARMAZENAMENTO);
   } catch {
     return null;
   }

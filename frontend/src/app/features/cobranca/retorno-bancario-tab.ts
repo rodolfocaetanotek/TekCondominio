@@ -9,31 +9,31 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { catchError, combineLatest, filter, map, of, switchMap } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { openForm } from '../../comum/ui/formulario-dialog';
-import { IsoDatePipe } from '../../comum/ui/data-iso.pipe';
-import { ContaBancaria, FinanceApi, ItemRetorno } from '../financeiro/financeiro-api';
+import { paraProblema } from '../../core/api/api.models';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { abrirFormulario } from '../../comum/ui/formulario-dialog';
+import { DataIsoPipe } from '../../comum/ui/data-iso.pipe';
+import { ContaBancaria, FinanceiroApi, ItemRetorno } from '../financeiro/financeiro-api';
 
 /**
  * Retorno de cobrança (CNAB 240): o arquivo baixado do banco dá baixa automática nas cobranças liquidadas,
  * identificadas pelo número de cobrança informado no boleto. O que não puder ser baixado fica pendente.
  */
 @Component({
-  selector: 'tc-bank-return-tab',
+  selector: 'tc-retorno-bancario-tab',
   imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatSelectModule,
-    MatTooltipModule, IsoDatePipe],
+    MatTooltipModule, DataIsoPipe],
   template: `
     <section class="tc-card">
       <div class="filters">
         <mat-form-field class="search"><mat-label>Conta de cobrança</mat-label>
-          <mat-select [formControl]="account">
-            @for (a of accounts() ?? []; track a.id) { <mat-option [value]="a.id">{{ a.nome }}{{ a.codigoBanco ? ' · banco ' + a.codigoBanco : '' }}</mat-option> }
+          <mat-select [formControl]="conta">
+            @for (a of contas() ?? []; track a.id) { <mat-option [value]="a.id">{{ a.nome }}{{ a.codigoBanco ? ' · banco ' + a.codigoBanco : '' }}</mat-option> }
           </mat-select></mat-form-field>
-        @if (canEdit() && account.value) {
-          <label class="tc-file-button"><input type="file" accept=".ret,.RET,.txt,.TXT,.cnab" (change)="upload($event)" [disabled]="busy()" />
-            <mat-icon>upload_file</mat-icon> {{ busy() ? 'Processando…' : 'Processar retorno CNAB 240' }}</label>
+        @if (podeEditar() && conta.value) {
+          <label class="tc-file-button"><input type="file" accept=".ret,.RET,.txt,.TXT,.cnab" (change)="enviarArquivo($event)" [disabled]="ocupado()" />
+            <mat-icon>upload_file</mat-icon> {{ ocupado() ? 'Processando…' : 'Processar retorno CNAB 240' }}</label>
         }
       </div>
       <p class="tc-muted small hint">Layout FEBRABAN 240 posições (segmentos T e U). A cobrança é localizada pelo "seu número" ou nosso número
@@ -41,21 +41,21 @@ import { ContaBancaria, FinanceApi, ItemRetorno } from '../financeiro/financeiro
     </section>
 
     <section class="tc-card">
-      <h3 class="tc-section-title">Pendências de baixa ({{ pending()?.length ?? 0 }})</h3>
+      <h3 class="tc-section-title">Pendências de baixa ({{ pendente()?.length ?? 0 }})</h3>
       <div class="scroll">
       <table class="lines tc-cards-mobile">
         <thead><tr><th>Pago em</th><th>Seu nº / nosso nº</th><th class="money">Valor pago</th><th>Motivo</th><th></th></tr></thead>
         <tbody>
-          @for (i of pending() ?? []; track i.id) {
+          @for (i of pendente() ?? []; track i.id) {
             <tr>
-              <td>{{ i.dataOcorrencia | isoDate }}</td>
+              <td>{{ i.dataOcorrencia | dataIso }}</td>
               <td>{{ i.seuNumero || '—' }} / {{ i.nossoNumero || '—' }}</td>
               <td class="money">{{ i.valorPago | currency: 'BRL' }}</td>
               <td>{{ i.mensagem }}{{ i.descricaoLancamento ? ' · ' + i.descricaoLancamento : '' }}</td>
               <td class="acts">
-                @if (canEdit()) {
-                  <button mat-icon-button (click)="settle(i)" matTooltip="Baixar em uma cobrança" aria-label="Baixar"><mat-icon>task_alt</mat-icon></button>
-                  <button mat-icon-button (click)="ignore(i)" matTooltip="Descartar com motivo" aria-label="Descartar"><mat-icon>block</mat-icon></button>
+                @if (podeEditar()) {
+                  <button mat-icon-button (click)="baixar(i)" matTooltip="Baixar em uma cobrança" aria-label="Baixar"><mat-icon>task_alt</mat-icon></button>
+                  <button mat-icon-button (click)="ignorar(i)" matTooltip="Descartar com motivo" aria-label="Descartar"><mat-icon>block</mat-icon></button>
                 }
               </td>
             </tr>
@@ -73,7 +73,7 @@ import { ContaBancaria, FinanceApi, ItemRetorno } from '../financeiro/financeiro
       <table class="lines tc-cards-mobile">
         <thead><tr><th>Processado em</th><th>Arquivo</th><th>Banco</th><th>Títulos</th><th>Baixados</th><th>Pendentes</th><th>Por</th></tr></thead>
         <tbody>
-          @for (f of files() ?? []; track f.id) {
+          @for (f of arquivos() ?? []; track f.id) {
             <tr><td>{{ f.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</td><td>{{ f.nomeArquivo }}</td><td>{{ f.codigoBanco }}</td>
               <td>{{ f.totalItens }}</td><td>{{ f.baixados }}</td><td [class.warn]="f.pendentes > 0">{{ f.pendentes }}</td><td>{{ f.nomeCriadoPor }}</td></tr>
           } @empty {
@@ -94,63 +94,63 @@ import { ContaBancaria, FinanceApi, ItemRetorno } from '../financeiro/financeiro
     .acts { white-space: nowrap; }
   `,
 })
-export class BankReturnTab {
-  private readonly context = inject(CondominiumContext);
-  private readonly api = inject(FinanceApi);
+export class RetornoBancarioTab {
+  private readonly contexto = inject(CondominioContexto);
+  private readonly api = inject(FinanceiroApi);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
-  private readonly tick = signal(0);
-  protected readonly busy = signal(false);
-  protected readonly account = new FormControl<string | null>(null);
+  private readonly notificacao = inject(NotificacaoService);
+  private readonly recarga = signal(0);
+  protected readonly ocupado = signal(false);
+  protected readonly conta = new FormControl<string | null>(null);
 
-  protected readonly canEdit = computed(() => this.context.can('BILLING_EDIT') && this.context.can('FINANCE_EDIT')
-    && this.context.selected()?.situacao === 'ACTIVE');
-  private readonly source = combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(filter(([c]) => !!c));
-  protected readonly accounts = toSignal(toObservable(this.context.id).pipe(filter((c) => !!c),
-    switchMap((c) => this.api.bankAccounts(c!).pipe(map((list) => list.filter((a) => a.tipo !== 'CASH' && a.ativo)),
+  protected readonly podeEditar = computed(() => this.contexto.pode('BILLING_EDIT') && this.contexto.pode('FINANCE_EDIT')
+    && this.contexto.selecionado()?.situacao === 'ACTIVE');
+  private readonly origem = combineLatest([toObservable(this.contexto.id), toObservable(this.recarga)]).pipe(filter(([c]) => !!c));
+  protected readonly contas = toSignal(toObservable(this.contexto.id).pipe(filter((c) => !!c),
+    switchMap((c) => this.api.contasBancarias(c!).pipe(map((listar) => listar.filter((a) => a.tipo !== 'CASH' && a.ativo)),
       catchError(() => of([] as ContaBancaria[]))))));
-  protected readonly files = toSignal(this.source.pipe(switchMap(([c]) => this.api.returnFiles(c!).pipe(catchError(() => of([]))))));
-  protected readonly pending = toSignal(this.source.pipe(switchMap(([c]) => this.api.pendingReturnItems(c!).pipe(catchError(() => of([] as ItemRetorno[]))))));
+  protected readonly arquivos = toSignal(this.origem.pipe(switchMap(([c]) => this.api.arquivosRetorno(c!).pipe(catchError(() => of([]))))));
+  protected readonly pendente = toSignal(this.origem.pipe(switchMap(([c]) => this.api.itensRetornoPendentes(c!).pipe(catchError(() => of([] as ItemRetorno[]))))));
 
-  upload(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (!file) return;
-    this.busy.set(true);
-    this.api.processReturn(this.context.id()!, this.account.value!, file).subscribe({
+  enviarArquivo(evento: Event): void {
+    const campoArquivo = evento.target as HTMLInputElement;
+    const arquivo = campoArquivo.files?.[0];
+    campoArquivo.value = '';
+    if (!arquivo) return;
+    this.ocupado.set(true);
+    this.api.processarRetorno(this.contexto.id()!, this.conta.value!, arquivo).subscribe({
       next: (r) => {
-        this.busy.set(false);
-        this.notify.success(`Retorno processado: ${r.baixados} cobrança(s) baixada(s), ${r.pendentes} pendente(s).`);
-        this.tick.update((t) => t + 1);
+        this.ocupado.set(false);
+        this.notificacao.sucesso(`Retorno processado: ${r.baixados} cobrança(s) baixada(s), ${r.pendentes} pendente(s).`);
+        this.recarga.update((t) => t + 1);
       },
       error: (err: unknown) => {
-        this.busy.set(false);
-        this.notify.error(toProblem(err).detail);
+        this.ocupado.set(false);
+        this.notificacao.erro(paraProblema(err).detail);
       },
     });
   }
 
-  settle(item: ItemRetorno): void {
-    const c = this.context.id()!;
-    this.api.entries(c, { natureza: 'INCOME', situacao: ['OPEN', 'PARTIAL'], tamanho: 200, ordem: 'dataVencimento,asc' }).subscribe((page) =>
-      openForm(this.dialog, {
-        title: 'Baixar pagamento do retorno',
-        intro: `Valor pago: R$ ${item.valorPago.toFixed(2).replace('.', ',')}. Escolha a cobrança correspondente.`,
-        fields: [{ key: 'idLancamento', label: 'Cobrança', type: 'select', required: true,
-          options: page.conteudo.map((e) => ({ value: e.id, label: `${e.rotuloUnidade ?? '—'} · ${e.descricao} · venc. ${e.dataVencimento.split('-').reverse().join('/')} · R$ ${e.valorAberto.toFixed(2).replace('.', ',')}` })) }],
-        submit: (v) => this.api.settleReturnItem(c, item.id, v['idLancamento'] as string),
+  baixar(item: ItemRetorno): void {
+    const c = this.contexto.id()!;
+    this.api.lancamentos(c, { natureza: 'INCOME', situacao: ['OPEN', 'PARTIAL'], tamanho: 200, ordem: 'dataVencimento,asc' }).subscribe((pagina) =>
+      abrirFormulario(this.dialog, {
+        titulo: 'Baixar pagamento do retorno',
+        introducao: `Valor pago: R$ ${item.valorPago.toFixed(2).replace('.', ',')}. Escolha a cobrança correspondente.`,
+        campos: [{ chave: 'idLancamento', rotulo: 'Cobrança', tipo: 'select', obrigatorio: true,
+          opcoes: pagina.conteudo.map((e) => ({ valor: e.id, rotulo: `${e.rotuloUnidade ?? '—'} · ${e.descricao} · venc. ${e.dataVencimento.split('-').reverse().join('/')} · R$ ${e.valorAberto.toFixed(2).replace('.', ',')}` })) }],
+        enviar: (v) => this.api.baixarItemRetorno(c, item.id, v['idLancamento'] as string),
       }).pipe(filter((r) => !!r)).subscribe(() => {
-        this.notify.success('Pagamento baixado.');
-        this.tick.update((t) => t + 1);
+        this.notificacao.sucesso('Pagamento baixado.');
+        this.recarga.update((t) => t + 1);
       }));
   }
 
-  ignore(item: ItemRetorno): void {
-    openForm(this.dialog, {
-      title: 'Descartar pendência do retorno',
-      fields: [{ key: 'observacao', label: 'Motivo', required: true, maxLength: 255 }],
-      submit: (v) => this.api.ignoreReturnItem(this.context.id()!, item.id, v['observacao'] as string),
-    }).pipe(filter((r) => !!r)).subscribe(() => this.tick.update((t) => t + 1));
+  ignorar(item: ItemRetorno): void {
+    abrirFormulario(this.dialog, {
+      titulo: 'Descartar pendência do retorno',
+      campos: [{ chave: 'observacao', rotulo: 'Motivo', obrigatorio: true, tamanhoMaximo: 255 }],
+      enviar: (v) => this.api.ignorarItemRetorno(this.contexto.id()!, item.id, v['observacao'] as string),
+    }).pipe(filter((r) => !!r)).subscribe(() => this.recarga.update((t) => t + 1));
   }
 }

@@ -4,35 +4,35 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { catchError, combineLatest, filter, of, switchMap } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { LabelPipe } from '../../comum/rotulo.pipe';
-import { options } from '../../comum/rotulos';
-import { todayIso } from '../../comum/ui/datas';
-import { openForm } from '../../comum/ui/formulario-dialog';
-import { IsoDatePipe } from '../../comum/ui/data-iso.pipe';
-import { AutorizacaoVisita, VisitorApi } from './portaria-api';
+import { paraProblema } from '../../core/api/api.models';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { RotuloPipe } from '../../comum/rotulo.pipe';
+import { opcoes } from '../../comum/rotulos';
+import { hojeIso } from '../../comum/ui/datas';
+import { abrirFormulario } from '../../comum/ui/formulario-dialog';
+import { DataIsoPipe } from '../../comum/ui/data-iso.pipe';
+import { AutorizacaoVisita, PortariaApi } from './portaria-api';
 
 /** Autorizações de visitantes/prestadores/entregas no portal do morador. */
 @Component({
-  selector: 'tc-portal-visitors',
-  imports: [MatButtonModule, MatIconModule, IsoDatePipe, LabelPipe],
+  selector: 'tc-portal-visitantes',
+  imports: [MatButtonModule, MatIconModule, DataIsoPipe, RotuloPipe],
   template: `
     <section class="tc-card mt">
       <div class="head">
         <p class="tc-muted small">Autorize a entrada com antecedência. Informe o <strong>código</strong> ao visitante: a portaria libera a entrada com ele
           e você recebe um aviso quando ele chegar.</p>
-        <button mat-flat-button class="primary" (click)="authorize()"><mat-icon>person_add</mat-icon> Autorizar entrada</button>
+        <button mat-flat-button class="primary" (click)="autorizar()"><mat-icon>person_add</mat-icon> Autorizar entrada</button>
       </div>
-      @for (v of list() ?? []; track v.id) {
+      @for (v of lista() ?? []; track v.id) {
         <div class="row">
-          <div class="who"><strong>{{ v.nome }}</strong> · {{ v.tipo | label: 'visitorKind' }} · unid. {{ v.rotuloUnidade }}<br />
-            <span class="tc-muted small">{{ v.validaDe | isoDate }}{{ v.validaAte !== v.validaDe ? ' a ' + (v.validaAte | isoDate) : '' }}</span>
+          <div class="who"><strong>{{ v.nome }}</strong> · {{ v.tipo | rotulo: 'visitorKind' }} · unid. {{ v.rotuloUnidade }}<br />
+            <span class="tc-muted small">{{ v.validaDe | dataIso }}{{ v.validaAte !== v.validaDe ? ' a ' + (v.validaAte | dataIso) : '' }}</span>
             <span class="tc-status" [class.is-pending]="v.situacao === 'EXPECTED'" [class.is-success]="v.situacao === 'INSIDE'"
-              [class.is-inactive]="v.situacao === 'LEFT' || v.situacao === 'CANCELLED'">{{ v.situacao | label: 'visitorStatus' }}</span></div>
+              [class.is-inactive]="v.situacao === 'LEFT' || v.situacao === 'CANCELLED'">{{ v.situacao | rotulo: 'visitorStatus' }}</span></div>
           <div class="right">
             @if (v.codigoAcesso) { <span class="code" aria-label="Código de acesso">{{ v.codigoAcesso }}</span> }
-            @if (v.situacao === 'EXPECTED') { <button mat-stroked-button (click)="cancel(v)">Cancelar</button> }
+            @if (v.situacao === 'EXPECTED') { <button mat-stroked-button (click)="cancelar(v)">Cancelar</button> }
           </div>
         </div>
       } @empty { <p class="tc-muted">Nenhuma autorização.</p> }
@@ -56,42 +56,42 @@ import { AutorizacaoVisita, VisitorApi } from './portaria-api';
     }
   `,
 })
-export class PortalVisitors {
-  readonly condominiumId = input.required<string>();
-  readonly units = input.required<{ idUnidade: string; rotulo: string }[]>();
-  private readonly api = inject(VisitorApi);
+export class PortalVisitantes {
+  readonly idCondominio = input.required<string>();
+  readonly unidades = input.required<{ idUnidade: string; rotulo: string }[]>();
+  private readonly api = inject(PortariaApi);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
-  private readonly tick = signal(0);
+  private readonly notificacao = inject(NotificacaoService);
+  private readonly recarga = signal(0);
 
-  protected readonly list = toSignal(combineLatest([toObservable(this.condominiumId), toObservable(this.tick)]).pipe(
-    switchMap(([c]) => this.api.portalList(c).pipe(catchError(() => of([] as AutorizacaoVisita[]))))));
+  protected readonly lista = toSignal(combineLatest([toObservable(this.idCondominio), toObservable(this.recarga)]).pipe(
+    switchMap(([c]) => this.api.portalListar(c).pipe(catchError(() => of([] as AutorizacaoVisita[]))))));
 
-  authorize(): void {
-    openForm(this.dialog, {
-      title: 'Autorizar entrada',
-      fields: [
-        { key: 'idUnidade', label: 'Unidade', type: 'select', required: true, value: this.units()[0]?.idUnidade, span: 6,
-          options: this.units().map((u) => ({ value: u.idUnidade, label: u.rotulo })) },
-        { key: 'tipo', label: 'Tipo', type: 'select', required: true, value: 'VISITOR', span: 6, options: options('visitorKind') },
-        { key: 'nome', label: 'Nome do visitante', required: true, maxLength: 150 },
-        { key: 'validaDe', label: 'De', type: 'date', required: true, value: todayIso(), span: 6 },
-        { key: 'validaAte', label: 'Até', type: 'date', required: true, value: todayIso(), span: 6 },
-        { key: 'empresa', label: 'Empresa (prestador/entrega)', maxLength: 120 },
-        { key: 'observacoes', label: 'Observações para a portaria', maxLength: 500 },
+  autorizar(): void {
+    abrirFormulario(this.dialog, {
+      titulo: 'Autorizar entrada',
+      campos: [
+        { chave: 'idUnidade', rotulo: 'Unidade', tipo: 'select', obrigatorio: true, valor: this.unidades()[0]?.idUnidade, colunas: 6,
+          opcoes: this.unidades().map((u) => ({ valor: u.idUnidade, rotulo: u.rotulo })) },
+        { chave: 'tipo', rotulo: 'Tipo', tipo: 'select', obrigatorio: true, valor: 'VISITOR', colunas: 6, opcoes: opcoes('visitorKind') },
+        { chave: 'nome', rotulo: 'Nome do visitante', obrigatorio: true, tamanhoMaximo: 150 },
+        { chave: 'validaDe', rotulo: 'De', tipo: 'date', obrigatorio: true, valor: hojeIso(), colunas: 6 },
+        { chave: 'validaAte', rotulo: 'Até', tipo: 'date', obrigatorio: true, valor: hojeIso(), colunas: 6 },
+        { chave: 'empresa', rotulo: 'Empresa (prestador/entrega)', tamanhoMaximo: 120 },
+        { chave: 'observacoes', rotulo: 'Observações para a portaria', tamanhoMaximo: 500 },
       ],
-      submitLabel: 'Gerar código',
-      submit: (v) => this.api.portalAuthorize(this.condominiumId(), v),
+      rotuloEnviar: 'Gerar código',
+      enviar: (v) => this.api.portalAutorizar(this.idCondominio(), v),
     }).pipe(filter((r): r is AutorizacaoVisita => !!r)).subscribe((r) => {
-      this.notify.success(`Autorização criada. Código: ${r.codigoAcesso}`);
-      this.tick.update((t) => t + 1);
+      this.notificacao.sucesso(`Autorização criada. Código: ${r.codigoAcesso}`);
+      this.recarga.update((t) => t + 1);
     });
   }
 
-  cancel(v: AutorizacaoVisita): void {
-    this.api.portalCancel(this.condominiumId(), v.id).subscribe({
-      next: () => this.tick.update((t) => t + 1),
-      error: (err: unknown) => this.notify.error(toProblem(err).detail),
+  cancelar(v: AutorizacaoVisita): void {
+    this.api.portalCancelar(this.idCondominio(), v.id).subscribe({
+      next: () => this.recarga.update((t) => t + 1),
+      error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail),
     });
   }
 }

@@ -2,14 +2,14 @@ import { Component, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
-  selector: 'tc-empty-state',
+  selector: 'tc-estado-vazio',
   imports: [MatIconModule],
   template: `
     <div class="empty" role="status">
-      <span class="icon" aria-hidden="true"><mat-icon>{{ icon() }}</mat-icon></span>
-      <p class="title">{{ title() }}</p>
-      @if (description()) {
-        <p class="tc-muted">{{ description() }}</p>
+      <span class="icon" aria-hidden="true"><mat-icon>{{ icone() }}</mat-icon></span>
+      <p class="title">{{ titulo() }}</p>
+      @if (descricao()) {
+        <p class="tc-muted">{{ descricao() }}</p>
       }
       <ng-content />
     </div>
@@ -24,8 +24,8 @@ import { MatIconModule } from '@angular/material/icon';
     .empty ::ng-deep > button, .empty ::ng-deep > a { margin-top: 10px; }
   `,
 })
-export class EmptyState {
-  readonly icon = input('inbox');
-  readonly title = input.required<string>();
-  readonly description = input<string>();
+export class EstadoVazio {
+  readonly icone = input('inbox');
+  readonly titulo = input.required<string>();
+  readonly descricao = input<string>();
 }

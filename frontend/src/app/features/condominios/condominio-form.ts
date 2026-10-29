@@ -10,31 +10,31 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { Router, RouterLink } from '@angular/router';
 import { Observable, filter, switchMap } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
+import { paraProblema } from '../../core/api/api.models';
 import { AuthService } from '../../core/auth/auth.service';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { formatCnpj, formatPhone, formatZipCode } from '../../comum/formato/formato-br';
-import { MaskDirective } from '../../comum/formato/mascara.directive';
-import { FieldError } from '../../comum/formularios/erro-campo';
-import { applyServerErrors } from '../../comum/formularios/erros-servidor';
-import { ConfirmDialog, ConfirmDialogData } from '../../comum/ui/confirmacao-dialog';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { formatarCnpj, formatarTelefone, formatarCep } from '../../comum/formato/formato-br';
+import { MascaraDirective } from '../../comum/formato/mascara.directive';
+import { MensagemErroCampo } from '../../comum/formularios/erro-campo';
+import { aplicarErrosServidor } from '../../comum/formularios/erros-servidor';
+import { ConfirmacaoDialog, DadosConfirmacaoDialog } from '../../comum/ui/confirmacao-dialog';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
 import {
-  BRAZILIAN_STATES,
-  CONDOMINIUM_STATUS_LABELS,
-  CONDOMINIUM_TYPE_LABELS,
+  UFS,
+  ROTULOS_SITUACAO_CONDOMINIO,
+  ROTULOS_TIPO_CONDOMINIO,
   Condominio,
   CondominioRequest,
   TipoCondominio,
 } from './condominio.models';
-import { CondominiumService } from './condominio.service';
+import { CondominioService } from './condominio.service';
 
-const blank = (v: string | null | undefined): string | null => (v && v.trim() ? v.trim() : null);
+const vazio = (v: string | null | undefined): string | null => (v && v.trim() ? v.trim() : null);
 
 @Component({
-  selector: 'tc-condominium-form',
+  selector: 'tc-condominio-form',
   imports: [
     ReactiveFormsModule,
     RouterLink,
@@ -45,46 +45,46 @@ const blank = (v: string | null | undefined): string | null => (v && v.trim() ? 
     MatButtonModule,
     MatIconModule,
     MatProgressBarModule,
-    MaskDirective,
-    FieldError,
-    PageHeader,
-    EmptyState,
+    MascaraDirective,
+    MensagemErroCampo,
+    CabecalhoPagina,
+    EstadoVazio,
   ],
   templateUrl: './condominio-form.html',
   styleUrl: './condominio-form.scss',
 })
-export class CondominiumForm implements OnInit {
-  private readonly service = inject(CondominiumService);
+export class CondominioForm implements OnInit {
+  private readonly service = inject(CondominioService);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
+  private readonly notificacao = inject(NotificacaoService);
   protected readonly auth = inject(AuthService);
-  private readonly context = inject(CondominiumContext);
+  private readonly contexto = inject(CondominioContexto);
 
   /** Parâmetro de rota; ausente em /condominios/novo. */
   readonly id = input<string>();
 
-  protected readonly types = Object.entries(CONDOMINIUM_TYPE_LABELS) as [TipoCondominio, string][];
-  protected readonly states = BRAZILIAN_STATES;
-  protected readonly statusLabels = CONDOMINIUM_STATUS_LABELS;
+  protected readonly tipos = Object.entries(ROTULOS_TIPO_CONDOMINIO) as [TipoCondominio, string][];
+  protected readonly ufs = UFS;
+  protected readonly rotulosSituacao = ROTULOS_SITUACAO_CONDOMINIO;
 
-  protected readonly condominium = signal<Condominio | null>(null);
-  protected readonly loading = signal(false);
-  protected readonly saving = signal(false);
-  protected readonly loadError = signal<string | null>(null);
-  protected readonly formError = signal<string | null>(null);
-  protected readonly stale = signal(false);
+  protected readonly condominio = signal<Condominio | null>(null);
+  protected readonly carregando = signal(false);
+  protected readonly salvando = signal(false);
+  protected readonly erroCarga = signal<string | null>(null);
+  protected readonly erroForm = signal<string | null>(null);
+  protected readonly desatualizado = signal(false);
 
-  protected readonly isNew = computed(() => !this.id());
-  protected readonly isInactive = computed(() => this.condominium()?.situacao === 'INACTIVE');
-  protected readonly canEdit = computed(() => {
+  protected readonly novo = computed(() => !this.id());
+  protected readonly inativo = computed(() => this.condominio()?.situacao === 'INACTIVE');
+  protected readonly podeEditar = computed(() => {
     const id = this.id();
-    if (!id) return this.auth.can('CONDOMINIUM_CREATE');
-    return this.auth.canIn('CONDOMINIUM_EDIT', id) && !this.isInactive();
+    if (!id) return this.auth.pode('CONDOMINIUM_CREATE');
+    return this.auth.podeEm('CONDOMINIUM_EDIT', id) && !this.inativo();
   });
-  protected readonly canChangeStatus = computed(() => {
+  protected readonly podeAlterarSituacao = computed(() => {
     const id = this.id();
-    return !!id && this.auth.canIn('CONDOMINIUM_INACTIVATE', id);
+    return !!id && this.auth.podeEm('CONDOMINIUM_INACTIVATE', id);
   });
 
   private readonly fb = inject(FormBuilder).nonNullable;
@@ -111,137 +111,137 @@ export class CondominiumForm implements OnInit {
     const id = this.id();
     if (id) {
       this.form.disable();
-      this.load(id);
+      this.carregar(id);
     }
   }
 
-  load(id: string): void {
-    this.loading.set(true);
-    this.loadError.set(null);
-    this.service.get(id).subscribe({
+  carregar(id: string): void {
+    this.carregando.set(true);
+    this.erroCarga.set(null);
+    this.service.obter(id).subscribe({
       next: (c) => {
-        this.apply(c);
-        this.loading.set(false);
+        this.aplicar(c);
+        this.carregando.set(false);
       },
       error: (err: unknown) => {
-        this.loadError.set(toProblem(err).detail);
-        this.loading.set(false);
+        this.erroCarga.set(paraProblema(err).detail);
+        this.carregando.set(false);
       },
     });
   }
 
-  save(): void {
+  salvar(): void {
     this.form.markAllAsTouched();
-    if (this.form.invalid || this.saving() || !this.canEdit()) {
+    if (this.form.invalid || this.salvando() || !this.podeEditar()) {
       return;
     }
-    this.saving.set(true);
-    this.formError.set(null);
-    this.stale.set(false);
-    const current = this.condominium();
-    const request = this.toRequest(current?.versao);
-    const call$: Observable<Condominio> = current
-      ? this.service.update(current.id, request)
-      : this.service.create(request);
-    call$.subscribe({
-      next: (saved) => {
-        this.saving.set(false);
-        this.notify.success(current ? 'Alterações salvas.' : 'Condomínio cadastrado.');
-        this.context.reload();
-        if (current) {
-          this.apply(saved);
+    this.salvando.set(true);
+    this.erroForm.set(null);
+    this.desatualizado.set(false);
+    const atual = this.condominio();
+    const solicitacao = this.paraRequest(atual?.versao);
+    const chamada$: Observable<Condominio> = atual
+      ? this.service.atualizar(atual.id, solicitacao)
+      : this.service.cadastrar(solicitacao);
+    chamada$.subscribe({
+      next: (salvo) => {
+        this.salvando.set(false);
+        this.notificacao.sucesso(atual ? 'Alterações salvas.' : 'Condomínio cadastrado.');
+        this.contexto.recarregar();
+        if (atual) {
+          this.aplicar(salvo);
         } else {
-          void this.router.navigate(['/condominios', saved.id], { replaceUrl: true });
+          void this.router.navigate(['/condominios', salvo.id], { replaceUrl: true });
         }
       },
       error: (err: unknown) => {
-        this.saving.set(false);
-        const problem = toProblem(err);
-        if (problem.codigo === 'STALE_VERSION') {
-          this.stale.set(true);
-        } else if (problem.codigo === 'CONDOMINIUM_CNPJ_TAKEN') {
-          this.form.controls.cnpj.setErrors({ server: problem.detail });
-        } else if (problem.codigo === 'VALIDATION_ERROR') {
-          const rest = applyServerErrors(this.form, problem);
-          this.formError.set(rest.length ? rest.join(' ') : problem.detail);
-        } else if (problem.status !== 403 && problem.status !== 0 && problem.status < 500) {
-          this.formError.set(problem.detail);
+        this.salvando.set(false);
+        const problema = paraProblema(err);
+        if (problema.codigo === 'STALE_VERSION') {
+          this.desatualizado.set(true);
+        } else if (problema.codigo === 'CONDOMINIUM_CNPJ_TAKEN') {
+          this.form.controls.cnpj.setErrors({ server: problema.detail });
+        } else if (problema.codigo === 'VALIDATION_ERROR') {
+          const restante = aplicarErrosServidor(this.form, problema);
+          this.erroForm.set(restante.length ? restante.join(' ') : problema.detail);
+        } else if (problema.status !== 403 && problema.status !== 0 && problema.status < 500) {
+          this.erroForm.set(problema.detail);
         }
       },
     });
   }
 
-  inactivate(): void {
-    const c = this.condominium();
+  inativar(): void {
+    const c = this.condominio();
     if (!c) return;
     this.dialog
-      .open<ConfirmDialog, ConfirmDialogData, string | true>(ConfirmDialog, {
+      .open<ConfirmacaoDialog, DadosConfirmacaoDialog, string | true>(ConfirmacaoDialog, {
         data: {
-          title: 'Inativar condomínio',
-          message: `"${c.nome}" deixará de receber novos lançamentos e cobranças. O histórico será preservado.`,
-          confirmLabel: 'Inativar',
-          danger: true,
-          reasonLabel: 'Justificativa',
+          titulo: 'Inativar condomínio',
+          mensagem: `"${c.nome}" deixará de receber novos lançamentos e cobranças. O histórico será preservado.`,
+          rotuloConfirmar: 'Inativar',
+          perigo: true,
+          rotuloMotivo: 'Justificativa',
         },
         width: '480px',
       })
       .afterClosed()
       .pipe(
-        filter((reason): reason is string => typeof reason === 'string'),
-        switchMap((reason) => this.service.inactivate(c.id, reason)),
+        filter((motivo): motivo is string => typeof motivo === 'string'),
+        switchMap((motivo) => this.service.inativar(c.id, motivo)),
       )
       .subscribe({
-        next: (updated) => {
-          this.apply(updated);
-          this.notify.success('Condomínio inativado.');
-          this.context.reload();
+        next: (atualizado) => {
+          this.aplicar(atualizado);
+          this.notificacao.sucesso('Condomínio inativado.');
+          this.contexto.recarregar();
         },
-        error: (err: unknown) => this.formError.set(toProblem(err).detail),
+        error: (err: unknown) => this.erroForm.set(paraProblema(err).detail),
       });
   }
 
-  activate(): void {
-    const c = this.condominium();
+  ativar(): void {
+    const c = this.condominio();
     if (!c) return;
     this.dialog
-      .open<ConfirmDialog, ConfirmDialogData, string | true>(ConfirmDialog, {
-        data: { title: 'Reativar condomínio', message: `Reativar "${c.nome}"?`, confirmLabel: 'Reativar' },
+      .open<ConfirmacaoDialog, DadosConfirmacaoDialog, string | true>(ConfirmacaoDialog, {
+        data: { titulo: 'Reativar condomínio', mensagem: `Reativar "${c.nome}"?`, rotuloConfirmar: 'Reativar' },
         width: '420px',
       })
       .afterClosed()
       .pipe(
         filter((ok) => ok === true),
-        switchMap(() => this.service.activate(c.id)),
+        switchMap(() => this.service.ativar(c.id)),
       )
       .subscribe({
-        next: (updated) => {
-          this.apply(updated);
-          this.notify.success('Condomínio reativado.');
-          this.context.reload();
+        next: (atualizado) => {
+          this.aplicar(atualizado);
+          this.notificacao.sucesso('Condomínio reativado.');
+          this.contexto.recarregar();
         },
-        error: (err: unknown) => this.formError.set(toProblem(err).detail),
+        error: (err: unknown) => this.erroForm.set(paraProblema(err).detail),
       });
   }
 
-  reload(): void {
+  recarregar(): void {
     const id = this.id();
     if (id) {
-      this.stale.set(false);
-      this.load(id);
+      this.desatualizado.set(false);
+      this.carregar(id);
     }
   }
 
-  private apply(c: Condominio): void {
-    this.condominium.set(c);
+  private aplicar(c: Condominio): void {
+    this.condominio.set(c);
     this.form.reset({
       nome: c.nome,
       razaoSocial: c.razaoSocial ?? '',
-      cnpj: formatCnpj(c.cnpj),
+      cnpj: formatarCnpj(c.cnpj),
       tipo: c.tipo,
       email: c.email ?? '',
-      telefone: formatPhone(c.telefone),
+      telefone: formatarTelefone(c.telefone),
       endereco: {
-        cep: formatZipCode(c.endereco?.cep),
+        cep: formatarCep(c.endereco?.cep),
         logradouro: c.endereco?.logradouro ?? '',
         numero: c.endereco?.numero ?? '',
         complemento: c.endereco?.complemento ?? '',
@@ -250,33 +250,33 @@ export class CondominiumForm implements OnInit {
         uf: c.endereco?.uf ?? '',
       },
     });
-    if (this.canEdit()) {
+    if (this.podeEditar()) {
       this.form.enable();
     } else {
       this.form.disable();
     }
   }
 
-  private toRequest(versao: number | undefined): CondominioRequest {
+  private paraRequest(versao: number | undefined): CondominioRequest {
     const v = this.form.getRawValue();
     const a = v.endereco;
-    const hasAddress = Object.values(a).some((x) => !!x?.trim());
+    const temEndereco = Object.values(a).some((x) => !!x?.trim());
     return {
       nome: v.nome.trim(),
-      razaoSocial: blank(v.razaoSocial),
-      cnpj: blank(v.cnpj),
+      razaoSocial: vazio(v.razaoSocial),
+      cnpj: vazio(v.cnpj),
       tipo: v.tipo,
-      email: blank(v.email),
-      telefone: blank(v.telefone),
-      endereco: hasAddress
+      email: vazio(v.email),
+      telefone: vazio(v.telefone),
+      endereco: temEndereco
         ? {
-            cep: blank(a.cep),
-            logradouro: blank(a.logradouro),
-            numero: blank(a.numero),
-            complemento: blank(a.complemento),
-            bairro: blank(a.bairro),
-            cidade: blank(a.cidade),
-            uf: blank(a.uf),
+            cep: vazio(a.cep),
+            logradouro: vazio(a.logradouro),
+            numero: vazio(a.numero),
+            complemento: vazio(a.complemento),
+            bairro: vazio(a.bairro),
+            cidade: vazio(a.cidade),
+            uf: vazio(a.uf),
           }
         : null,
       versao,

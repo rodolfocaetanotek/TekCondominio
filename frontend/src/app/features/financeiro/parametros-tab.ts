@@ -8,43 +8,43 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { catchError, combineLatest, filter, of, switchMap } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
+import { paraProblema } from '../../core/api/api.models';
 import { AuthService } from '../../core/auth/auth.service';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { FieldError } from '../../comum/formularios/erro-campo';
-import { applyServerErrors } from '../../comum/formularios/erros-servidor';
-import { openForm } from '../../comum/ui/formulario-dialog';
-import { CentroCusto, FinanceApi } from './financeiro-api';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { MensagemErroCampo } from '../../comum/formularios/erro-campo';
+import { aplicarErrosServidor } from '../../comum/formularios/erros-servidor';
+import { abrirFormulario } from '../../comum/ui/formulario-dialog';
+import { CentroCusto, FinanceiroApi } from './financeiro-api';
 
 @Component({
-  selector: 'tc-settings-tab',
-  imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatCheckboxModule, MatButtonModule, MatIconModule, FieldError],
+  selector: 'tc-parametros-tab',
+  imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatCheckboxModule, MatButtonModule, MatIconModule, MensagemErroCampo],
   template: `
     <div class="cols">
       <section class="tc-card">
         <h3 class="tc-section-title">Cobrança e contas a pagar</h3>
-        <form [formGroup]="form" (ngSubmit)="save()" class="tc-grid">
+        <form [formGroup]="form" (ngSubmit)="salvar()" class="tc-grid">
           <mat-form-field class="span-6">
             <mat-label>Multa por atraso (%)</mat-label>
             <input matInput type="number" step="0.01" min="0" max="2" formControlName="percentualMulta" />
             <mat-hint>Máximo legal: 2% (CC, art. 1.336, §1º)</mat-hint>
-            <mat-error><tc-field-error [control]="form.controls.percentualMulta" /></mat-error>
+            <mat-error><tc-erro-campo [controle]="form.controls.percentualMulta" /></mat-error>
           </mat-form-field>
           <mat-form-field class="span-6">
             <mat-label>Juros ao mês (%)</mat-label>
             <input matInput type="number" step="0.01" min="0" formControlName="percentualJurosMensal" />
             <mat-hint>Pró-rata dia; padrão 1% a.m.</mat-hint>
-            <mat-error><tc-field-error [control]="form.controls.percentualJurosMensal" /></mat-error>
+            <mat-error><tc-erro-campo [controle]="form.controls.percentualJurosMensal" /></mat-error>
           </mat-form-field>
           <mat-form-field class="span-6">
             <mat-label>Dia de vencimento padrão</mat-label>
             <input matInput type="number" min="1" max="28" formControlName="diaVencimento" />
-            <mat-error><tc-field-error [control]="form.controls.diaVencimento" /></mat-error>
+            <mat-error><tc-erro-campo [controle]="form.controls.diaVencimento" /></mat-error>
           </mat-form-field>
           <mat-checkbox formControlName="exigeAprovacaoContasPagar" class="span-6">Exigir aprovação antes de pagar despesas</mat-checkbox>
           <p class="tc-muted small span-12">Novas cobranças usam estes parâmetros; cobranças já emitidas mantêm os percentuais da emissão.</p>
-          @if (canEditSettings()) {
+          @if (podeEditarParametros()) {
             <div class="tc-actions span-12"><button mat-flat-button type="submit" [disabled]="form.pristine">Salvar parâmetros</button></div>
           }
         </form>
@@ -52,14 +52,14 @@ import { CentroCusto, FinanceApi } from './financeiro-api';
 
       <section class="tc-card">
         <div class="row"><h3 class="tc-section-title">Centros de custo</h3>
-          @if (canEdit()) { <button mat-button (click)="editCenter()"><mat-icon>add</mat-icon> Novo</button> }
+          @if (podeEditar()) { <button mat-button (click)="editarCentro()"><mat-icon>add</mat-icon> Novo</button> }
         </div>
-        @for (c of centers() ?? []; track c.id) {
+        @for (c of centros() ?? []; track c.id) {
           <div class="item" [class.off]="!c.ativo">
             <span>{{ c.nome }}</span>
-            @if (canEdit()) {
-              <button mat-button (click)="editCenter(c)">Editar</button>
-              <button mat-button (click)="toggleCenter(c)">{{ c.ativo ? 'Inativar' : 'Reativar' }}</button>
+            @if (podeEditar()) {
+              <button mat-button (click)="editarCentro(c)">Editar</button>
+              <button mat-button (click)="alternarCentro(c)">{{ c.ativo ? 'Inativar' : 'Reativar' }}</button>
             }
           </div>
         } @empty { <p class="tc-muted">Nenhum centro de custo (opcional).</p> }
@@ -67,10 +67,10 @@ import { CentroCusto, FinanceApi } from './financeiro-api';
 
       <section class="tc-card wide">
         <div class="row"><h3 class="tc-section-title">Plano de contas</h3>
-          @if (auth.can('FINANCE_EDIT')) { <button mat-button (click)="newAccount()"><mat-icon>add</mat-icon> Conta própria</button> }
+          @if (auth.pode('FINANCE_EDIT')) { <button mat-button (click)="novaConta()"><mat-icon>add</mat-icon> Conta própria</button> }
         </div>
         <div class="chart">
-          @for (a of accounts() ?? []; track a.id) {
+          @for (a of contas() ?? []; track a.id) {
             <div class="acc" [class.group]="!a.analitica" [class.off]="!a.ativo">
               <span class="code mono">{{ a.codigo }}</span><span>{{ a.nome }}</span>
               @if (!a.sistema) { <span class="tc-chip-soft">própria</span> }
@@ -99,15 +99,15 @@ import { CentroCusto, FinanceApi } from './financeiro-api';
     .code { flex: 0 0 44px; color: var(--tc-text-muted); font-variant-numeric: tabular-nums; }
   `,
 })
-export class SettingsTab {
+export class ParametrosTab {
   protected readonly auth = inject(AuthService);
-  private readonly context = inject(CondominiumContext);
-  private readonly api = inject(FinanceApi);
+  private readonly contexto = inject(CondominioContexto);
+  private readonly api = inject(FinanceiroApi);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
-  private readonly tick = signal(0);
-  protected readonly canEdit = computed(() => this.context.can('FINANCE_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
-  protected readonly canEditSettings = computed(() => this.canEdit() && this.context.can('CONDOMINIUM_EDIT'));
+  private readonly notificacao = inject(NotificacaoService);
+  private readonly recarga = signal(0);
+  protected readonly podeEditar = computed(() => this.contexto.pode('FINANCE_EDIT') && this.contexto.selecionado()?.situacao === 'ACTIVE');
+  protected readonly podeEditarParametros = computed(() => this.podeEditar() && this.contexto.pode('CONDOMINIUM_EDIT'));
 
   protected readonly form = inject(FormBuilder).nonNullable.group({
     percentualMulta: [2, [Validators.required, Validators.min(0), Validators.max(2)]],
@@ -116,57 +116,57 @@ export class SettingsTab {
     exigeAprovacaoContasPagar: [true],
   });
 
-  protected readonly centers = toSignal(
-    combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(
+  protected readonly centros = toSignal(
+    combineLatest([toObservable(this.contexto.id), toObservable(this.recarga)]).pipe(
       filter(([c]) => !!c),
-      switchMap(([c]) => this.api.costCenters(c!).pipe(catchError(() => of([] as CentroCusto[])))),
+      switchMap(([c]) => this.api.centrosCusto(c!).pipe(catchError(() => of([] as CentroCusto[])))),
     ),
   );
-  protected readonly accounts = toSignal(toObservable(this.tick).pipe(switchMap(() => this.api.chartAccounts().pipe(catchError(() => of([]))))));
+  protected readonly contas = toSignal(toObservable(this.recarga).pipe(switchMap(() => this.api.contasPlano().pipe(catchError(() => of([]))))));
 
   constructor() {
-    toObservable(this.context.id).pipe(filter((c) => !!c), switchMap((c) => this.api.settings(c!))).subscribe((s) => {
+    toObservable(this.contexto.id).pipe(filter((c) => !!c), switchMap((c) => this.api.parametros(c!))).subscribe((s) => {
       this.form.reset(s);
-      if (!this.canEditSettings()) this.form.disable();
+      if (!this.podeEditarParametros()) this.form.disable();
     });
   }
 
-  save(): void {
+  salvar(): void {
     this.form.markAllAsTouched();
     if (this.form.invalid) return;
-    this.api.saveSettings(this.context.id()!, this.form.getRawValue()).subscribe({
-      next: (s) => { this.form.reset(s); this.notify.success('Parâmetros salvos.'); },
+    this.api.salvarParametros(this.contexto.id()!, this.form.getRawValue()).subscribe({
+      next: (s) => { this.form.reset(s); this.notificacao.sucesso('Parâmetros salvos.'); },
       error: (err: unknown) => {
-        const p = toProblem(err);
-        const rest = p.codigo === 'VALIDATION_ERROR' ? applyServerErrors(this.form, p) : [p.detail];
-        if (rest.length) this.notify.error(rest.join(' '));
+        const p = paraProblema(err);
+        const restante = p.codigo === 'VALIDATION_ERROR' ? aplicarErrosServidor(this.form, p) : [p.detail];
+        if (restante.length) this.notificacao.erro(restante.join(' '));
       },
     });
   }
 
-  editCenter(c?: CentroCusto): void {
-    openForm(this.dialog, {
-      title: c ? 'Editar centro de custo' : 'Novo centro de custo',
-      fields: [{ key: 'nome', label: 'Nome', required: true, value: c?.nome, maxLength: 80 }],
-      submit: (v) => this.api.saveCostCenter(this.context.id()!, String(v['nome']), c?.id),
-    }, '420px').pipe(filter((r) => !!r)).subscribe(() => this.tick.update((t) => t + 1));
+  editarCentro(c?: CentroCusto): void {
+    abrirFormulario(this.dialog, {
+      titulo: c ? 'Editar centro de custo' : 'Novo centro de custo',
+      campos: [{ chave: 'nome', rotulo: 'Nome', obrigatorio: true, valor: c?.nome, tamanhoMaximo: 80 }],
+      enviar: (v) => this.api.salvarCentroCusto(this.contexto.id()!, String(v['nome']), c?.id),
+    }, '420px').pipe(filter((r) => !!r)).subscribe(() => this.recarga.update((t) => t + 1));
   }
 
-  toggleCenter(c: CentroCusto): void {
-    this.api.saveCostCenter(this.context.id()!, c.nome, c.id, !c.ativo).subscribe(() => this.tick.update((t) => t + 1));
+  alternarCentro(c: CentroCusto): void {
+    this.api.salvarCentroCusto(this.contexto.id()!, c.nome, c.id, !c.ativo).subscribe(() => this.recarga.update((t) => t + 1));
   }
 
-  newAccount(): void {
-    openForm(this.dialog, {
-      title: 'Nova conta do plano de contas',
-      intro: 'Contas próprias complementam o plano padrão (ex.: 2.16 Portaria terceirizada).',
-      fields: [
-        { key: 'codigo', label: 'Código', required: true, span: 4, maxLength: 20 },
-        { key: 'nome', label: 'Nome', required: true, span: 8, maxLength: 120 },
-        { key: 'natureza', label: 'Natureza', type: 'select', required: true, value: 'EXPENSE',
-          options: [{ value: 'INCOME', label: 'Receita' }, { value: 'EXPENSE', label: 'Despesa' }] },
+  novaConta(): void {
+    abrirFormulario(this.dialog, {
+      titulo: 'Nova conta do plano de contas',
+      introducao: 'Contas próprias complementam o plano padrão (ex.: 2.16 Portaria terceirizada).',
+      campos: [
+        { chave: 'codigo', rotulo: 'Código', obrigatorio: true, colunas: 4, tamanhoMaximo: 20 },
+        { chave: 'nome', rotulo: 'Nome', obrigatorio: true, colunas: 8, tamanhoMaximo: 120 },
+        { chave: 'natureza', rotulo: 'Natureza', tipo: 'select', obrigatorio: true, valor: 'EXPENSE',
+          opcoes: [{ valor: 'INCOME', rotulo: 'Receita' }, { valor: 'EXPENSE', rotulo: 'Despesa' }] },
       ],
-      submit: (v) => this.api.createChartAccount({ codigo: String(v['codigo']), nome: String(v['nome']), natureza: String(v['natureza']) }),
-    }).pipe(filter((r) => !!r)).subscribe(() => { this.notify.success('Conta criada.'); this.tick.update((t) => t + 1); });
+      enviar: (v) => this.api.cadastrarContaPlano({ codigo: String(v['codigo']), nome: String(v['nome']), natureza: String(v['natureza']) }),
+    }).pipe(filter((r) => !!r)).subscribe(() => { this.notificacao.sucesso('Conta criada.'); this.recarga.update((t) => t + 1); });
   }
 }

@@ -9,45 +9,45 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { catchError, combineLatest, debounceTime, filter, of, switchMap } from 'rxjs';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { formatCpfCnpj, formatPhone } from '../../comum/formato/formato-br';
-import { DocPipe } from '../../comum/formato/documento.pipe';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { openForm } from '../../comum/ui/formulario-dialog';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
-import { FinanceApi, Fornecedor } from './financeiro-api';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { formatarCpfCnpj, formatarTelefone } from '../../comum/formato/formato-br';
+import { DocumentoPipe } from '../../comum/formato/documento.pipe';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { abrirFormulario } from '../../comum/ui/formulario-dialog';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
+import { FinanceiroApi, Fornecedor } from './financeiro-api';
 
 @Component({
-  selector: 'tc-supplier-list',
-  imports: [ReactiveFormsModule, MatTableModule, MatProgressBarModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, PageHeader, EmptyState, DocPipe],
+  selector: 'tc-fornecedor-lista',
+  imports: [ReactiveFormsModule, MatTableModule, MatProgressBarModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, CabecalhoPagina, EstadoVazio, DocumentoPipe],
   template: `
     <div class="tc-page">
-      <tc-page-header eyebrow="Cadastros" title="Fornecedores" subtitle="Prestadores de serviço da administradora, usados em despesas e contratos.">
-        @if (canEdit()) { <button mat-flat-button (click)="edit()"><mat-icon>add_business</mat-icon> Novo fornecedor</button> }
-      </tc-page-header>
+      <tc-cabecalho-pagina sobretitulo="Cadastros" titulo="Fornecedores" subtitulo="Prestadores de serviço da administradora, usados em despesas e contratos.">
+        @if (podeEditar()) { <button mat-flat-button (click)="editar()"><mat-icon>add_business</mat-icon> Novo fornecedor</button> }
+      </tc-cabecalho-pagina>
       <div class="filters">
         <mat-form-field class="search"><mat-label>Buscar</mat-label><mat-icon matPrefix>search</mat-icon>
-          <input matInput [formControl]="search" placeholder="Nome, categoria ou CNPJ" /></mat-form-field>
+          <input matInput [formControl]="busca" placeholder="Nome, categoria ou CNPJ" /></mat-form-field>
       </div>
       <section class="tc-table-card" aria-live="polite">
-        @if (page() === undefined) {
+        @if (pagina() === undefined) {
           <mat-progress-bar mode="indeterminate" />
-        } @else if ((page()?.conteudo ?? []).length === 0) {
-          <tc-empty-state icon="storefront" title="Nenhum fornecedor" />
+        } @else if ((pagina()?.conteudo ?? []).length === 0) {
+          <tc-estado-vazio icone="storefront" titulo="Nenhum fornecedor" />
         } @else {
           <div class="table-scroll">
-            <table mat-table [dataSource]="page()?.conteudo ?? []">
+            <table mat-table [dataSource]="pagina()?.conteudo ?? []">
               <ng-container matColumnDef="name"><th mat-header-cell *matHeaderCellDef>Fornecedor</th>
-                <td mat-cell *matCellDef="let s"><strong>{{ s.nome }}</strong><br /><span class="tc-muted">{{ s.documento ? (s.documento | doc: 'cpfCnpj') : '' }}</span></td></ng-container>
+                <td mat-cell *matCellDef="let s"><strong>{{ s.nome }}</strong><br /><span class="tc-muted">{{ s.documento ? (s.documento | documento: 'cpfCnpj') : '' }}</span></td></ng-container>
               <ng-container matColumnDef="category"><th mat-header-cell *matHeaderCellDef>Categoria</th><td mat-cell *matCellDef="let s">{{ s.categoria ?? '—' }}</td></ng-container>
               <ng-container matColumnDef="contact"><th mat-header-cell *matHeaderCellDef>Contato</th>
-                <td mat-cell *matCellDef="let s">{{ s.nomeContato ?? '' }} {{ s.telefone ? (s.telefone | doc: 'phone') : '' }}<br /><span class="tc-muted">{{ s.email ?? '' }}</span></td></ng-container>
+                <td mat-cell *matCellDef="let s">{{ s.nomeContato ?? '' }} {{ s.telefone ? (s.telefone | documento: 'telefone') : '' }}<br /><span class="tc-muted">{{ s.email ?? '' }}</span></td></ng-container>
               <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Situação</th>
                 <td mat-cell *matCellDef="let s"><span class="tc-status" [class.is-active]="s.ativo" [class.is-inactive]="!s.ativo">{{ s.ativo ? 'Ativo' : 'Inativo' }}</span></td></ng-container>
-              <tr mat-header-row *matHeaderRowDef="columns"></tr>
-              <tr mat-row *matRowDef="let row; columns: columns" [class.is-clickable]="canEdit()" (click)="canEdit() && edit(row)"
-                [attr.tabindex]="canEdit() ? 0 : null" (keydown.enter)="canEdit() && edit(row)"></tr>
+              <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+              <tr mat-row *matRowDef="let linha; colunas: colunas" [class.is-clickable]="podeEditar()" (click)="podeEditar() && editar(linha)"
+                [attr.tabindex]="podeEditar() ? 0 : null" (keydown.enter)="podeEditar() && editar(linha)"></tr>
             </table>
           </div>
         }
@@ -55,40 +55,40 @@ import { FinanceApi, Fornecedor } from './financeiro-api';
     </div>
   `,
 })
-export class SupplierList {
-  private readonly context = inject(CondominiumContext);
-  private readonly api = inject(FinanceApi);
+export class FornecedorLista {
+  private readonly contexto = inject(CondominioContexto);
+  private readonly api = inject(FinanceiroApi);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
-  protected readonly columns = ['name', 'category', 'contact', 'status'];
-  protected readonly search = new FormControl('', { nonNullable: true });
-  private readonly term = signal('');
-  private readonly tick = signal(0);
-  protected readonly canEdit = computed(() => this.context.canAny('SUPPLIER_EDIT'));
-  protected readonly page = toSignal(combineLatest([toObservable(this.term), toObservable(this.tick)]).pipe(
-    switchMap(([t]) => this.api.suppliers(t, 0, 100).pipe(catchError(() => of(null))))));
+  private readonly notificacao = inject(NotificacaoService);
+  protected readonly colunas = ['name', 'category', 'contact', 'status'];
+  protected readonly busca = new FormControl('', { nonNullable: true });
+  private readonly termo = signal('');
+  private readonly recarga = signal(0);
+  protected readonly podeEditar = computed(() => this.contexto.podeAlgum('SUPPLIER_EDIT'));
+  protected readonly pagina = toSignal(combineLatest([toObservable(this.termo), toObservable(this.recarga)]).pipe(
+    switchMap(([t]) => this.api.fornecedores(t, 0, 100).pipe(catchError(() => of(null))))));
 
   constructor() {
-    this.search.valueChanges.pipe(debounceTime(300), takeUntilDestroyed()).subscribe((v) => this.term.set(v.trim()));
+    this.busca.valueChanges.pipe(debounceTime(300), takeUntilDestroyed()).subscribe((v) => this.termo.set(v.trim()));
   }
 
-  edit(s?: Fornecedor): void {
-    openForm(this.dialog, {
-      title: s ? 'Editar fornecedor' : 'Novo fornecedor',
-      fields: [
-        { key: 'nome', label: 'Nome / razão social', required: true, value: s?.nome, span: 8, maxLength: 150 },
-        { key: 'documento', label: 'CPF/CNPJ', value: formatCpfCnpj(s?.documento), span: 4, mask: 'cpfCnpj' },
-        { key: 'categoria', label: 'Categoria', value: s?.categoria, span: 6, hint: 'Ex.: Elevadores, Limpeza, Jardinagem', maxLength: 80 },
-        { key: 'nomeContato', label: 'Pessoa de contato', value: s?.nomeContato, span: 6, maxLength: 120 },
-        { key: 'email', label: 'E-mail', type: 'email', value: s?.email, span: 6 },
-        { key: 'telefone', label: 'Telefone', value: formatPhone(s?.telefone), span: 6, mask: 'phone' },
-        { key: 'observacoes', label: 'Observações', type: 'textarea', value: s?.observacoes, maxLength: 500 },
-        ...(s ? [{ key: 'ativo', label: 'Ativo', type: 'checkbox' as const, value: s.ativo }] : []),
+  editar(s?: Fornecedor): void {
+    abrirFormulario(this.dialog, {
+      titulo: s ? 'Editar fornecedor' : 'Novo fornecedor',
+      campos: [
+        { chave: 'nome', rotulo: 'Nome / razão social', obrigatorio: true, valor: s?.nome, colunas: 8, tamanhoMaximo: 150 },
+        { chave: 'documento', rotulo: 'CPF/CNPJ', valor: formatarCpfCnpj(s?.documento), colunas: 4, mascara: 'cpfCnpj' },
+        { chave: 'categoria', rotulo: 'Categoria', valor: s?.categoria, colunas: 6, dica: 'Ex.: Elevadores, Limpeza, Jardinagem', tamanhoMaximo: 80 },
+        { chave: 'nomeContato', rotulo: 'Pessoa de contato', valor: s?.nomeContato, colunas: 6, tamanhoMaximo: 120 },
+        { chave: 'email', rotulo: 'E-mail', tipo: 'email', valor: s?.email, colunas: 6 },
+        { chave: 'telefone', rotulo: 'Telefone', valor: formatarTelefone(s?.telefone), colunas: 6, mascara: 'telefone' },
+        { chave: 'observacoes', rotulo: 'Observações', tipo: 'textarea', valor: s?.observacoes, tamanhoMaximo: 500 },
+        ...(s ? [{ chave: 'ativo', rotulo: 'Ativo', tipo: 'checkbox' as const, valor: s.ativo }] : []),
       ],
-      submit: (v) => {
-        const { ativo, ...body } = v;
-        return this.api.saveSupplier(body, s?.id, s ? Boolean(ativo) : undefined);
+      enviar: (v) => {
+        const { ativo, ...corpo } = v;
+        return this.api.salvarFornecedor(corpo, s?.id, s ? Boolean(ativo) : undefined);
       },
-    }, '640px').pipe(filter((r) => !!r)).subscribe(() => { this.notify.success('Fornecedor salvo.'); this.tick.update((t) => t + 1); });
+    }, '640px').pipe(filter((r) => !!r)).subscribe(() => { this.notificacao.sucesso('Fornecedor salvo.'); this.recarga.update((t) => t + 1); });
   }
 }

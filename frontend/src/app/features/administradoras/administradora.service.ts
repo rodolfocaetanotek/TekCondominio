@@ -34,31 +34,31 @@ export interface AdministradoraRequest {
 const BASE = '/api/v1/administradoras';
 
 @Injectable({ providedIn: 'root' })
-export class OrganizationService {
+export class AdministradoraService {
   private readonly http = inject(HttpClient);
 
-  list(page: number, size: number): Observable<PaginaResponse<Administradora>> {
-    const params = new HttpParams().set('pagina', page).set('tamanho', size).set('ordem', 'nome,asc');
-    return this.http.get<PaginaResponse<Administradora>>(BASE, { params });
+  listar(pagina: number, tamanho: number): Observable<PaginaResponse<Administradora>> {
+    const parametros = new HttpParams().set('pagina', pagina).set('tamanho', tamanho).set('ordem', 'nome,asc');
+    return this.http.get<PaginaResponse<Administradora>>(BASE, { params: parametros });
   }
 
-  create(body: AdministradoraRequest): Observable<Administradora> {
-    return this.http.post<Administradora>(BASE, body);
+  cadastrar(corpo: AdministradoraRequest): Observable<Administradora> {
+    return this.http.post<Administradora>(BASE, corpo);
   }
 
-  get(id: string): Observable<Administradora> {
+  obter(id: string): Observable<Administradora> {
     return this.http.get<Administradora>(`${BASE}/${id}`);
   }
 
-  users(id: string): Observable<UsuarioAdministradora[]> {
+  usuarios(id: string): Observable<UsuarioAdministradora[]> {
     return this.http.get<UsuarioAdministradora[]>(`${BASE}/${id}/usuarios`);
   }
 
-  inviteAdmin(id: string, nome: string, email: string): Observable<UsuarioAdministradora> {
+  convidarAdministrador(id: string, nome: string, email: string): Observable<UsuarioAdministradora> {
     return this.http.post<UsuarioAdministradora>(`${BASE}/${id}/administradores`, { nome, email });
   }
 
-  setActive(id: string, active: boolean): Observable<Administradora> {
-    return this.http.post<Administradora>(`${BASE}/${id}/${active ? 'ativar' : 'desativar'}`, null);
+  alterarAtivo(id: string, ativo: boolean): Observable<Administradora> {
+    return this.http.post<Administradora>(`${BASE}/${id}/${ativo ? 'ativar' : 'desativar'}`, null);
   }
 }

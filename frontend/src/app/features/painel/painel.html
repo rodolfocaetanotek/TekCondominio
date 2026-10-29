@@ -1,16 +1,16 @@
 <div class="tc-page">
-  <tc-page-header [eyebrow]="auth.user()?.nomeAdministradora" [title]="'Olá, ' + firstName()" subtitle="Indicadores calculados a partir dos dados registrados." />
+  <tc-cabecalho-pagina [sobretitulo]="auth.usuario()?.nomeAdministradora" [titulo]="'Olá, ' + primeiroNome()" subtitulo="Indicadores calculados a partir dos dados registrados." />
 
   <div class="filters">
     <mat-form-field class="scope">
       <mat-label>Condomínios</mat-label>
-      <mat-select [formControl]="scope">
+      <mat-select [formControl]="escopo">
         <mat-option value="">Todos os condomínios</mat-option>
-        @for (o of context.options(); track o.id) { <mat-option [value]="o.id">{{ o.nome }}</mat-option> }
+        @for (o of contexto.opcoes(); track o.id) { <mat-option [value]="o.id">{{ o.nome }}</mat-option> }
       </mat-select>
     </mat-form-field>
-    <mat-form-field><mat-label>Período de</mat-label><input matInput type="date" [formControl]="from" /></mat-form-field>
-    <mat-form-field><mat-label>até</mat-label><input matInput type="date" [formControl]="to" /></mat-form-field>
+    <mat-form-field><mat-label>Período de</mat-label><input matInput type="date" [formControl]="de" /></mat-form-field>
+    <mat-form-field><mat-label>até</mat-label><input matInput type="date" [formControl]="ate" /></mat-form-field>
   </div>
 
   @if (data() === undefined) {
@@ -45,7 +45,7 @@
         <div class="tc-kpi tc-card tone-warning">
           <span class="icon"><mat-icon aria-hidden="true">trending_down</mat-icon></span>
           <span class="label">Despesas no período</span><span class="value">{{ d.despesas | currency: 'BRL' }}</span>
-          <span class="sub">Resultado {{ result() | currency: 'BRL' }}</span>
+          <span class="sub">Resultado {{ resultado() | currency: 'BRL' }}</span>
         </div>
         <a class="tc-kpi tc-card" routerLink="/financeiro">
           <span class="icon"><mat-icon aria-hidden="true">call_received</mat-icon></span>
@@ -69,13 +69,13 @@
       @if (d.financeiro) {
         <section class="tc-card chart">
           <h2 class="tc-section-title">Receitas × despesas <small class="tc-muted">últimos 12 meses</small></h2>
-          <tc-monthly-chart [points]="d.serie" />
+          <tc-grafico-mensal [pontos]="d.serie" />
         </section>
         <section class="tc-card">
           <h2 class="tc-section-title">Contas a pagar nos próximos 7 dias</h2>
           @for (p of d.contasAPagarProximas; track p.id) {
-            <a class="line" [routerLink]="['/financeiro/lancamentos', p.id]" (click)="context.select(p.idCondominio)">
-              <span><strong>{{ p.descricao }}</strong><br /><small class="tc-muted">{{ p.nomeCondominio }} · {{ p.dataVencimento | isoDate }}{{ p.aprovacao === 'PENDING' ? ' · aguardando aprovação' : '' }}</small></span>
+            <a class="line" [routerLink]="['/financeiro/lancamentos', p.id]" (click)="contexto.selecionar(p.idCondominio)">
+              <span><strong>{{ p.descricao }}</strong><br /><small class="tc-muted">{{ p.nomeCondominio }} · {{ p.dataVencimento | dataIso }}{{ p.aprovacao === 'PENDING' ? ' · aguardando aprovação' : '' }}</small></span>
               <span class="money">{{ p.valor | currency: 'BRL' }}</span>
             </a>
           } @empty { <p class="tc-muted">Nada a pagar nos próximos dias.</p> }
@@ -84,16 +84,16 @@
       <section class="tc-card">
         <h2 class="tc-section-title">Ocorrências pendentes</h2>
         @for (o of d.ocorrenciasRecentes; track o.id) {
-          <a class="line" [routerLink]="['/ocorrencias', o.id]" (click)="context.select(o.idCondominio)">
+          <a class="line" [routerLink]="['/ocorrencias', o.id]" (click)="contexto.selecionar(o.idCondominio)">
             <span><strong>{{ o.titulo }}</strong><br /><small class="tc-muted">{{ o.nomeCondominio }} · {{ o.quando | date: 'dd/MM HH:mm' }}</small></span>
-            <span class="tc-status is-pending">{{ o.situacao | label: 'occurrenceStatus' }}</span>
+            <span class="tc-status is-pending">{{ o.situacao | rotulo: 'occurrenceStatus' }}</span>
           </a>
         } @empty { <p class="tc-muted">Nenhuma ocorrência pendente.</p> }
       </section>
       <section class="tc-card">
         <h2 class="tc-section-title">Comunicados recentes</h2>
         @for (a of d.comunicadosRecentes; track a.id) {
-          <a class="line" routerLink="/comunicados" (click)="context.select(a.idCondominio)">
+          <a class="line" routerLink="/comunicados" (click)="contexto.selecionar(a.idCondominio)">
             <span><strong>{{ a.titulo }}</strong><br /><small class="tc-muted">{{ a.nomeCondominio }} · {{ a.quando | date: 'dd/MM/yyyy' }}</small></span>
           </a>
         } @empty { <p class="tc-muted">Nenhum comunicado.</p> }

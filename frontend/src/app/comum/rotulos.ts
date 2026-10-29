@@ -1,5 +1,5 @@
 /** Rótulos em português para os códigos devolvidos pela API. */
-export const LABELS: Record<string, Record<string, string>> = {
+export const ROTULOS: Record<string, Record<string, string>> = {
   entryKind: { INCOME: 'Receita', EXPENSE: 'Despesa' },
   entryStatus: { OPEN: 'Em aberto', PARTIAL: 'Parcial', PAID: 'Pago', CANCELLED: 'Cancelado', RENEGOTIATED: 'Renegociado' },
   approval: { NOT_REQUIRED: '—', PENDING: 'Aguardando aprovação', APPROVED: 'Aprovado', REJECTED: 'Reprovado' },
@@ -26,11 +26,11 @@ export const LABELS: Record<string, Record<string, string>> = {
   reservationStatus: { PENDING: 'Aguardando aprovação', CONFIRMED: 'Confirmada', REJECTED: 'Recusada', CANCELLED: 'Cancelada' },
 };
 
-export function label(group: string, code: string | null | undefined): string {
-  if (!code) return '—';
-  return LABELS[group]?.[code] ?? code;
+export function rotulo(grupo: string, codigo: string | null | undefined): string {
+  if (!codigo) return '—';
+  return ROTULOS[grupo]?.[codigo] ?? codigo;
 }
 
-export function options(group: string): { value: string; label: string }[] {
-  return Object.entries(LABELS[group]).map(([value, l]) => ({ value, label: l }));
+export function opcoes(grupo: string): { valor: string; rotulo: string }[] {
+  return Object.entries(ROTULOS[grupo]).map(([valor, l]) => ({ valor, rotulo: l }));
 }

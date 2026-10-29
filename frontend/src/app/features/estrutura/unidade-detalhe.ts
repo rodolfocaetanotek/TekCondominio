@@ -8,62 +8,62 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
 import { catchError, combineLatest, filter, forkJoin, of, switchMap } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { CondominiumRequired } from '../../comum/ui/condominio-obrigatorio';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { IsoDatePipe } from '../../comum/ui/data-iso.pipe';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
-import { EndOccupancyDialog, OccupancyDialog } from './vinculo-dialogs';
-import { OCCUPANCY_ROLE_LABELS, Unidade, UNIT_TYPE_LABELS, Vinculo } from './estrutura.models';
-import { StructureService } from './estrutura.service';
-import { UnitDialog, UnitDialogData } from './unidade-dialog';
+import { paraProblema } from '../../core/api/api.models';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { CondominioObrigatorio } from '../../comum/ui/condominio-obrigatorio';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { DataIsoPipe } from '../../comum/ui/data-iso.pipe';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
+import { EncerrarVinculoDialog, VinculoDialog } from './vinculo-dialogs';
+import { ROTULOS_TIPO_VINCULO, Unidade, ROTULOS_TIPO_UNIDADE, Vinculo } from './estrutura.models';
+import { EstruturaService } from './estrutura.service';
+import { UnidadeDialog, DadosUnidadeDialog } from './unidade-dialog';
 
 @Component({
-  selector: 'tc-unit-detail',
-  imports: [DecimalPipe, RouterLink, MatButtonModule, MatIconModule, MatProgressBarModule, MatTooltipModule, PageHeader,
-    EmptyState, CondominiumRequired, IsoDatePipe],
+  selector: 'tc-unidade-detalhe',
+  imports: [DecimalPipe, RouterLink, MatButtonModule, MatIconModule, MatProgressBarModule, MatTooltipModule, CabecalhoPagina,
+    EstadoVazio, CondominioObrigatorio, DataIsoPipe],
   template: `
     <div class="tc-page narrow">
       <a mat-button routerLink="/unidades" class="back"><mat-icon>arrow_back</mat-icon> Unidades</a>
-      @if (!context.id()) {
-        <tc-condominium-required />
-      } @else if (error(); as message) {
-        <section class="tc-card"><tc-empty-state icon="error" title="Não foi possível abrir a unidade" [description]="message" /></section>
-      } @else if (state(); as s) {
-        <tc-page-header eyebrow="Unidade" [title]="s.unit.rotulo" [subtitle]="typeLabel(s.unit) + (s.unit.andar ? ' · ' + s.unit.andar + 'º andar' : '')">
-          <span class="tc-status big" [class.is-active]="s.unit.ativo" [class.is-inactive]="!s.unit.ativo">{{ s.unit.ativo ? 'Ativa' : 'Inativa' }}</span>
-          @if (canEditStructure()) {
-            <button mat-stroked-button (click)="edit(s.unit)"><mat-icon>edit</mat-icon> Editar</button>
-            <button mat-button (click)="toggle(s.unit)">{{ s.unit.ativo ? 'Inativar' : 'Reativar' }}</button>
+      @if (!contexto.id()) {
+        <tc-condominio-obrigatorio />
+      } @else if (erro(); as mensagem) {
+        <section class="tc-card"><tc-estado-vazio icone="error" titulo="Não foi possível abrir a unidade" [descricao]="mensagem" /></section>
+      } @else if (estado(); as s) {
+        <tc-cabecalho-pagina sobretitulo="Unidade" [titulo]="s.unidade.rotulo" [subtitulo]="rotuloTipo(s.unidade) + (s.unidade.andar ? ' · ' + s.unidade.andar + 'º andar' : '')">
+          <span class="tc-status big" [class.is-active]="s.unidade.ativo" [class.is-inactive]="!s.unidade.ativo">{{ s.unidade.ativo ? 'Ativa' : 'Inativa' }}</span>
+          @if (podeEditarEstrutura()) {
+            <button mat-stroked-button (click)="editar(s.unidade)"><mat-icon>edit</mat-icon> Editar</button>
+            <button mat-button (click)="alternar(s.unidade)">{{ s.unidade.ativo ? 'Inativar' : 'Reativar' }}</button>
           }
-        </tc-page-header>
+        </tc-cabecalho-pagina>
 
         <section class="facts tc-dl cols tc-card">
-          <div><span class="k">Fração ideal</span><strong class="mono">{{ s.unit.fracaoIdeal | number: '1.2-6' }}%</strong></div>
-          <div><span class="k">Área</span><strong>{{ s.unit.area ? (s.unit.area | number: '1.2-2') + ' m²' : '—' }}</strong></div>
-          <div><span class="k">Proprietário(s)</span><strong>{{ s.unit.nomeProprietario ?? '—' }}</strong></div>
-          <div><span class="k">Responsável financeiro</span><strong>{{ s.unit.nomeResponsavelFinanceiro ?? 'não definido' }}</strong></div>
-          @if (s.unit.observacoes) {
-            <div class="wide"><span class="k">Observações</span><span>{{ s.unit.observacoes }}</span></div>
+          <div><span class="k">Fração ideal</span><strong class="mono">{{ s.unidade.fracaoIdeal | number: '1.2-6' }}%</strong></div>
+          <div><span class="k">Área</span><strong>{{ s.unidade.area ? (s.unidade.area | number: '1.2-2') + ' m²' : '—' }}</strong></div>
+          <div><span class="k">Proprietário(s)</span><strong>{{ s.unidade.nomeProprietario ?? '—' }}</strong></div>
+          <div><span class="k">Responsável financeiro</span><strong>{{ s.unidade.nomeResponsavelFinanceiro ?? 'não definido' }}</strong></div>
+          @if (s.unidade.observacoes) {
+            <div class="wide"><span class="k">Observações</span><span>{{ s.unidade.observacoes }}</span></div>
           }
         </section>
 
         <section class="tc-table-card">
           <div class="tc-card-head is-divided">
             <h2 class="tc-section-title">Pessoas vinculadas e histórico de ocupação</h2>
-            @if (canEditPeople() && s.unit.ativo) {
-              <button mat-flat-button (click)="link(s.unit, s.occupancies)"><mat-icon>person_add</mat-icon> Vincular pessoa</button>
+            @if (podeEditarPessoas() && s.unidade.ativo) {
+              <button mat-flat-button (click)="link(s.unidade, s.vinculos)"><mat-icon>person_add</mat-icon> Vincular pessoa</button>
             }
           </div>
-          @for (o of s.occupancies; track o.id) {
+          @for (o of s.vinculos; track o.id) {
             <div class="occ" [class.ended]="!o.vigente">
               <mat-icon class="tc-ico" aria-hidden="true">{{ o.tipo === 'OWNER' ? 'key' : o.tipo === 'TENANT' ? 'real_estate_agent' : 'person' }}</mat-icon>
               <div class="who">
                 <a [routerLink]="['/pessoas', o.idPessoa]"><strong>{{ o.nomePessoa }}</strong></a>
-                <span class="tc-muted">{{ roleLabel(o) }} · desde {{ o.dataInicio | isoDate }}
-                  @if (!o.vigente) { até {{ o.dataFim | isoDate }}{{ o.motivoEncerramento ? ' — ' + o.motivoEncerramento : '' }} }
+                <span class="tc-muted">{{ rotuloPapel(o) }} · desde {{ o.dataInicio | dataIso }}
+                  @if (!o.vigente) { até {{ o.dataFim | dataIso }}{{ o.motivoEncerramento ? ' — ' + o.motivoEncerramento : '' }} }
                 </span>
               </div>
               <div class="occ-end">
@@ -72,18 +72,18 @@ import { UnitDialog, UnitDialogData } from './unidade-dialog';
               }
               @if (!o.vigente) {
                 <span class="tc-status is-inactive">Encerrado</span>
-              } @else if (canEditPeople()) {
+              } @else if (podeEditarPessoas()) {
                 @if (!o.responsavelFinanceiro) {
-                  <button mat-icon-button (click)="makeFinancial(o)" matTooltip="Definir como responsável financeiro" aria-label="Definir como responsável financeiro">
+                  <button mat-icon-button (click)="tornarResponsavelFinanceiro(o)" matTooltip="Definir como responsável financeiro" aria-label="Definir como responsável financeiro">
                     <mat-icon>payments</mat-icon>
                   </button>
                 }
-                <button mat-icon-button (click)="end(o)" matTooltip="Encerrar vínculo" aria-label="Encerrar vínculo"><mat-icon>event_busy</mat-icon></button>
+                <button mat-icon-button (click)="encerrar(o)" matTooltip="Encerrar vínculo" aria-label="Encerrar vínculo"><mat-icon>event_busy</mat-icon></button>
               }
               </div>
             </div>
           } @empty {
-            <tc-empty-state icon="group_off" title="Nenhuma pessoa vinculada" description="Vincule proprietário, inquilino ou moradores." />
+            <tc-estado-vazio icone="group_off" titulo="Nenhuma pessoa vinculada" descricao="Vincule proprietário, inquilino ou moradores." />
           }
         </section>
       } @else {
@@ -104,28 +104,28 @@ import { UnitDialog, UnitDialogData } from './unidade-dialog';
     @media (max-width: 600px) { .occ { padding: 12px 16px; } }
   `,
 })
-export class UnitDetail {
-  protected readonly context = inject(CondominiumContext);
-  private readonly service = inject(StructureService);
+export class UnidadeDetalhe {
+  protected readonly contexto = inject(CondominioContexto);
+  private readonly service = inject(EstruturaService);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
+  private readonly notificacao = inject(NotificacaoService);
 
   readonly id = input.required<string>();
-  private readonly tick = signal(0);
-  protected readonly error = signal<string | null>(null);
-  protected readonly canEditStructure = computed(() => this.context.can('STRUCTURE_EDIT'));
-  protected readonly canEditPeople = computed(() => this.context.can('PEOPLE_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
+  private readonly recarga = signal(0);
+  protected readonly erro = signal<string | null>(null);
+  protected readonly podeEditarEstrutura = computed(() => this.contexto.pode('STRUCTURE_EDIT'));
+  protected readonly podeEditarPessoas = computed(() => this.contexto.pode('PEOPLE_EDIT') && this.contexto.selecionado()?.situacao === 'ACTIVE');
 
-  protected readonly state = toSignal(
-    combineLatest([toObservable(this.context.id), toObservable(this.id), toObservable(this.tick)]).pipe(
+  protected readonly estado = toSignal(
+    combineLatest([toObservable(this.contexto.id), toObservable(this.id), toObservable(this.recarga)]).pipe(
       filter(([c]) => !!c),
       switchMap(([c, id]) =>
         forkJoin({
-          unit: this.service.unit(c!, id),
-          occupancies: this.context.can('PEOPLE_VIEW') ? this.service.occupancies(c!, id) : of([] as Vinculo[]),
+          unidade: this.service.unidade(c!, id),
+          vinculos: this.contexto.pode('PEOPLE_VIEW') ? this.service.vinculos(c!, id) : of([] as Vinculo[]),
         }).pipe(
           catchError((err: unknown) => {
-            this.error.set(toProblem(err).detail);
+            this.erro.set(paraProblema(err).detail);
             return of(null);
           }),
         ),
@@ -134,61 +134,61 @@ export class UnitDetail {
     { initialValue: null },
   );
 
-  typeLabel(u: Unidade): string {
-    return UNIT_TYPE_LABELS[u.tipo];
+  rotuloTipo(u: Unidade): string {
+    return ROTULOS_TIPO_UNIDADE[u.tipo];
   }
 
-  roleLabel(o: Vinculo): string {
-    return OCCUPANCY_ROLE_LABELS[o.tipo];
+  rotuloPapel(o: Vinculo): string {
+    return ROTULOS_TIPO_VINCULO[o.tipo];
   }
 
-  edit(unit: Unidade): void {
-    const condominiumId = this.context.id()!;
-    this.service.buildings(condominiumId).subscribe((buildings) =>
+  editar(unidade: Unidade): void {
+    const idCondominio = this.contexto.id()!;
+    this.service.blocos(idCondominio).subscribe((blocos) =>
       this.dialog
-        .open<UnitDialog, UnitDialogData, Unidade>(UnitDialog, { data: { condominiumId, buildings, unit }, width: '640px', maxWidth: '95vw' })
+        .open<UnidadeDialog, DadosUnidadeDialog, Unidade>(UnidadeDialog, { data: { idCondominio, blocos, unidade }, width: '640px', maxWidth: '95vw' })
         .afterClosed()
         .pipe(filter((u) => !!u))
-        .subscribe(() => this.reload('Unidade atualizada.')),
+        .subscribe(() => this.recarregar('Unidade atualizada.')),
     );
   }
 
-  toggle(unit: Unidade): void {
-    this.service.setUnitActive(this.context.id()!, unit.id, !unit.ativo).subscribe({
-      next: () => this.reload(unit.ativo ? 'Unidade inativada.' : 'Unidade reativada.'),
-      error: (err: unknown) => this.notify.error(toProblem(err).detail),
+  alternar(unidade: Unidade): void {
+    this.service.alterarUnidadeAtiva(this.contexto.id()!, unidade.id, !unidade.ativo).subscribe({
+      next: () => this.recarregar(unidade.ativo ? 'Unidade inativada.' : 'Unidade reativada.'),
+      error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail),
     });
   }
 
-  link(unit: Unidade, occupancies: Vinculo[]): void {
+  link(unidade: Unidade, vinculos: Vinculo[]): void {
     this.dialog
-      .open(OccupancyDialog, {
-        data: { condominiumId: this.context.id()!, unitId: unit.id, unitLabel: unit.rotulo, hasFinancial: occupancies.some((o) => o.vigente && o.responsavelFinanceiro) },
+      .open(VinculoDialog, {
+        data: { idCondominio: this.contexto.id()!, idUnidade: unidade.id, rotuloUnidade: unidade.rotulo, temFinanceiro: vinculos.some((o) => o.vigente && o.responsavelFinanceiro) },
         width: '560px',
         maxWidth: '95vw',
       })
       .afterClosed()
       .pipe(filter((o) => !!o))
-      .subscribe(() => this.reload('Pessoa vinculada.'));
+      .subscribe(() => this.recarregar('Pessoa vinculada.'));
   }
 
-  end(o: Vinculo): void {
+  encerrar(o: Vinculo): void {
     this.dialog
-      .open(EndOccupancyDialog, { data: { condominiumId: this.context.id()!, occupancy: o }, width: '440px' })
+      .open(EncerrarVinculoDialog, { data: { idCondominio: this.contexto.id()!, vinculo: o }, width: '440px' })
       .afterClosed()
       .pipe(filter((r) => !!r))
-      .subscribe(() => this.reload('Vínculo encerrado.'));
+      .subscribe(() => this.recarregar('Vínculo encerrado.'));
   }
 
-  makeFinancial(o: Vinculo): void {
-    this.service.makeFinancialResponsible(this.context.id()!, o.id).subscribe({
-      next: () => this.reload(`${o.nomePessoa} agora é o responsável financeiro.`),
-      error: (err: unknown) => this.notify.error(toProblem(err).detail),
+  tornarResponsavelFinanceiro(o: Vinculo): void {
+    this.service.tornarResponsavelFinanceiro(this.contexto.id()!, o.id).subscribe({
+      next: () => this.recarregar(`${o.nomePessoa} agora é o responsável financeiro.`),
+      error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail),
     });
   }
 
-  private reload(message: string): void {
-    this.notify.success(message);
-    this.tick.update((t) => t + 1);
+  private recarregar(mensagem: string): void {
+    this.notificacao.sucesso(mensagem);
+    this.recarga.update((t) => t + 1);
   }
 }

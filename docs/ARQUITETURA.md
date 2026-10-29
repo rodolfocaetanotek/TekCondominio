@@ -160,9 +160,10 @@ Regras de negócio ficam **somente** nos services/entidades; controllers apenas 
 
 ```
 src/app
-├── core/        # auth (service, guard, interceptor), error interceptor, layout (shell, sidenav, topbar)
-├── shared/      # componentes reutilizáveis (confirm dialog, empty state, page header), máscaras, validadores de formato
-└── features/    # um diretório por módulo (condominiums, organizations, ...), rotas lazy
+├── core/        # auth (service, guards, interceptor), contexto (condomínio selecionado), notificacao (erro.interceptor,
+│                # sino), layout (shell, tema, tabelas responsivas)
+├── comum/       # componentes reutilizáveis (confirmacao-dialog, estado-vazio, cabecalho-pagina), máscaras, rótulos
+└── features/    # um diretório por módulo (condominios, administradoras, financeiro, ...), rotas lazy
 ```
 
 Validações no frontend são apenas de **formato/UX**; a regra de negócio é sempre decidida pelo backend.

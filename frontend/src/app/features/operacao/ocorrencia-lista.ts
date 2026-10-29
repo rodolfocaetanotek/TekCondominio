@@ -12,30 +12,30 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { catchError, combineLatest, debounceTime, filter, map, of, switchMap } from 'rxjs';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { LabelPipe } from '../../comum/rotulo.pipe';
-import { options } from '../../comum/rotulos';
-import { CondominiumRequired } from '../../comum/ui/condominio-obrigatorio';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { openForm } from '../../comum/ui/formulario-dialog';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
-import { StructureService } from '../estrutura/estrutura.service';
-import { DetalheOcorrencia, OpsApi, ResumoOcorrencia } from './operacao-api';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { RotuloPipe } from '../../comum/rotulo.pipe';
+import { opcoes } from '../../comum/rotulos';
+import { CondominioObrigatorio } from '../../comum/ui/condominio-obrigatorio';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { abrirFormulario } from '../../comum/ui/formulario-dialog';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
+import { EstruturaService } from '../estrutura/estrutura.service';
+import { DetalheOcorrencia, OperacaoApi, ResumoOcorrencia } from './operacao-api';
 
 @Component({
-  selector: 'tc-occurrence-list',
+  selector: 'tc-ocorrencia-lista',
   imports: [DatePipe, DecimalPipe, ReactiveFormsModule, MatTableModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule,
-    MatIconModule, MatProgressBarModule, PageHeader, EmptyState, CondominiumRequired, LabelPipe],
+    MatIconModule, MatProgressBarModule, CabecalhoPagina, EstadoVazio, CondominioObrigatorio, RotuloPipe],
   template: `
     <div class="tc-page">
-      <tc-page-header eyebrow="Manutenção" title="Ocorrências" [subtitle]="context.selected()?.nome">
-        @if (canEdit()) { <button mat-flat-button (click)="create()"><mat-icon>add_alert</mat-icon> Registrar ocorrência</button> }
-      </tc-page-header>
-      @if (!context.id()) {
-        <tc-condominium-required />
+      <tc-cabecalho-pagina sobretitulo="Manutenção" titulo="Ocorrências" [subtitulo]="contexto.selecionado()?.nome">
+        @if (podeEditar()) { <button mat-flat-button (click)="cadastrar()"><mat-icon>add_alert</mat-icon> Registrar ocorrência</button> }
+      </tc-cabecalho-pagina>
+      @if (!contexto.id()) {
+        <tc-condominio-obrigatorio />
       } @else {
-        @if (stats(); as s) {
+        @if (estatisticas(); as s) {
           <section class="tc-kpis" aria-label="Indicadores de ocorrências">
             <div class="tc-kpi tc-card tone-warning">
               <span class="icon"><mat-icon aria-hidden="true">pending_actions</mat-icon></span>
@@ -57,40 +57,40 @@ import { DetalheOcorrencia, OpsApi, ResumoOcorrencia } from './operacao-api';
           </section>
         }
         <div class="filters">
-          <mat-form-field class="search"><mat-label>Buscar</mat-label><mat-icon matPrefix>search</mat-icon><input matInput [formControl]="search" /></mat-form-field>
+          <mat-form-field class="search"><mat-label>Buscar</mat-label><mat-icon matPrefix>search</mat-icon><input matInput [formControl]="busca" /></mat-form-field>
           <mat-form-field><mat-label>Situação</mat-label>
-            <mat-select [formControl]="status">
+            <mat-select [formControl]="situacao">
               <mat-option value="pending">Pendentes</mat-option>
               <mat-option value="RESOLVED">Resolvidas</mat-option>
               <mat-option value="CANCELLED">Canceladas</mat-option>
               <mat-option value="">Todas</mat-option>
             </mat-select></mat-form-field>
         </div>
-        <section class="tc-table-card" aria-live="polite" [attr.aria-busy]="page() === undefined">
-          <mat-progress-bar [mode]="page() === undefined ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="page() !== undefined" />
-          @if (page() === undefined) {
+        <section class="tc-table-card" aria-live="polite" [attr.aria-busy]="pagina() === undefined">
+          <mat-progress-bar [mode]="pagina() === undefined ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="pagina() !== undefined" />
+          @if (pagina() === undefined) {
             <span class="sr-only">Carregando ocorrências…</span>
-          } @else if ((page()?.conteudo ?? []).length === 0) {
-            <tc-empty-state icon="build" title="Nenhuma ocorrência" />
+          } @else if ((pagina()?.conteudo ?? []).length === 0) {
+            <tc-estado-vazio icone="build" titulo="Nenhuma ocorrência" />
           } @else {
             <div class="table-scroll">
-              <table mat-table [dataSource]="page()?.conteudo ?? []">
+              <table mat-table [dataSource]="pagina()?.conteudo ?? []">
                 <ng-container matColumnDef="number"><th mat-header-cell *matHeaderCellDef>Nº</th><td mat-cell *matCellDef="let o" class="mono">{{ o.numero }}</td></ng-container>
                 <ng-container matColumnDef="title"><th mat-header-cell *matHeaderCellDef>Ocorrência</th>
                   <td mat-cell *matCellDef="let o"><span class="title-cell"><strong>{{ o.titulo }}</strong>
-                    <span class="tc-muted sub">{{ o.categoria | label: 'occurrenceCategory' }}{{ o.rotuloUnidade ? ' · Unid. ' + o.rotuloUnidade : '' }} · {{ o.nomeSolicitante }} · {{ o.criadoEm | date: 'dd/MM/yy HH:mm' }}</span></span></td></ng-container>
+                    <span class="tc-muted sub">{{ o.categoria | rotulo: 'occurrenceCategory' }}{{ o.rotuloUnidade ? ' · Unid. ' + o.rotuloUnidade : '' }} · {{ o.nomeSolicitante }} · {{ o.criadoEm | date: 'dd/MM/yy HH:mm' }}</span></span></td></ng-container>
                 <ng-container matColumnDef="priority"><th mat-header-cell *matHeaderCellDef>Prioridade</th>
-                  <td mat-cell *matCellDef="let o"><span [class.urgent]="o.prioridade === 'URGENT' || o.prioridade === 'HIGH'">{{ o.prioridade | label: 'priority' }}</span></td></ng-container>
+                  <td mat-cell *matCellDef="let o"><span [class.urgent]="o.prioridade === 'URGENT' || o.prioridade === 'HIGH'">{{ o.prioridade | rotulo: 'priority' }}</span></td></ng-container>
                 <ng-container matColumnDef="assignee"><th mat-header-cell *matHeaderCellDef>Responsável / prazo</th>
                   <td mat-cell *matCellDef="let o"><span class="two-line">{{ o.nomeResponsavel ?? '—' }}<span class="sub" [class.negative]="o.atrasada">{{ o.prazo ? 'até ' + o.prazo.slice(8, 10) + '/' + o.prazo.slice(5, 7) : '' }}</span></span></td></ng-container>
                 <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Situação</th>
                   <td mat-cell *matCellDef="let o"><span class="tc-status" [class.is-success]="o.situacao === 'RESOLVED'"
                     [class.is-danger]="o.atrasada && o.situacao !== 'RESOLVED' && o.situacao !== 'CANCELLED'"
                     [class.is-pending]="!o.atrasada && (o.situacao === 'OPEN' || o.situacao === 'WAITING')" [class.is-info]="!o.atrasada && o.situacao === 'IN_PROGRESS'"
-                    [class.is-inactive]="o.situacao === 'CANCELLED'">{{ o.situacao | label: 'occurrenceStatus' }}</span></td></ng-container>
-                <tr mat-header-row *matHeaderRowDef="columns"></tr>
-                <tr mat-row *matRowDef="let row; columns: columns" class="is-clickable" tabindex="0" role="link"
-                  [attr.aria-label]="'Abrir ocorrência nº ' + row.numero" (click)="open(row)" (keydown.enter)="open(row)"></tr>
+                    [class.is-inactive]="o.situacao === 'CANCELLED'">{{ o.situacao | rotulo: 'occurrenceStatus' }}</span></td></ng-container>
+                <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+                <tr mat-row *matRowDef="let linha; colunas: colunas" class="is-clickable" tabindex="0" role="link"
+                  [attr.aria-label]="'Abrir ocorrência nº ' + linha.numero" (click)="abrir(linha)" (keydown.enter)="abrir(linha)"></tr>
               </table>
             </div>
           }
@@ -108,50 +108,50 @@ import { DetalheOcorrencia, OpsApi, ResumoOcorrencia } from './operacao-api';
     }
   `,
 })
-export class OccurrenceList {
-  protected readonly context = inject(CondominiumContext);
-  private readonly api = inject(OpsApi);
-  private readonly structure = inject(StructureService);
+export class OcorrenciaLista {
+  protected readonly contexto = inject(CondominioContexto);
+  private readonly api = inject(OperacaoApi);
+  private readonly estrutura = inject(EstruturaService);
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
-  private readonly notify = inject(NotificationService);
-  protected readonly columns = ['number', 'title', 'priority', 'assignee', 'status'];
-  protected readonly search = new FormControl('', { nonNullable: true });
-  protected readonly status = new FormControl('pending', { nonNullable: true });
-  private readonly params = signal({ search: '', status: 'pending', tick: 0 });
-  protected readonly canEdit = computed(() => this.context.can('OCCURRENCE_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
-  private readonly source = combineLatest([toObservable(this.context.id), toObservable(this.params)]).pipe(filter(([c]) => !!c));
+  private readonly notificacao = inject(NotificacaoService);
+  protected readonly colunas = ['number', 'title', 'priority', 'assignee', 'status'];
+  protected readonly busca = new FormControl('', { nonNullable: true });
+  protected readonly situacao = new FormControl('pending', { nonNullable: true });
+  private readonly parametros = signal({ busca: '', situacao: 'pending', recarga: 0 });
+  protected readonly podeEditar = computed(() => this.contexto.pode('OCCURRENCE_EDIT') && this.contexto.selecionado()?.situacao === 'ACTIVE');
+  private readonly origem = combineLatest([toObservable(this.contexto.id), toObservable(this.parametros)]).pipe(filter(([c]) => !!c));
 
-  protected readonly page = toSignal(this.source.pipe(switchMap(([c, p]) => this.api.occurrences(c!, {
-    busca: p.search, tamanho: '100', ...(p.status === 'pending' ? { situacao: ['OPEN', 'IN_PROGRESS', 'WAITING'] } : p.status ? { situacao: p.status } : {}),
+  protected readonly pagina = toSignal(this.origem.pipe(switchMap(([c, p]) => this.api.ocorrencias(c!, {
+    busca: p.busca, tamanho: '100', ...(p.situacao === 'pending' ? { situacao: ['OPEN', 'IN_PROGRESS', 'WAITING'] } : p.situacao ? { situacao: p.situacao } : {}),
   }).pipe(catchError(() => of(null))))));
-  protected readonly stats = toSignal(this.source.pipe(switchMap(([c]) => this.api.occurrenceStats(c!).pipe(catchError(() => of(null))))));
+  protected readonly estatisticas = toSignal(this.origem.pipe(switchMap(([c]) => this.api.estatisticasOcorrencias(c!).pipe(catchError(() => of(null))))));
 
   constructor() {
-    this.search.valueChanges.pipe(debounceTime(300), takeUntilDestroyed()).subscribe((search) => this.params.update((p) => ({ ...p, search })));
-    this.status.valueChanges.pipe(takeUntilDestroyed()).subscribe((status) => this.params.update((p) => ({ ...p, status })));
+    this.busca.valueChanges.pipe(debounceTime(300), takeUntilDestroyed()).subscribe((busca) => this.parametros.update((p) => ({ ...p, busca })));
+    this.situacao.valueChanges.pipe(takeUntilDestroyed()).subscribe((situacao) => this.parametros.update((p) => ({ ...p, situacao })));
   }
 
-  open(o: ResumoOcorrencia): void {
+  abrir(o: ResumoOcorrencia): void {
     void this.router.navigate(['/ocorrencias', o.id]);
   }
 
-  create(): void {
-    const c = this.context.id()!;
-    this.structure.units(c, { page: 0, size: 100, active: 'true' }).pipe(map((p) => p.conteudo)).subscribe((units) =>
-      openForm<DetalheOcorrencia>(this.dialog, {
-        title: 'Registrar ocorrência',
-        fields: [
-          { key: 'titulo', label: 'Título', required: true, maxLength: 150 },
-          { key: 'descricao', label: 'Descrição', type: 'textarea', required: true, maxLength: 4000 },
-          { key: 'categoria', label: 'Categoria', type: 'select', required: true, value: 'MAINTENANCE', span: 6, options: options('occurrenceCategory') },
-          { key: 'prioridade', label: 'Prioridade', type: 'select', value: 'MEDIUM', span: 6, options: options('priority') },
-          { key: 'idUnidade', label: 'Unidade relacionada', type: 'select', value: null,
-            options: [{ value: null, label: '— (área comum)' }, ...units.map((u) => ({ value: u.id, label: u.rotulo }))] },
+  cadastrar(): void {
+    const c = this.contexto.id()!;
+    this.estrutura.unidades(c, { pagina: 0, tamanho: 100, ativo: 'true' }).pipe(map((p) => p.conteudo)).subscribe((unidades) =>
+      abrirFormulario<DetalheOcorrencia>(this.dialog, {
+        titulo: 'Registrar ocorrência',
+        campos: [
+          { chave: 'titulo', rotulo: 'Título', obrigatorio: true, tamanhoMaximo: 150 },
+          { chave: 'descricao', rotulo: 'Descrição', tipo: 'textarea', obrigatorio: true, tamanhoMaximo: 4000 },
+          { chave: 'categoria', rotulo: 'Categoria', tipo: 'select', obrigatorio: true, valor: 'MAINTENANCE', colunas: 6, opcoes: opcoes('occurrenceCategory') },
+          { chave: 'prioridade', rotulo: 'Prioridade', tipo: 'select', valor: 'MEDIUM', colunas: 6, opcoes: opcoes('priority') },
+          { chave: 'idUnidade', rotulo: 'Unidade relacionada', tipo: 'select', valor: null,
+            opcoes: [{ valor: null, rotulo: '— (área comum)' }, ...unidades.map((u) => ({ valor: u.id, rotulo: u.rotulo }))] },
         ],
-        submit: (v) => this.api.createOccurrence(c, v),
+        enviar: (v) => this.api.cadastrarOcorrencia(c, v),
       }).pipe(filter((r): r is DetalheOcorrencia => !!r)).subscribe((r) => {
-        this.notify.success(`Ocorrência nº ${r.resumo.numero} registrada.`);
+        this.notificacao.sucesso(`Ocorrência nº ${r.resumo.numero} registrada.`);
         void this.router.navigate(['/ocorrencias', r.resumo.id]);
       }));
   }

@@ -2,7 +2,7 @@ import { Component, input } from '@angular/core';
 
 /** Moldura das telas públicas de conta (esqueci a senha, definir senha). */
 @Component({
-  selector: 'tc-auth-card',
+  selector: 'tc-cartao-acesso',
   template: `
     <main class="wrap">
       <div class="brand">
@@ -10,7 +10,7 @@ import { Component, input } from '@angular/core';
         <span>Tek Condomínio</span>
       </div>
       <section class="card">
-        <h1>{{ title() }}</h1>
+        <h1>{{ titulo() }}</h1>
         <ng-content />
       </section>
     </main>
@@ -25,6 +25,6 @@ import { Component, input } from '@angular/core';
     @media (max-width: 600px) { .card { padding: 24px 18px; box-shadow: var(--tc-shadow); } }
   `,
 })
-export class AuthCard {
-  readonly title = input.required<string>();
+export class CartaoAcesso {
+  readonly titulo = input.required<string>();
 }

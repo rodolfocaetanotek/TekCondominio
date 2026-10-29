@@ -6,37 +6,37 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, combineLatest, filter, of, switchMap } from 'rxjs';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { LabelPipe } from '../../comum/rotulo.pipe';
-import { CondominiumRequired } from '../../comum/ui/condominio-obrigatorio';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
-import { openAssemblyForm } from './assembleia-form';
-import { ResumoAssembleia, OpsApi } from './operacao-api';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { RotuloPipe } from '../../comum/rotulo.pipe';
+import { CondominioObrigatorio } from '../../comum/ui/condominio-obrigatorio';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
+import { abrirFormAssembleia } from './assembleia-form';
+import { ResumoAssembleia, OperacaoApi } from './operacao-api';
 
 @Component({
-  selector: 'tc-assembly-list',
-  imports: [DatePipe, RouterLink, MatButtonModule, MatIconModule, PageHeader, EmptyState, CondominiumRequired, LabelPipe],
+  selector: 'tc-assembleia-lista',
+  imports: [DatePipe, RouterLink, MatButtonModule, MatIconModule, CabecalhoPagina, EstadoVazio, CondominioObrigatorio, RotuloPipe],
   template: `
     <div class="tc-page narrow">
-      <tc-page-header eyebrow="Governança" title="Assembleias" [subtitle]="context.selected()?.nome">
-        @if (canEdit()) { <button mat-flat-button (click)="create()"><mat-icon>groups</mat-icon> Nova assembleia</button> }
-      </tc-page-header>
-      @if (!context.id()) {
-        <tc-condominium-required />
+      <tc-cabecalho-pagina sobretitulo="Governança" titulo="Assembleias" [subtitulo]="contexto.selecionado()?.nome">
+        @if (podeEditar()) { <button mat-flat-button (click)="cadastrar()"><mat-icon>groups</mat-icon> Nova assembleia</button> }
+      </tc-cabecalho-pagina>
+      @if (!contexto.id()) {
+        <tc-condominio-obrigatorio />
       } @else {
         <section class="tc-table-card">
-          @for (a of list() ?? []; track a.id) {
+          @for (a of lista() ?? []; track a.id) {
             <a class="row" [routerLink]="['/assembleias', a.id]">
               <span class="tc-ico" aria-hidden="true"><mat-icon>event</mat-icon></span>
               <div class="who"><strong>{{ a.titulo }}</strong>
-                <span class="tc-muted">{{ a.tipo | label: 'assemblyKind' }} · {{ a.primeiraConvocacaoEm | date: 'dd/MM/yyyy HH:mm' }} · {{ a.local }}</span></div>
+                <span class="tc-muted">{{ a.tipo | rotulo: 'assemblyKind' }} · {{ a.primeiraConvocacaoEm | date: 'dd/MM/yyyy HH:mm' }} · {{ a.local }}</span></div>
               <span class="tc-status" [class.is-success]="a.situacao === 'CLOSED'" [class.is-pending]="a.situacao === 'CALLED'" [class.is-info]="a.situacao === 'IN_PROGRESS'"
-                [class.is-inactive]="a.situacao === 'CANCELLED' || a.situacao === 'DRAFT'">{{ a.situacao | label: 'assemblyStatus' }}</span>
+                [class.is-inactive]="a.situacao === 'CANCELLED' || a.situacao === 'DRAFT'">{{ a.situacao | rotulo: 'assemblyStatus' }}</span>
               <mat-icon class="chev" aria-hidden="true">chevron_right</mat-icon>
             </a>
-          } @empty { <tc-empty-state icon="groups" title="Nenhuma assembleia" /> }
+          } @empty { <tc-estado-vazio icone="groups" titulo="Nenhuma assembleia" /> }
         </section>
       }
     </div>
@@ -59,20 +59,20 @@ import { ResumoAssembleia, OpsApi } from './operacao-api';
     }
   `,
 })
-export class AssemblyList {
-  protected readonly context = inject(CondominiumContext);
-  private readonly api = inject(OpsApi);
+export class AssembleiaLista {
+  protected readonly contexto = inject(CondominioContexto);
+  private readonly api = inject(OperacaoApi);
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
-  private readonly notify = inject(NotificationService);
-  private readonly tick = signal(0);
-  protected readonly canEdit = computed(() => this.context.can('ASSEMBLY_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
-  protected readonly list = toSignal(combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(
-    filter(([c]) => !!c), switchMap(([c]) => this.api.assemblies(c!).pipe(catchError(() => of([] as ResumoAssembleia[]))))));
+  private readonly notificacao = inject(NotificacaoService);
+  private readonly recarga = signal(0);
+  protected readonly podeEditar = computed(() => this.contexto.pode('ASSEMBLY_EDIT') && this.contexto.selecionado()?.situacao === 'ACTIVE');
+  protected readonly lista = toSignal(combineLatest([toObservable(this.contexto.id), toObservable(this.recarga)]).pipe(
+    filter(([c]) => !!c), switchMap(([c]) => this.api.assembleias(c!).pipe(catchError(() => of([] as ResumoAssembleia[]))))));
 
-  create(): void {
-    openAssemblyForm(this.dialog, this.api, this.context.id()!).pipe(filter((r) => !!r)).subscribe((a) => {
-      this.notify.success('Assembleia criada como rascunho.');
+  cadastrar(): void {
+    abrirFormAssembleia(this.dialog, this.api, this.contexto.id()!).pipe(filter((r) => !!r)).subscribe((a) => {
+      this.notificacao.sucesso('Assembleia criada como rascunho.');
       void this.router.navigate(['/assembleias', a!.id]);
     });
   }

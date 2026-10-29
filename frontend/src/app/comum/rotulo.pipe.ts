@@ -1,10 +1,10 @@
 import { Pipe, PipeTransform } from '@angular/core';
-import { label } from './rotulos';
+import { rotulo } from './rotulos';
 
-/** {{ e.status | label: 'entryStatus' }} */
-@Pipe({ name: 'label' })
-export class LabelPipe implements PipeTransform {
-  transform(code: string | null | undefined, group: string): string {
-    return label(group, code);
+/** {{ e.situacao | rotulo: 'entryStatus' }} */
+@Pipe({ name: 'rotulo' })
+export class RotuloPipe implements PipeTransform {
+  transform(codigo: string | null | undefined, grupo: string): string {
+    return rotulo(grupo, codigo);
   }
 }

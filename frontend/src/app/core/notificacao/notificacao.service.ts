@@ -2,14 +2,14 @@ import { Injectable, inject } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Injectable({ providedIn: 'root' })
-export class NotificationService {
+export class NotificacaoService {
   private readonly snackBar = inject(MatSnackBar);
 
-  success(message: string): void {
-    this.snackBar.open(message, 'OK', { duration: 4000, panelClass: 'tc-snack-success', politeness: 'polite' });
+  sucesso(mensagem: string): void {
+    this.snackBar.open(mensagem, 'OK', { duration: 4000, panelClass: 'tc-snack-success', politeness: 'polite' });
   }
 
-  error(message: string): void {
-    this.snackBar.open(message, 'Fechar', { duration: 7000, panelClass: 'tc-snack-error', politeness: 'assertive' });
+  erro(mensagem: string): void {
+    this.snackBar.open(mensagem, 'Fechar', { duration: 7000, panelClass: 'tc-snack-error', politeness: 'assertive' });
   }
 }

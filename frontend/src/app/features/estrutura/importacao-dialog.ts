@@ -3,39 +3,39 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { toProblem } from '../../core/api/api.models';
+import { paraProblema } from '../../core/api/api.models';
 import { ResultadoImportacao } from './estrutura.models';
-import { StructureService } from './estrutura.service';
-import { DialogClose } from '../../comum/ui/fechar-dialog';
+import { EstruturaService } from './estrutura.service';
+import { FecharDialog } from '../../comum/ui/fechar-dialog';
 
-const TEMPLATE = 'bloco;unidade;tipo;fracao;area;proprietario;documento;email;telefone\n'
+const MODELO = 'bloco;unidade;tipo;fracao;area;proprietario;documento;email;telefone\n'
   + 'A;101;apartamento;2,5;72,40;Maria da Silva;529.982.247-25;maria@email.com;(91) 98888-7777\n'
   + 'A;102;apartamento;2,5;72,40;;;;\n';
 
 /** Importação de unidades e proprietários: valida primeiro (simulação) e só grava após confirmação. */
 @Component({
-  selector: 'tc-import-dialog',
-  imports: [DialogClose, MatDialogModule, MatButtonModule, MatIconModule, MatProgressBarModule],
+  selector: 'tc-importacao-dialog',
+  imports: [FecharDialog, MatDialogModule, MatButtonModule, MatIconModule, MatProgressBarModule],
   template: `
-    <h2 mat-dialog-title>Importar unidades (CSV) <tc-dialog-close /></h2>
+    <h2 mat-dialog-title>Importar unidades (CSV) <tc-fechar-dialog /></h2>
     <mat-dialog-content>
       <p class="tc-muted">Colunas: <code>bloco; unidade; tipo; fracao; area; proprietario; documento; email; telefone</code>.
         Apenas <strong>unidade</strong> é obrigatória. Pessoas já cadastradas com o mesmo CPF/CNPJ são reaproveitadas.</p>
-      <p><a href="" (click)="downloadTemplate($event)">Baixar modelo de planilha</a></p>
+      <p><a href="" (click)="baixarModelo($event)">Baixar modelo de planilha</a></p>
 
       <label class="file">
-        <input type="file" accept=".csv,text/csv" (change)="pick($event)" />
+        <input type="file" accept=".csv,text/csv" (change)="escolher($event)" />
         <mat-icon>upload_file</mat-icon>
-        <span>{{ file()?.name ?? 'Escolher arquivo CSV (até 2 MB)' }}</span>
+        <span>{{ arquivo()?.name ?? 'Escolher arquivo CSV (até 2 MB)' }}</span>
       </label>
 
-      @if (busy()) {
+      @if (ocupado()) {
         <mat-progress-bar mode="indeterminate" />
       }
-      @if (error(); as message) {
-        <p class="tc-alert" role="alert">{{ message }}</p>
+      @if (erro(); as mensagem) {
+        <p class="tc-alert" role="alert">{{ mensagem }}</p>
       }
-      @if (result(); as r) {
+      @if (resultado(); as r) {
         @if (r.erros.length) {
           <p class="tc-alert" role="alert">{{ r.erros.length }} problema(s) encontrado(s). Nada foi gravado — corrija a planilha e envie novamente.</p>
           <ul class="errors">
@@ -55,14 +55,14 @@ const TEMPLATE = 'bloco;unidade;tipo;fracao;area;proprietario;documento;email;te
       }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      @if (result() && !result()!.simulacao && !result()!.erros.length) {
+      @if (resultado() && !resultado()!.simulacao && !resultado()!.erros.length) {
         <button mat-flat-button (click)="ref.close(true)">Concluir</button>
       } @else {
         <button mat-button mat-dialog-close>Cancelar</button>
-        @if (result()?.simulacao && !result()!.erros.length) {
-          <button mat-flat-button (click)="run(false)" [disabled]="busy()">Importar agora</button>
+        @if (resultado()?.simulacao && !resultado()!.erros.length) {
+          <button mat-flat-button (click)="executar(false)" [disabled]="ocupado()">Importar agora</button>
         } @else {
-          <button mat-flat-button (click)="run(true)" [disabled]="!file() || busy()">Validar planilha</button>
+          <button mat-flat-button (click)="executar(true)" [disabled]="!arquivo() || ocupado()">Validar planilha</button>
         }
       }
     </mat-dialog-actions>
@@ -77,43 +77,43 @@ const TEMPLATE = 'bloco;unidade;tipo;fracao;area;proprietario;documento;email;te
     code { font-size: .85em; }
   `,
 })
-export class ImportDialog {
-  private readonly data = inject<{ condominiumId: string }>(MAT_DIALOG_DATA);
-  protected readonly ref = inject(MatDialogRef<ImportDialog, boolean>);
-  private readonly service = inject(StructureService);
+export class ImportacaoDialog {
+  private readonly data = inject<{ idCondominio: string }>(MAT_DIALOG_DATA);
+  protected readonly ref = inject(MatDialogRef<ImportacaoDialog, boolean>);
+  private readonly service = inject(EstruturaService);
 
-  protected readonly file = signal<File | null>(null);
-  protected readonly busy = signal(false);
-  protected readonly result = signal<ResultadoImportacao | null>(null);
-  protected readonly error = signal<string | null>(null);
+  protected readonly arquivo = signal<File | null>(null);
+  protected readonly ocupado = signal(false);
+  protected readonly resultado = signal<ResultadoImportacao | null>(null);
+  protected readonly erro = signal<string | null>(null);
 
-  pick(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    this.file.set(input.files?.[0] ?? null);
-    this.result.set(null);
-    this.error.set(null);
+  escolher(evento: Event): void {
+    const campoArquivo = evento.target as HTMLInputElement;
+    this.arquivo.set(campoArquivo.files?.[0] ?? null);
+    this.resultado.set(null);
+    this.erro.set(null);
   }
 
-  run(simulacao: boolean): void {
-    const file = this.file();
-    if (!file) return;
-    this.busy.set(true);
-    this.error.set(null);
-    this.service.importUnits(this.data.condominiumId, file, simulacao).subscribe({
+  executar(simulacao: boolean): void {
+    const arquivo = this.arquivo();
+    if (!arquivo) return;
+    this.ocupado.set(true);
+    this.erro.set(null);
+    this.service.importarUnidades(this.data.idCondominio, arquivo, simulacao).subscribe({
       next: (r) => {
-        this.busy.set(false);
-        this.result.set(r);
+        this.ocupado.set(false);
+        this.resultado.set(r);
       },
       error: (err: unknown) => {
-        this.busy.set(false);
-        this.error.set(toProblem(err).detail);
+        this.ocupado.set(false);
+        this.erro.set(paraProblema(err).detail);
       },
     });
   }
 
-  downloadTemplate(event: Event): void {
-    event.preventDefault();
-    const blob = new Blob(['﻿' + TEMPLATE], { type: 'text/csv;charset=utf-8' });
+  baixarModelo(evento: Event): void {
+    evento.preventDefault();
+    const blob = new Blob(['﻿' + MODELO], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

@@ -4,19 +4,19 @@ import { Observable } from 'rxjs';
 import { PaginaResponse } from '../../core/api/api.models';
 import { RegistroAuditoria } from './auditoria.models';
 
-export interface AuditQuery {
-  action?: string;
-  page: number;
-  size: number;
+export interface ConsultaAuditoria {
+  acao?: string;
+  pagina: number;
+  tamanho: number;
 }
 
 @Injectable({ providedIn: 'root' })
-export class AuditService {
+export class AuditoriaService {
   private readonly http = inject(HttpClient);
 
-  list(query: AuditQuery): Observable<PaginaResponse<RegistroAuditoria>> {
-    let params = new HttpParams().set('pagina', query.page).set('tamanho', query.size);
-    if (query.action) params = params.set('acao', query.action);
-    return this.http.get<PaginaResponse<RegistroAuditoria>>('/api/v1/auditoria', { params });
+  listar(consulta: ConsultaAuditoria): Observable<PaginaResponse<RegistroAuditoria>> {
+    let parametros = new HttpParams().set('pagina', consulta.pagina).set('tamanho', consulta.tamanho);
+    if (consulta.acao) parametros = parametros.set('acao', consulta.acao);
+    return this.http.get<PaginaResponse<RegistroAuditoria>>('/api/v1/auditoria', { params: parametros });
   }
 }

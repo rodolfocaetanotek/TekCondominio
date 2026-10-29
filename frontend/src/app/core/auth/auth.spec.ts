@@ -37,55 +37,55 @@ describe('AuthService + authInterceptor', () => {
 
   afterEach(() => backend.verify());
 
-  function signIn(): void {
+  function entrar(): void {
     auth.login('ana@x.com', 'segredo123456').subscribe();
     backend.expectOne('/api/v1/auth/login').flush({ accessToken: 'T1', tokenType: 'Bearer', expiraEm: '' });
     backend.expectOne('/api/v1/auth/perfil').flush(PERFIL);
   }
 
   it('faz login, guarda o token só em memória e carrega o perfil', () => {
-    signIn();
-    expect(auth.isAuthenticated()).toBe(true);
+    entrar();
+    expect(auth.autenticado()).toBe(true);
     expect(auth.accessToken()).toBe('T1');
     expect(localStorage.length).toBe(0);
   });
 
   it('avalia permissões por organização e por condomínio', () => {
-    signIn();
-    expect(auth.can('AUDIT_VIEW')).toBe(true);
-    expect(auth.can('CONDOMINIUM_EDIT')).toBe(false);
-    expect(auth.canIn('CONDOMINIUM_EDIT', 'c1')).toBe(true);
-    expect(auth.canIn('CONDOMINIUM_EDIT', 'c2')).toBe(false);
-    expect(auth.canAny('CONDOMINIUM_VIEW')).toBe(true);
+    entrar();
+    expect(auth.pode('AUDIT_VIEW')).toBe(true);
+    expect(auth.pode('CONDOMINIUM_EDIT')).toBe(false);
+    expect(auth.podeEm('CONDOMINIUM_EDIT', 'c1')).toBe(true);
+    expect(auth.podeEm('CONDOMINIUM_EDIT', 'c2')).toBe(false);
+    expect(auth.podeAlgum('CONDOMINIUM_VIEW')).toBe(true);
   });
 
   it('anexa o Bearer e, em 401, renova a sessão uma vez e repete a chamada', () => {
-    signIn();
-    let body: unknown;
-    http.get('/api/v1/condominios').subscribe((b) => (body = b));
+    entrar();
+    let corpo: unknown;
+    http.get('/api/v1/condominios').subscribe((b) => (corpo = b));
 
-    const first = backend.expectOne('/api/v1/condominios');
-    expect(first.request.headers.get('Authorization')).toBe('Bearer T1');
-    first.flush({}, { status: 401, statusText: 'Unauthorized' });
+    const primeiro = backend.expectOne('/api/v1/condominios');
+    expect(primeiro.request.headers.get('Authorization')).toBe('Bearer T1');
+    primeiro.flush({}, { status: 401, statusText: 'Unauthorized' });
 
-    const refresh = backend.expectOne('/api/v1/auth/refresh');
-    expect(refresh.request.headers.get('X-TekCondo-Client')).toBe('web');
-    expect(refresh.request.headers.has('Authorization')).toBe(false);
-    refresh.flush({ accessToken: 'T2', tokenType: 'Bearer', expiraEm: '' });
+    const renovar = backend.expectOne('/api/v1/auth/refresh');
+    expect(renovar.request.headers.get('X-TekCondo-Client')).toBe('web');
+    expect(renovar.request.headers.has('Authorization')).toBe(false);
+    renovar.flush({ accessToken: 'T2', tokenType: 'Bearer', expiraEm: '' });
 
-    const retry = backend.expectOne('/api/v1/condominios');
-    expect(retry.request.headers.get('Authorization')).toBe('Bearer T2');
-    retry.flush({ ok: true });
-    expect(body).toEqual({ ok: true });
+    const tentarNovamente = backend.expectOne('/api/v1/condominios');
+    expect(tentarNovamente.request.headers.get('Authorization')).toBe('Bearer T2');
+    tentarNovamente.flush({ ok: true });
+    expect(corpo).toEqual({ ok: true });
   });
 
   it('encerra a sessão quando a renovação falha', () => {
-    signIn();
+    entrar();
     http.get('/api/v1/condominios').subscribe({ error: () => undefined });
     backend.expectOne('/api/v1/condominios').flush({}, { status: 401, statusText: 'Unauthorized' });
     backend.expectOne('/api/v1/auth/refresh').flush({ codigo: 'SESSION_EXPIRED' }, { status: 401, statusText: 'Unauthorized' });
 
-    expect(auth.isAuthenticated()).toBe(false);
+    expect(auth.autenticado()).toBe(false);
     expect(auth.accessToken()).toBeNull();
   });
 });

@@ -7,33 +7,33 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Observable } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
-import { MaskKind } from '../formato/formato-br';
-import { MaskDirective } from '../formato/mascara.directive';
-import { FieldError } from '../formularios/erro-campo';
-import { applyServerErrors } from '../formularios/erros-servidor';
-import { DialogClose } from './fechar-dialog';
+import { paraProblema } from '../../core/api/api.models';
+import { TipoMascara } from '../formato/formato-br';
+import { MascaraDirective } from '../formato/mascara.directive';
+import { MensagemErroCampo } from '../formularios/erro-campo';
+import { aplicarErrosServidor } from '../formularios/erros-servidor';
+import { FecharDialog } from './fechar-dialog';
 
-export interface FieldDef {
-  key: string;
-  label: string;
-  type?: 'text' | 'number' | 'date' | 'time' | 'datetime' | 'select' | 'textarea' | 'checkbox' | 'email';
-  required?: boolean;
-  options?: { value: string | null; label: string }[];
-  value?: unknown;
-  hint?: string;
-  span?: 3 | 4 | 6 | 8 | 12;
-  mask?: MaskKind;
-  maxLength?: number;
+export interface DefinicaoCampo {
+  chave: string;
+  rotulo: string;
+  tipo?: 'text' | 'number' | 'date' | 'time' | 'datetime' | 'select' | 'textarea' | 'checkbox' | 'email';
+  obrigatorio?: boolean;
+  opcoes?: { valor: string | null; rotulo: string }[];
+  valor?: unknown;
+  dica?: string;
+  colunas?: 3 | 4 | 6 | 8 | 12;
+  mascara?: TipoMascara;
+  tamanhoMaximo?: number;
   min?: number;
 }
 
-export interface FormDialogData<T> {
-  title: string;
-  fields: FieldDef[];
-  submitLabel?: string;
-  intro?: string;
-  submit: (values: Record<string, unknown>) => Observable<T>;
+export interface DadosFormularioDialog<T> {
+  titulo: string;
+  campos: DefinicaoCampo[];
+  rotuloEnviar?: string;
+  introducao?: string;
+  enviar: (valores: Record<string, unknown>) => Observable<T>;
 }
 
 /**
@@ -41,58 +41,58 @@ export interface FormDialogData<T> {
  * (problem+json) aparecem no campo correspondente. Fecha com o resultado da chamada.
  */
 @Component({
-  selector: 'tc-form-dialog',
-  imports: [DialogClose, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatCheckboxModule, MaskDirective, FieldError],
+  selector: 'tc-formulario-dialog',
+  imports: [FecharDialog, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule,
+    MatCheckboxModule, MascaraDirective, MensagemErroCampo],
   template: `
     <h2 mat-dialog-title>
-      {{ data.title }} <tc-dialog-close />
+      {{ data.titulo }} <tc-fechar-dialog />
     </h2>
-    <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <form [formGroup]="form" (ngSubmit)="salvar()" novalidate>
       <mat-dialog-content>
-        @if (data.intro) {
-          <p class="tc-muted">{{ data.intro }}</p>
+        @if (data.introducao) {
+          <p class="tc-muted">{{ data.introducao }}</p>
         }
-        @if (error(); as message) {
-          <p class="tc-alert" role="alert">{{ message }}</p>
+        @if (erro(); as mensagem) {
+          <p class="tc-alert" role="alert">{{ mensagem }}</p>
         }
         <div class="tc-grid">
-          @for (f of data.fields; track f.key) {
-            @switch (f.type ?? 'text') {
+          @for (f of data.campos; track f.chave) {
+            @switch (f.tipo ?? 'text') {
               @case ('checkbox') {
-                <mat-checkbox [formControlName]="f.key" class="span-12">{{ f.label }}</mat-checkbox>
+                <mat-checkbox [formControlName]="f.chave" class="span-12">{{ f.rotulo }}</mat-checkbox>
               }
               @case ('select') {
-                <mat-form-field [class]="'span-' + (f.span ?? 12)">
-                  <mat-label>{{ f.label }}</mat-label>
-                  <mat-select [formControlName]="f.key" [required]="!!f.required">
-                    @for (o of f.options ?? []; track o.value) {
-                      <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                <mat-form-field [class]="'span-' + (f.colunas ?? 12)">
+                  <mat-label>{{ f.rotulo }}</mat-label>
+                  <mat-select [formControlName]="f.chave" [required]="!!f.obrigatorio">
+                    @for (o of f.opcoes ?? []; track o.valor) {
+                      <mat-option [value]="o.valor">{{ o.rotulo }}</mat-option>
                     }
                   </mat-select>
-                  @if (f.hint) { <mat-hint>{{ f.hint }}</mat-hint> }
-                  <mat-error><tc-field-error [control]="form.get(f.key)" /></mat-error>
+                  @if (f.dica) { <mat-hint>{{ f.dica }}</mat-hint> }
+                  <mat-error><tc-erro-campo [controle]="form.get(f.chave)" /></mat-error>
                 </mat-form-field>
               }
               @case ('textarea') {
-                <mat-form-field [class]="'span-' + (f.span ?? 12)">
-                  <mat-label>{{ f.label }}</mat-label>
-                  <textarea matInput [formControlName]="f.key" rows="4" [required]="!!f.required" [attr.maxlength]="f.maxLength ?? null"></textarea>
-                  @if (f.hint) { <mat-hint>{{ f.hint }}</mat-hint> }
-                  <mat-error><tc-field-error [control]="form.get(f.key)" /></mat-error>
+                <mat-form-field [class]="'span-' + (f.colunas ?? 12)">
+                  <mat-label>{{ f.rotulo }}</mat-label>
+                  <textarea matInput [formControlName]="f.chave" rows="4" [required]="!!f.obrigatorio" [attr.maxlength]="f.tamanhoMaximo ?? null"></textarea>
+                  @if (f.dica) { <mat-hint>{{ f.dica }}</mat-hint> }
+                  <mat-error><tc-erro-campo [controle]="form.get(f.chave)" /></mat-error>
                 </mat-form-field>
               }
               @default {
-                <mat-form-field [class]="'span-' + (f.span ?? 12)">
-                  <mat-label>{{ f.label }}</mat-label>
-                  @if (f.mask) {
-                    <input matInput [formControlName]="f.key" [tcMask]="f.mask" [required]="!!f.required" />
+                <mat-form-field [class]="'span-' + (f.colunas ?? 12)">
+                  <mat-label>{{ f.rotulo }}</mat-label>
+                  @if (f.mascara) {
+                    <input matInput [formControlName]="f.chave" [tcMascara]="f.mascara" [required]="!!f.obrigatorio" />
                   } @else {
-                    <input matInput [formControlName]="f.key" [type]="inputType(f)" [required]="!!f.required"
-                      [attr.step]="f.type === 'number' ? '0.01' : null" [attr.min]="f.min ?? null" [attr.maxlength]="f.maxLength ?? null" />
+                    <input matInput [formControlName]="f.chave" [type]="tipoInput(f)" [required]="!!f.obrigatorio"
+                      [attr.step]="f.tipo === 'number' ? '0.01' : null" [attr.min]="f.min ?? null" [attr.maxlength]="f.tamanhoMaximo ?? null" />
                   }
-                  @if (f.hint) { <mat-hint>{{ f.hint }}</mat-hint> }
-                  <mat-error><tc-field-error [control]="form.get(f.key)" /></mat-error>
+                  @if (f.dica) { <mat-hint>{{ f.dica }}</mat-hint> }
+                  <mat-error><tc-erro-campo [controle]="form.get(f.chave)" /></mat-error>
                 </mat-form-field>
               }
             }
@@ -101,57 +101,57 @@ export interface FormDialogData<T> {
       </mat-dialog-content>
       <mat-dialog-actions align="end">
         <button mat-button type="button" mat-dialog-close>Cancelar</button>
-        <button mat-flat-button type="submit" [disabled]="saving()">{{ saving() ? 'Salvando…' : (data.submitLabel ?? 'Salvar') }}</button>
+        <button mat-flat-button type="submit" [disabled]="salvando()">{{ salvando() ? 'Salvando…' : (data.rotuloEnviar ?? 'Salvar') }}</button>
       </mat-dialog-actions>
     </form>
   `,
 })
-export class FormDialog<T> {
-  protected readonly data = inject<FormDialogData<T>>(MAT_DIALOG_DATA);
-  private readonly ref = inject(MatDialogRef<FormDialog<T>, T>);
-  protected readonly saving = signal(false);
-  protected readonly error = signal<string | null>(null);
+export class FormularioDialog<T> {
+  protected readonly data = inject<DadosFormularioDialog<T>>(MAT_DIALOG_DATA);
+  private readonly ref = inject(MatDialogRef<FormularioDialog<T>, T>);
+  protected readonly salvando = signal(false);
+  protected readonly erro = signal<string | null>(null);
   protected readonly form = new FormGroup<Record<string, FormControl>>({});
 
   constructor() {
-    for (const f of this.data.fields) {
-      const validators: ValidatorFn[] = [];
-      if (f.required && f.type !== 'checkbox') validators.push(Validators.required);
-      if (f.type === 'email') validators.push(Validators.email);
-      const initial = f.value ?? (f.type === 'checkbox' ? false : null);
-      this.form.addControl(f.key, new FormControl(initial, validators));
+    for (const f of this.data.campos) {
+      const validadores: ValidatorFn[] = [];
+      if (f.obrigatorio && f.tipo !== 'checkbox') validadores.push(Validators.required);
+      if (f.tipo === 'email') validadores.push(Validators.email);
+      const inicial = f.valor ?? (f.tipo === 'checkbox' ? false : null);
+      this.form.addControl(f.chave, new FormControl(inicial, validadores));
     }
   }
 
-  inputType(f: FieldDef): string {
-    return f.type === 'datetime' ? 'datetime-local' : (f.type ?? 'text');
+  tipoInput(f: DefinicaoCampo): string {
+    return f.tipo === 'datetime' ? 'datetime-local' : (f.tipo ?? 'text');
   }
 
-  save(): void {
+  salvar(): void {
     this.form.markAllAsTouched();
-    if (this.form.invalid || this.saving()) return;
-    this.saving.set(true);
-    this.error.set(null);
-    const values: Record<string, unknown> = {};
-    for (const f of this.data.fields) {
-      let v = this.form.controls[f.key].value as unknown;
+    if (this.form.invalid || this.salvando()) return;
+    this.salvando.set(true);
+    this.erro.set(null);
+    const valores: Record<string, unknown> = {};
+    for (const f of this.data.campos) {
+      let v = this.form.controls[f.chave].value as unknown;
       if (typeof v === 'string') v = v.trim() === '' ? null : v.trim();
-      if (f.type === 'datetime' && typeof v === 'string') v = new Date(v).toISOString();
-      values[f.key] = v;
+      if (f.tipo === 'datetime' && typeof v === 'string') v = new Date(v).toISOString();
+      valores[f.chave] = v;
     }
-    this.data.submit(values).subscribe({
-      next: (result) => this.ref.close(result),
+    this.data.enviar(valores).subscribe({
+      next: (resultado) => this.ref.close(resultado),
       error: (err: unknown) => {
-        this.saving.set(false);
-        const p = toProblem(err);
-        const rest = p.codigo === 'VALIDATION_ERROR' ? applyServerErrors(this.form, p) : [p.detail];
-        if (rest.length) this.error.set(rest.join(' '));
+        this.salvando.set(false);
+        const p = paraProblema(err);
+        const restante = p.codigo === 'VALIDATION_ERROR' ? aplicarErrosServidor(this.form, p) : [p.detail];
+        if (restante.length) this.erro.set(restante.join(' '));
       },
     });
   }
 }
 
 /** Atalho: abre o formulário e devolve o resultado (ou undefined se cancelado). */
-export function openForm<T>(dialog: MatDialog, data: FormDialogData<T>, width = '560px'): Observable<T | undefined> {
-  return dialog.open<FormDialog<T>, FormDialogData<T>, T>(FormDialog, { data, width, maxWidth: '95vw' }).afterClosed();
+export function abrirFormulario<T>(dialog: MatDialog, data: DadosFormularioDialog<T>, largura = '560px'): Observable<T | undefined> {
+  return dialog.open<FormularioDialog<T>, DadosFormularioDialog<T>, T>(FormularioDialog, { data, width: largura, maxWidth: '95vw' }).afterClosed();
 }

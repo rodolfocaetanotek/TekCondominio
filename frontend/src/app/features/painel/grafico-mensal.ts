@@ -2,9 +2,9 @@ import { CurrencyPipe } from '@angular/common';
 import { Component, computed, input, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 
-export interface MonthPoint { mes: string; receitas: number; despesas: number; }
+export interface PontoMensal { mes: string; receitas: number; despesas: number; }
 
-const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
 /**
  * Receitas × despesas por mês (colunas agrupadas, um único eixo em R$).
@@ -12,7 +12,7 @@ const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', '
  * dica ao passar o mouse/foco e alternativa em tabela para leitores de tela.
  */
 @Component({
-  selector: 'tc-monthly-chart',
+  selector: 'tc-grafico-mensal',
   imports: [CurrencyPipe, MatButtonModule],
   template: `
     <div class="viz-root">
@@ -21,41 +21,41 @@ const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', '
           <span><i class="sw income"></i>Receitas</span>
           <span><i class="sw expense"></i>Despesas</span>
         </div>
-        <button mat-button (click)="showTable.set(!showTable())">{{ showTable() ? 'Ver gráfico' : 'Ver tabela' }}</button>
+        <button mat-button (click)="mostrarTabela.set(!mostrarTabela())">{{ mostrarTabela() ? 'Ver gráfico' : 'Ver tabela' }}</button>
       </div>
-      @if (showTable()) {
+      @if (mostrarTabela()) {
         <table class="data">
           <caption class="sr-only">Receitas e despesas por mês</caption>
           <thead><tr><th>Mês</th><th class="num">Receitas</th><th class="num">Despesas</th><th class="num">Resultado</th></tr></thead>
           <tbody>
-            @for (p of points(); track p.mes) {
-              <tr><td>{{ label(p.mes) }}</td><td class="num">{{ p.receitas | currency: 'BRL' }}</td><td class="num">{{ p.despesas | currency: 'BRL' }}</td>
+            @for (p of pontos(); track p.mes) {
+              <tr><td>{{ rotulo(p.mes) }}</td><td class="num">{{ p.receitas | currency: 'BRL' }}</td><td class="num">{{ p.despesas | currency: 'BRL' }}</td>
                 <td class="num">{{ p.receitas - p.despesas | currency: 'BRL' }}</td></tr>
             }
           </tbody>
         </table>
       } @else {
-        <div class="plot" (mouseleave)="hover.set(null)">
-          <svg [attr.viewBox]="'0 0 ' + W + ' ' + H" role="img" [attr.aria-label]="summary()" preserveAspectRatio="none">
-            @for (t of ticks(); track t.value) {
-              <line class="grid" [attr.x1]="PAD_L" [attr.x2]="W - 4" [attr.y1]="t.y" [attr.y2]="t.y" />
-              <text class="axis" [attr.x]="PAD_L - 6" [attr.y]="t.y + 3" text-anchor="end">{{ t.label }}</text>
+        <div class="plot" (mouseleave)="destaque.set(null)">
+          <svg [attr.viewBox]="'0 0 ' + LARGURA + ' ' + ALTURA" role="img" [attr.aria-label]="resumo()" preserveAspectRatio="none">
+            @for (t of marcas(); track t.valor) {
+              <line class="grid" [attr.x1]="MARGEM_ESQUERDA" [attr.x2]="LARGURA - 4" [attr.y1]="t.y" [attr.y2]="t.y" />
+              <text class="axis" [attr.x]="MARGEM_ESQUERDA - 6" [attr.y]="t.y + 3" text-anchor="end">{{ t.rotulo }}</text>
             }
-            @for (b of bars(); track b.mes; let i = $index) {
-              <g (mouseenter)="hover.set(i)" (focus)="hover.set(i)" (blur)="hover.set(null)" tabindex="0"
-                [attr.aria-label]="label(b.mes) + ': receitas ' + money(b.receitas) + ', despesas ' + money(b.despesas)">
-                <rect class="hit" [attr.x]="b.x - 4" [attr.y]="PAD_T" [attr.width]="b.w * 2 + 10" [attr.height]="plotH" />
-                <path class="bar income" [attr.d]="col(b.x, b.yIncome, b.w)" />
-                <path class="bar expense" [attr.d]="col(b.x + b.w + 2, b.yExpense, b.w)" />
-                <text class="axis" [attr.x]="b.x + b.w + 1" [attr.y]="H - 6" text-anchor="middle">{{ label(b.mes).slice(0, 3) }}</text>
+            @for (b of barras(); track b.mes; let i = $index) {
+              <g (mouseenter)="destaque.set(i)" (focus)="destaque.set(i)" (blur)="destaque.set(null)" tabindex="0"
+                [attr.aria-label]="rotulo(b.mes) + ': receitas ' + moeda(b.receitas) + ', despesas ' + moeda(b.despesas)">
+                <rect class="hit" [attr.x]="b.x - 4" [attr.y]="MARGEM_SUPERIOR" [attr.width]="b.largura * 2 + 10" [attr.height]="alturaGrafico" />
+                <path class="bar income" [attr.d]="coluna(b.x, b.yIncome, b.largura)" />
+                <path class="bar expense" [attr.d]="coluna(b.x + b.largura + 2, b.yExpense, b.largura)" />
+                <text class="axis" [attr.x]="b.x + b.largura + 1" [attr.y]="ALTURA - 6" text-anchor="middle">{{ rotulo(b.mes).slice(0, 3) }}</text>
               </g>
             }
-            <line class="base" [attr.x1]="PAD_L" [attr.x2]="W - 4" [attr.y1]="PAD_T + plotH" [attr.y2]="PAD_T + plotH" />
+            <line class="base" [attr.x1]="MARGEM_ESQUERDA" [attr.x2]="LARGURA - 4" [attr.y1]="MARGEM_SUPERIOR + alturaGrafico" [attr.y2]="MARGEM_SUPERIOR + alturaGrafico" />
           </svg>
-          @if (hover() !== null) {
-            @let p = points()[hover()!];
-            <div class="tip" [style.left.%]="tipLeft()">
-              <strong>{{ label(p.mes) }}</strong>
+          @if (destaque() !== null) {
+            @let p = pontos()[destaque()!];
+            <div class="tip" [style.left.%]="dicaEsquerda()">
+              <strong>{{ rotulo(p.mes) }}</strong>
               <span><i class="sw income"></i>Receitas {{ p.receitas | currency: 'BRL' }}</span>
               <span><i class="sw expense"></i>Despesas {{ p.despesas | currency: 'BRL' }}</span>
               <span class="muted">Resultado {{ p.receitas - p.despesas | currency: 'BRL' }}</span>
@@ -93,75 +93,75 @@ const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', '
     .num { text-align: right !important; font-variant-numeric: tabular-nums; }
   `,
 })
-export class MonthlyChart {
-  readonly points = input.required<MonthPoint[]>();
-  protected readonly W = 640;
-  protected readonly H = 240;
-  protected readonly PAD_L = 56;
-  protected readonly PAD_T = 12;
-  protected readonly plotH = this.H - this.PAD_T - 24;
-  protected readonly hover = signal<number | null>(null);
-  protected readonly showTable = signal(false);
+export class GraficoMensal {
+  readonly pontos = input.required<PontoMensal[]>();
+  protected readonly LARGURA = 640;
+  protected readonly ALTURA = 240;
+  protected readonly MARGEM_ESQUERDA = 56;
+  protected readonly MARGEM_SUPERIOR = 12;
+  protected readonly alturaGrafico = this.ALTURA - this.MARGEM_SUPERIOR - 24;
+  protected readonly destaque = signal<number | null>(null);
+  protected readonly mostrarTabela = signal(false);
 
   private readonly max = computed(() => {
-    const m = Math.max(1, ...this.points().flatMap((p) => [p.receitas, p.despesas]));
-    const mag = Math.pow(10, Math.floor(Math.log10(m)));
-    return Math.ceil(m / mag) * mag;
+    const m = Math.max(1, ...this.pontos().flatMap((p) => [p.receitas, p.despesas]));
+    const magnitude = Math.pow(10, Math.floor(Math.log10(m)));
+    return Math.ceil(m / magnitude) * magnitude;
   });
 
-  protected readonly ticks = computed(() => [0, 0.25, 0.5, 0.75, 1].map((f) => {
-    const value = this.max() * f;
-    return { value, y: this.PAD_T + this.plotH * (1 - f), label: compact(value) };
+  protected readonly marcas = computed(() => [0, 0.25, 0.5, 0.75, 1].map((f) => {
+    const valor = this.max() * f;
+    return { valor, y: this.MARGEM_SUPERIOR + this.alturaGrafico * (1 - f), rotulo: compactar(valor) };
   }));
 
-  protected readonly bars = computed(() => {
-    const n = this.points().length || 1;
-    const slot = (this.W - this.PAD_L - 8) / n;
-    const w = Math.max(3, Math.min(14, (slot - 10) / 2));
-    return this.points().map((p, i) => ({
+  protected readonly barras = computed(() => {
+    const n = this.pontos().length || 1;
+    const horario = (this.LARGURA - this.MARGEM_ESQUERDA - 8) / n;
+    const largura = Math.max(3, Math.min(14, (horario - 10) / 2));
+    return this.pontos().map((p, i) => ({
       ...p,
-      x: this.PAD_L + i * slot + (slot - (w * 2 + 2)) / 2,
-      w,
+      x: this.MARGEM_ESQUERDA + i * horario + (horario - (largura * 2 + 2)) / 2,
+      largura,
       yIncome: this.y(p.receitas),
       yExpense: this.y(p.despesas),
     }));
   });
 
-  protected readonly summary = computed(() => {
-    const total = this.points().reduce((s, p) => ({ i: s.i + p.receitas, e: s.e + p.despesas }), { i: 0, e: 0 });
-    return `Receitas e despesas dos últimos ${this.points().length} meses: receitas ${this.money(total.i)}, despesas ${this.money(total.e)}.`;
+  protected readonly resumo = computed(() => {
+    const total = this.pontos().reduce((s, p) => ({ i: s.i + p.receitas, e: s.e + p.despesas }), { i: 0, e: 0 });
+    return `Receitas e despesas dos últimos ${this.pontos().length} meses: receitas ${this.moeda(total.i)}, despesas ${this.moeda(total.e)}.`;
   });
 
-  protected tipLeft(): number {
-    const i = this.hover() ?? 0;
-    const b = this.bars()[i];
-    return Math.min(85, Math.max(15, ((b.x + b.w) / this.W) * 100));
+  protected dicaEsquerda(): number {
+    const i = this.destaque() ?? 0;
+    const b = this.barras()[i];
+    return Math.min(85, Math.max(15, ((b.x + b.largura) / this.LARGURA) * 100));
   }
 
   private y(v: number): number {
-    return this.PAD_T + this.plotH * (1 - v / this.max());
+    return this.MARGEM_SUPERIOR + this.alturaGrafico * (1 - v / this.max());
   }
 
   /** Coluna com topo arredondado (4px) e base reta ancorada na linha de base. */
-  protected col(x: number, y: number, w: number): string {
-    const base = this.PAD_T + this.plotH;
+  protected coluna(x: number, y: number, largura: number): string {
+    const base = this.MARGEM_SUPERIOR + this.alturaGrafico;
     const h = base - y;
     if (h <= 0.5) return '';
-    const r = Math.min(4, w / 2, h);
-    return `M${x},${base} V${y + r} Q${x},${y} ${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${base} Z`;
+    const r = Math.min(4, largura / 2, h);
+    return `M${x},${base} V${y + r} Q${x},${y} ${x + r},${y} H${x + largura - r} Q${x + largura},${y} ${x + largura},${y + r} V${base} Z`;
   }
 
-  protected label(month: string): string {
-    const [y, m] = month.split('-');
-    return `${MONTHS[Number(m) - 1]}/${y.slice(2)}`;
+  protected rotulo(mes: string): string {
+    const [y, m] = mes.split('-');
+    return `${MESES[Number(m) - 1]}/${y.slice(2)}`;
   }
 
-  protected money(v: number): string {
+  protected moeda(v: number): string {
     return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 }
 
-function compact(v: number): string {
+function compactar(v: number): string {
   if (v >= 1_000_000) return (v / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mi';
   if (v >= 1_000) return (v / 1_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mil';
   return v.toLocaleString('pt-BR', { maximumFractionDigits: 0 });

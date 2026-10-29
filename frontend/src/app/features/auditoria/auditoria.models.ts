@@ -10,7 +10,7 @@ export interface RegistroAuditoria {
   enderecoIp?: string;
 }
 
-export const AUDIT_ACTION_LABELS: Record<string, string> = {
+export const ROTULOS_ACAO_AUDITORIA: Record<string, string> = {
   LOGIN_SUCCESS: 'Login realizado',
   LOGIN_FAILED: 'Falha de login',
   LOGIN_BLOCKED: 'Login bloqueado',
@@ -35,7 +35,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   CONDOMINIUM_ACTIVATED: 'Condomínio reativado',
 };
 
-export const AUDIT_ENTITY_LABELS: Record<string, string> = {
+export const ROTULOS_ENTIDADE_AUDITORIA: Record<string, string> = {
   User: 'Usuário',
   Organization: 'Administradora',
   Condominium: 'Condomínio',

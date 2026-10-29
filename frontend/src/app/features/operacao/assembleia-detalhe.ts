@@ -11,52 +11,52 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { RouterLink } from '@angular/router';
 import { Observable, catchError, combineLatest, filter, map, of, switchMap } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { LabelPipe } from '../../comum/rotulo.pipe';
-import { askConfirm, askReason } from '../../comum/ui/confirmacao-dialog';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { openForm } from '../../comum/ui/formulario-dialog';
-import { IsoDatePipe } from '../../comum/ui/data-iso.pipe';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
-import { StructureService } from '../estrutura/estrutura.service';
-import { openAssemblyForm } from './assembleia-form';
-import { Attachments } from './anexos';
-import { ItemPauta, DetalheAssembleia, OpsApi } from './operacao-api';
+import { paraProblema } from '../../core/api/api.models';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { RotuloPipe } from '../../comum/rotulo.pipe';
+import { pedirConfirmacao, pedirMotivo } from '../../comum/ui/confirmacao-dialog';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { abrirFormulario } from '../../comum/ui/formulario-dialog';
+import { DataIsoPipe } from '../../comum/ui/data-iso.pipe';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
+import { EstruturaService } from '../estrutura/estrutura.service';
+import { abrirFormAssembleia } from './assembleia-form';
+import { Anexos } from './anexos';
+import { ItemPauta, DetalheAssembleia, OperacaoApi } from './operacao-api';
 
 @Component({
-  selector: 'tc-assembly-detail',
+  selector: 'tc-assembleia-detalhe',
   imports: [DatePipe, DecimalPipe, ReactiveFormsModule, RouterLink, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, MatProgressBarModule, PageHeader, EmptyState, LabelPipe, IsoDatePipe, Attachments],
+    MatSelectModule, MatProgressBarModule, CabecalhoPagina, EstadoVazio, RotuloPipe, DataIsoPipe, Anexos],
   template: `
     <div class="tc-page narrow">
       <a mat-button routerLink="/assembleias" class="back"><mat-icon>arrow_back</mat-icon> Assembleias</a>
-      @if (error(); as message) {
-        <section class="tc-card"><tc-empty-state icon="error" title="Não foi possível abrir" [description]="message" /></section>
+      @if (erro(); as mensagem) {
+        <section class="tc-card"><tc-estado-vazio icone="error" titulo="Não foi possível abrir" [descricao]="mensagem" /></section>
       } @else if (a(); as d) {
-        <tc-page-header [eyebrow]="'Assembleia ' + (d.tipo | label: 'assemblyKind')" [title]="d.titulo"
-          [subtitle]="(d.primeiraConvocacaoEm | date: 'dd/MM/yyyy HH:mm') + ' · ' + d.local + ' · ' + (d.criterioVoto | label: 'voteWeight')">
+        <tc-cabecalho-pagina [sobretitulo]="'Assembleia ' + (d.tipo | rotulo: 'assemblyKind')" [titulo]="d.titulo"
+          [subtitulo]="(d.primeiraConvocacaoEm | date: 'dd/MM/yyyy HH:mm') + ' · ' + d.local + ' · ' + (d.criterioVoto | rotulo: 'voteWeight')">
           <span class="tc-status big" [class.is-success]="d.situacao === 'CLOSED'" [class.is-pending]="d.situacao === 'CALLED'" [class.is-info]="d.situacao === 'IN_PROGRESS'"
-            [class.is-inactive]="d.situacao === 'CANCELLED' || d.situacao === 'DRAFT'">{{ d.situacao | label: 'assemblyStatus' }}</span>
-        </tc-page-header>
+            [class.is-inactive]="d.situacao === 'CANCELLED' || d.situacao === 'DRAFT'">{{ d.situacao | rotulo: 'assemblyStatus' }}</span>
+        </tc-cabecalho-pagina>
 
-        @if (canEdit()) {
+        @if (podeEditar()) {
           <div class="tc-actions bar">
             @switch (d.situacao) {
               @case ('DRAFT') {
-                <button mat-stroked-button (click)="edit(d)"><mat-icon>edit</mat-icon> Editar</button>
-                <button mat-flat-button (click)="act('convocar', 'Convocar assembleia', 'Será publicado um comunicado de convocação com a pauta para todos os condôminos (notificação e e-mail).')"><mat-icon>campaign</mat-icon> Convocar</button>
+                <button mat-stroked-button (click)="editar(d)"><mat-icon>edit</mat-icon> Editar</button>
+                <button mat-flat-button (click)="executarAcao('convocar', 'Convocar assembleia', 'Será publicado um comunicado de convocação com a pauta para todos os condôminos (notificação e e-mail).')"><mat-icon>campaign</mat-icon> Convocar</button>
               }
               @case ('CALLED') {
-                <button mat-stroked-button (click)="edit(d)"><mat-icon>edit</mat-icon> Editar</button>
-                <button mat-flat-button (click)="act('iniciar', 'Iniciar assembleia', 'Abre o registro de presença e votação.')"><mat-icon>play_arrow</mat-icon> Iniciar</button>
+                <button mat-stroked-button (click)="editar(d)"><mat-icon>edit</mat-icon> Editar</button>
+                <button mat-flat-button (click)="executarAcao('iniciar', 'Iniciar assembleia', 'Abre o registro de presença e votação.')"><mat-icon>play_arrow</mat-icon> Iniciar</button>
               }
               @case ('IN_PROGRESS') {
-                <button mat-flat-button (click)="act('encerrar', 'Encerrar assembleia', 'Após encerrada, presença e votos não podem ser alterados.')"><mat-icon>stop</mat-icon> Encerrar</button>
+                <button mat-flat-button (click)="executarAcao('encerrar', 'Encerrar assembleia', 'Após encerrada, presença e votos não podem ser alterados.')"><mat-icon>stop</mat-icon> Encerrar</button>
               }
             }
-            @if (d.situacao !== 'CLOSED' && d.situacao !== 'CANCELLED') { <button mat-button (click)="cancel()">Cancelar assembleia</button> }
+            @if (d.situacao !== 'CLOSED' && d.situacao !== 'CANCELLED') { <button mat-button (click)="cancelar()">Cancelar assembleia</button> }
           </div>
         }
 
@@ -87,20 +87,20 @@ import { ItemPauta, DetalheAssembleia, OpsApi } from './operacao-api';
                   <div class="tally">
                     <span class="vote yes">Sim <b>{{ i.apuracao.sim | number: '1.0-4' }}</b></span><span class="vote no">Não <b>{{ i.apuracao.nao | number: '1.0-4' }}</b></span>
                     <span class="vote">Abst. <b>{{ i.apuracao.abstencao | number: '1.0-4' }}</b></span><span class="tc-muted">{{ i.apuracao.votos }} voto(s)</span>
-                    @if (canEdit() && d.situacao === 'IN_PROGRESS') { <button mat-button (click)="vote(d, i)"><mat-icon>how_to_vote</mat-icon> Registrar voto</button> }
+                    @if (podeEditar() && d.situacao === 'IN_PROGRESS') { <button mat-button (click)="votar(d, i)"><mat-icon>how_to_vote</mat-icon> Registrar voto</button> }
                   </div>
                 } @else { <small class="tc-chip-soft info"> informativo</small> }
-                @if (i.deliberacao) { <p class="delib">{{ i.deliberacao }}{{ i.responsavel ? ' — resp.: ' + i.responsavel : '' }}{{ i.prazo ? ' (prazo ' + (i.prazo | isoDate) + ')' : '' }}</p> }
-                @if (canEdit() && (d.situacao === 'IN_PROGRESS' || d.situacao === 'CLOSED')) { <button mat-button (click)="deliberate(i)">Deliberação</button> }
+                @if (i.deliberacao) { <p class="delib">{{ i.deliberacao }}{{ i.responsavel ? ' — resp.: ' + i.responsavel : '' }}{{ i.prazo ? ' (prazo ' + (i.prazo | dataIso) + ')' : '' }}</p> }
+                @if (podeEditar() && (d.situacao === 'IN_PROGRESS' || d.situacao === 'CLOSED')) { <button mat-button (click)="deliberar(i)">Deliberação</button> }
               </div>
             }
           </section>
           <section class="tc-card">
             <div class="head"><h3 class="tc-section-title">Lista de presença</h3>
-              @if (canEdit() && d.situacao === 'IN_PROGRESS') { <button mat-button (click)="attend()"><mat-icon>person_add</mat-icon> Registrar</button> }</div>
+              @if (podeEditar() && d.situacao === 'IN_PROGRESS') { <button mat-button (click)="registrarPresenca()"><mat-icon>person_add</mat-icon> Registrar</button> }</div>
             @for (p of d.presencas; track p.id) {
               <div class="att"><span><strong>{{ p.rotuloUnidade }}</strong> · {{ p.nomePresente }}{{ p.porProcuracao ? ' (procurador: ' + p.nomeProcurador + ')' : '' }}</span>
-                @if (canEdit() && d.situacao === 'IN_PROGRESS') { <button mat-icon-button (click)="removeAttendance(p.id)" aria-label="Remover presença"><mat-icon>close</mat-icon></button> }</div>
+                @if (podeEditar() && d.situacao === 'IN_PROGRESS') { <button mat-icon-button (click)="removerPresenca(p.id)" aria-label="Remover presença"><mat-icon>close</mat-icon></button> }</div>
             } @empty { <p class="tc-muted">Nenhuma presença registrada.</p> }
           </section>
         </div>
@@ -108,12 +108,12 @@ import { ItemPauta, DetalheAssembleia, OpsApi } from './operacao-api';
         @if (d.situacao === 'IN_PROGRESS' || d.situacao === 'CLOSED') {
           <section class="tc-card minutes">
             <div class="head"><h3 class="tc-section-title">Ata</h3>
-              @if (canEdit()) { <button mat-button (click)="draft()"><mat-icon>auto_awesome</mat-icon> Gerar rascunho a partir dos dados</button> }</div>
-            <mat-form-field class="full"><mat-label>Texto da ata</mat-label><textarea matInput rows="14" [formControl]="minutes" [readonly]="!canEdit()"></textarea></mat-form-field>
-            @if (canEdit()) { <div class="tc-actions"><button mat-flat-button (click)="saveMinutes()" [disabled]="minutes.pristine">Salvar ata</button></div> }
+              @if (podeEditar()) { <button mat-button (click)="rascunho()"><mat-icon>auto_awesome</mat-icon> Gerar rascunho a partir dos dados</button> }</div>
+            <mat-form-field class="full"><mat-label>Texto da ata</mat-label><textarea matInput rows="14" [formControl]="ata" [readonly]="!podeEditar()"></textarea></mat-form-field>
+            @if (podeEditar()) { <div class="tc-actions"><button mat-flat-button (click)="salvarAta()" [disabled]="ata.pristine">Salvar ata</button></div> }
           </section>
         }
-        <tc-attachments [condominiumId]="context.id()!" entityType="Assembly" [entityId]="d.id" category="MINUTES" [canEdit]="canEdit()" />
+        <tc-anexos [idCondominio]="contexto.id()!" tipoEntidade="Assembly" [idEntidade]="d.id" categoria="MINUTES" [podeEditar]="podeEditar()" />
       } @else {
         <mat-progress-bar mode="indeterminate" />
       }
@@ -143,105 +143,105 @@ import { ItemPauta, DetalheAssembleia, OpsApi } from './operacao-api';
     .minutes { margin-bottom: 16px; } .full { width: 100%; margin-top: 8px; }
   `,
 })
-export class AssemblyDetailPage {
-  protected readonly context = inject(CondominiumContext);
-  private readonly api = inject(OpsApi);
-  private readonly structure = inject(StructureService);
+export class AssembleiaDetalhePage {
+  protected readonly contexto = inject(CondominioContexto);
+  private readonly api = inject(OperacaoApi);
+  private readonly estrutura = inject(EstruturaService);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
+  private readonly notificacao = inject(NotificacaoService);
   readonly id = input.required<string>();
-  private readonly tick = signal(0);
-  protected readonly error = signal<string | null>(null);
-  protected readonly minutes = new FormControl('', { nonNullable: true });
-  protected readonly canEdit = computed(() => this.context.can('ASSEMBLY_EDIT'));
-  protected readonly a = toSignal(combineLatest([toObservable(this.context.id), toObservable(this.id), toObservable(this.tick)]).pipe(
+  private readonly recarga = signal(0);
+  protected readonly erro = signal<string | null>(null);
+  protected readonly ata = new FormControl('', { nonNullable: true });
+  protected readonly podeEditar = computed(() => this.contexto.pode('ASSEMBLY_EDIT'));
+  protected readonly a = toSignal(combineLatest([toObservable(this.contexto.id), toObservable(this.id), toObservable(this.recarga)]).pipe(
     filter(([c]) => !!c),
-    switchMap(([c, id]) => this.api.assembly(c!, id).pipe(
-      map((d) => { if (this.minutes.pristine) this.minutes.reset(d.ata ?? ''); return d; }),
-      catchError((err: unknown) => { this.error.set(toProblem(err).detail); return of(null); })))));
+    switchMap(([c, id]) => this.api.assembleia(c!, id).pipe(
+      map((d) => { if (this.ata.pristine) this.ata.reset(d.ata ?? ''); return d; }),
+      catchError((err: unknown) => { this.erro.set(paraProblema(err).detail); return of(null); })))));
 
   private c(): string {
-    return this.context.id()!;
+    return this.contexto.id()!;
   }
 
-  act(acao: 'convocar' | 'iniciar' | 'encerrar', title: string, message: string): void {
-    askConfirm(this.dialog, title, message, title.split(' ')[0]).pipe(switchMap(() => this.api.assemblyAction(this.c(), this.id(), acao)))
-      .subscribe({ next: () => this.done('Assembleia atualizada.'), error: (err: unknown) => this.notify.error(toProblem(err).detail) });
+  executarAcao(acao: 'convocar' | 'iniciar' | 'encerrar', titulo: string, mensagem: string): void {
+    pedirConfirmacao(this.dialog, titulo, mensagem, titulo.split(' ')[0]).pipe(switchMap(() => this.api.acaoAssembleia(this.c(), this.id(), acao)))
+      .subscribe({ next: () => this.concluir('Assembleia atualizada.'), error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail) });
   }
 
-  cancel(): void {
-    askReason(this.dialog, 'Cancelar assembleia', 'Informe o motivo do cancelamento.', 'Cancelar assembleia')
-      .pipe(switchMap((r) => this.api.cancelAssembly(this.c(), this.id(), r)))
-      .subscribe({ next: () => this.done('Assembleia cancelada.'), error: (err: unknown) => this.notify.error(toProblem(err).detail) });
+  cancelar(): void {
+    pedirMotivo(this.dialog, 'Cancelar assembleia', 'Informe o motivo do cancelamento.', 'Cancelar assembleia')
+      .pipe(switchMap((r) => this.api.cancelarAssembleia(this.c(), this.id(), r)))
+      .subscribe({ next: () => this.concluir('Assembleia cancelada.'), error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail) });
   }
 
-  edit(d: DetalheAssembleia): void {
-    openAssemblyForm(this.dialog, this.api, this.c(), d).pipe(filter((r) => !!r)).subscribe(() => this.done('Assembleia atualizada.'));
+  editar(d: DetalheAssembleia): void {
+    abrirFormAssembleia(this.dialog, this.api, this.c(), d).pipe(filter((r) => !!r)).subscribe(() => this.concluir('Assembleia atualizada.'));
   }
 
-  attend(): void {
-    this.units().subscribe((units) => openForm(this.dialog, {
-      title: 'Registrar presença',
-      fields: [
-        { key: 'idUnidade', label: 'Unidade', type: 'select', required: true, options: units },
-        { key: 'nomePresente', label: 'Nome de quem está presente', required: true, maxLength: 150 },
-        { key: 'porProcuracao', label: 'Representado por procuração', type: 'checkbox' },
-        { key: 'nomeProcurador', label: 'Nome do procurador', maxLength: 150 },
+  registrarPresenca(): void {
+    this.unidades().subscribe((unidades) => abrirFormulario(this.dialog, {
+      titulo: 'Registrar presença',
+      campos: [
+        { chave: 'idUnidade', rotulo: 'Unidade', tipo: 'select', obrigatorio: true, opcoes: unidades },
+        { chave: 'nomePresente', rotulo: 'Nome de quem está presente', obrigatorio: true, tamanhoMaximo: 150 },
+        { chave: 'porProcuracao', rotulo: 'Representado por procuração', tipo: 'checkbox' },
+        { chave: 'nomeProcurador', rotulo: 'Nome do procurador', tamanhoMaximo: 150 },
       ],
-      submit: (v) => this.api.attend(this.c(), this.id(), v),
-    }).pipe(filter((r) => !!r)).subscribe(() => this.done('Presença registrada.')));
+      enviar: (v) => this.api.registrarPresenca(this.c(), this.id(), v),
+    }).pipe(filter((r) => !!r)).subscribe(() => this.concluir('Presença registrada.')));
   }
 
-  removeAttendance(idPresenca: string): void {
-    this.api.removeAttendance(this.c(), this.id(), idPresenca)
-      .subscribe({ next: () => this.done('Presença removida.'), error: (err: unknown) => this.notify.error(toProblem(err).detail) });
+  removerPresenca(idPresenca: string): void {
+    this.api.removerPresenca(this.c(), this.id(), idPresenca)
+      .subscribe({ next: () => this.concluir('Presença removida.'), error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail) });
   }
 
-  vote(d: DetalheAssembleia, item: ItemPauta): void {
-    openForm(this.dialog, {
-      title: `Voto — ${item.posicao}. ${item.titulo}`,
-      intro: 'Somente unidades presentes votam; cada unidade vota uma vez por item.',
-      fields: [
-        { key: 'idUnidade', label: 'Unidade', type: 'select', required: true, options: d.presencas.map((p) => ({ value: p.idUnidade, label: p.rotuloUnidade + ' · ' + p.nomePresente })) },
-        { key: 'escolha', label: 'Voto', type: 'select', required: true, value: 'YES', options: [{ value: 'YES', label: 'Sim' }, { value: 'NO', label: 'Não' }, { value: 'ABSTAIN', label: 'Abstenção' }] },
+  votar(d: DetalheAssembleia, item: ItemPauta): void {
+    abrirFormulario(this.dialog, {
+      titulo: `Voto — ${item.posicao}. ${item.titulo}`,
+      introducao: 'Somente unidades presentes votam; cada unidade vota uma vez por item.',
+      campos: [
+        { chave: 'idUnidade', rotulo: 'Unidade', tipo: 'select', obrigatorio: true, opcoes: d.presencas.map((p) => ({ valor: p.idUnidade, rotulo: p.rotuloUnidade + ' · ' + p.nomePresente })) },
+        { chave: 'escolha', rotulo: 'Voto', tipo: 'select', obrigatorio: true, valor: 'YES', opcoes: [{ valor: 'YES', rotulo: 'Sim' }, { valor: 'NO', rotulo: 'Não' }, { valor: 'ABSTAIN', rotulo: 'Abstenção' }] },
       ],
-      submitLabel: 'Registrar voto',
-      submit: (v) => this.api.vote(this.c(), this.id(), { ...v, idItemPauta: item.id }),
-    }, '460px').pipe(filter((r) => !!r)).subscribe(() => this.done('Voto registrado.'));
+      rotuloEnviar: 'Registrar voto',
+      enviar: (v) => this.api.votar(this.c(), this.id(), { ...v, idItemPauta: item.id }),
+    }, '460px').pipe(filter((r) => !!r)).subscribe(() => this.concluir('Voto registrado.'));
   }
 
-  deliberate(item: ItemPauta): void {
-    openForm(this.dialog, {
-      title: `Deliberação — ${item.posicao}. ${item.titulo}`,
-      fields: [
-        { key: 'deliberacao', label: 'Deliberação', type: 'textarea', value: item.deliberacao, maxLength: 2000 },
-        { key: 'responsavel', label: 'Responsável pela execução', value: item.responsavel, span: 6, maxLength: 150 },
-        { key: 'prazo', label: 'Prazo', type: 'date', value: item.prazo, span: 6 },
+  deliberar(item: ItemPauta): void {
+    abrirFormulario(this.dialog, {
+      titulo: `Deliberação — ${item.posicao}. ${item.titulo}`,
+      campos: [
+        { chave: 'deliberacao', rotulo: 'Deliberação', tipo: 'textarea', valor: item.deliberacao, tamanhoMaximo: 2000 },
+        { chave: 'responsavel', rotulo: 'Responsável pela execução', valor: item.responsavel, colunas: 6, tamanhoMaximo: 150 },
+        { chave: 'prazo', rotulo: 'Prazo', tipo: 'date', valor: item.prazo, colunas: 6 },
       ],
-      submit: (v) => this.api.deliberate(this.c(), this.id(), item.id, v),
-    }).pipe(filter((r) => !!r)).subscribe(() => this.done('Deliberação registrada.'));
+      enviar: (v) => this.api.deliberar(this.c(), this.id(), item.id, v),
+    }).pipe(filter((r) => !!r)).subscribe(() => this.concluir('Deliberação registrada.'));
   }
 
-  draft(): void {
-    this.api.minutesDraft(this.c(), this.id()).subscribe((r) => {
-      this.minutes.setValue(r.ata);
-      this.minutes.markAsDirty();
+  rascunho(): void {
+    this.api.rascunhoAta(this.c(), this.id()).subscribe((r) => {
+      this.ata.setValue(r.ata);
+      this.ata.markAsDirty();
     });
   }
 
-  saveMinutes(): void {
-    this.api.saveMinutes(this.c(), this.id(), this.minutes.value).subscribe({
-      next: () => { this.minutes.markAsPristine(); this.done('Ata salva.'); },
-      error: (err: unknown) => this.notify.error(toProblem(err).detail),
+  salvarAta(): void {
+    this.api.salvarAta(this.c(), this.id(), this.ata.value).subscribe({
+      next: () => { this.ata.markAsPristine(); this.concluir('Ata salva.'); },
+      error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail),
     });
   }
 
-  private units(): Observable<{ value: string; label: string }[]> {
-    return this.structure.units(this.c(), { page: 0, size: 100, active: 'true' }).pipe(map((p) => p.conteudo.map((u) => ({ value: u.id, label: u.rotulo }))));
+  private unidades(): Observable<{ valor: string; rotulo: string }[]> {
+    return this.estrutura.unidades(this.c(), { pagina: 0, tamanho: 100, ativo: 'true' }).pipe(map((p) => p.conteudo.map((u) => ({ valor: u.id, rotulo: u.rotulo }))));
   }
 
-  private done(m: string): void {
-    this.notify.success(m);
-    this.tick.update((t) => t + 1);
+  private concluir(m: string): void {
+    this.notificacao.sucesso(m);
+    this.recarga.update((t) => t + 1);
   }
 }

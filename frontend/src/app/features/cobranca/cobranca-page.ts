@@ -7,60 +7,60 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
 import { RouterLink } from '@angular/router';
 import { catchError, combineLatest, filter, of, switchMap } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { LabelPipe } from '../../comum/rotulo.pipe';
-import { askReason } from '../../comum/ui/confirmacao-dialog';
-import { CondominiumRequired } from '../../comum/ui/condominio-obrigatorio';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { IsoDatePipe } from '../../comum/ui/data-iso.pipe';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
-import { Acordo, FinanceApi, Inadimplencia, Rateio } from '../financeiro/financeiro-api';
-import { AllocationDialog } from './rateio-dialog';
-import { BankReturnTab } from './retorno-bancario-tab';
+import { paraProblema } from '../../core/api/api.models';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { RotuloPipe } from '../../comum/rotulo.pipe';
+import { pedirMotivo } from '../../comum/ui/confirmacao-dialog';
+import { CondominioObrigatorio } from '../../comum/ui/condominio-obrigatorio';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { DataIsoPipe } from '../../comum/ui/data-iso.pipe';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
+import { Acordo, FinanceiroApi, Inadimplencia, Rateio } from '../financeiro/financeiro-api';
+import { RateioDialog } from './rateio-dialog';
+import { RetornoBancarioTab } from './retorno-bancario-tab';
 
 @Component({
-  selector: 'tc-billing-page',
-  imports: [CurrencyPipe, DecimalPipe, RouterLink, MatTabsModule, MatButtonModule, MatIconModule, PageHeader, CondominiumRequired,
-    EmptyState, IsoDatePipe, LabelPipe, BankReturnTab],
+  selector: 'tc-cobranca-page',
+  imports: [CurrencyPipe, DecimalPipe, RouterLink, MatTabsModule, MatButtonModule, MatIconModule, CabecalhoPagina, CondominioObrigatorio,
+    EstadoVazio, DataIsoPipe, RotuloPipe, RetornoBancarioTab],
   template: `
     <div class="tc-page">
-      <tc-page-header eyebrow="Cobrança" title="Cobrança condominial" [subtitle]="context.selected()?.nome">
-        @if (canEdit()) {
-          <button mat-flat-button (click)="generate()"><mat-icon>request_quote</mat-icon> Gerar cobranças</button>
+      <tc-cabecalho-pagina sobretitulo="Cobrança" titulo="Cobrança condominial" [subtitulo]="contexto.selecionado()?.nome">
+        @if (podeEditar()) {
+          <button mat-flat-button (click)="gerar()"><mat-icon>request_quote</mat-icon> Gerar cobranças</button>
         }
-      </tc-page-header>
-      @if (!context.id()) {
-        <tc-condominium-required />
+      </tc-cabecalho-pagina>
+      @if (!contexto.id()) {
+        <tc-condominio-obrigatorio />
       } @else {
         <mat-tab-group mat-stretch-tabs="false" animationDuration="0ms">
           <mat-tab label="Rateios / competências">
             <section class="tc-table-card">
-              @for (a of allocations() ?? []; track a.id) {
+              @for (a of rateios() ?? []; track a.id) {
                 <div class="row" [class.off]="a.situacao === 'CANCELLED'">
                   <div class="who">
                     <strong>{{ a.descricao }}</strong>
-                    <span class="tc-muted">{{ a.competencia.slice(5, 7) }}/{{ a.competencia.slice(0, 4) }} · {{ a.criterio | label: 'allocationMethod' }} ·
-                      {{ a.quantidadeUnidades }} unidades · vence {{ a.dataVencimento | isoDate }}{{ a.motivoCancelamento ? ' · cancelado: ' + a.motivoCancelamento : '' }}</span>
+                    <span class="tc-muted">{{ a.competencia.slice(5, 7) }}/{{ a.competencia.slice(0, 4) }} · {{ a.criterio | rotulo: 'allocationMethod' }} ·
+                      {{ a.quantidadeUnidades }} unidades · vence {{ a.dataVencimento | dataIso }}{{ a.motivoCancelamento ? ' · cancelado: ' + a.motivoCancelamento : '' }}</span>
                   </div>
                   <div class="nums">
                     <span class="money">{{ a.valorGerado | currency: 'BRL' }}</span>
                     <small class="tc-muted">recebido {{ a.valorRecebido | currency: 'BRL' }} · {{ a.quantidadePagas }}/{{ a.quantidadeUnidades }} pagas</small>
                   </div>
-                  @if (a.situacao === 'GENERATED' && canEdit() && context.can('FINANCE_CANCEL') && a.valorRecebido === 0) {
-                    <button mat-button (click)="cancelAllocation(a)">Cancelar</button>
+                  @if (a.situacao === 'GENERATED' && podeEditar() && contexto.pode('FINANCE_CANCEL') && a.valorRecebido === 0) {
+                    <button mat-button (click)="cancelarRateio(a)">Cancelar</button>
                   }
                 </div>
               } @empty {
-                <tc-empty-state icon="request_quote" title="Nenhuma cobrança gerada"
-                  description="Gere as cobranças do mês: o valor é rateado entre as unidades e cada uma recebe seu título a receber." />
+                <tc-estado-vazio icone="request_quote" titulo="Nenhuma cobrança gerada"
+                  descricao="Gere as cobranças do mês: o valor é rateado entre as unidades e cada uma recebe seu título a receber." />
               }
             </section>
           </mat-tab>
           <mat-tab label="Inadimplência">
             <ng-template matTabContent>
-              @if (delinquency(); as d) {
+              @if (inadimplencia(); as d) {
                 <section class="tc-kpis" aria-label="Indicadores de inadimplência">
                   <div class="tc-kpi tc-card tone-danger">
                     <span class="icon"><mat-icon aria-hidden="true">money_off</mat-icon></span>
@@ -86,14 +86,14 @@ import { BankReturnTab } from './retorno-bancario-tab';
                       <div class="who">
                         <strong>{{ r.rotuloUnidade }}</strong>
                         <span class="tc-muted">{{ r.nomeResponsavel ?? 'sem responsável' }} · {{ r.quantidadeVencidas }} título(s) · {{ r.maximoDiasAtraso }} dias de atraso
-                          {{ r.dataUltimoContato ? ' · último contato ' + (r.dataUltimoContato | isoDate) : '' }}</span>
+                          {{ r.dataUltimoContato ? ' · último contato ' + (r.dataUltimoContato | dataIso) : '' }}</span>
                       </div>
                       <div class="nums"><span class="money negative">{{ r.total | currency: 'BRL' }}</span>
                         <small class="tc-muted">principal {{ r.principal | currency: 'BRL' }}</small></div>
                       <mat-icon class="chev" aria-hidden="true">chevron_right</mat-icon>
                     </a>
                   } @empty {
-                    <tc-empty-state icon="sentiment_satisfied" title="Nenhuma unidade inadimplente" />
+                    <tc-estado-vazio icone="sentiment_satisfied" titulo="Nenhuma unidade inadimplente" />
                   }
                 </section>
               }
@@ -102,26 +102,26 @@ import { BankReturnTab } from './retorno-bancario-tab';
           <mat-tab label="Acordos">
             <ng-template matTabContent>
               <section class="tc-table-card">
-                @for (a of agreements() ?? []; track a.id) {
+                @for (a of acordos() ?? []; track a.id) {
                   <div class="row" [class.off]="a.situacao === 'CANCELLED'">
                     <div class="who">
                       <a [routerLink]="['/cobranca/unidades', a.idUnidade]"><strong>{{ a.rotuloUnidade }}</strong></a>
-                      <span class="tc-muted">{{ a.totalParcelas }}x a partir de {{ a.dataPrimeiroVencimento | isoDate }} · {{ a.parcelasPagas }}/{{ a.totalParcelas }} pagas
+                      <span class="tc-muted">{{ a.totalParcelas }}x a partir de {{ a.dataPrimeiroVencimento | dataIso }} · {{ a.parcelasPagas }}/{{ a.totalParcelas }} pagas
                         · original {{ a.valorOriginal | currency: 'BRL' }} + encargos {{ a.valorEncargos | currency: 'BRL' }} − desconto {{ a.desconto | currency: 'BRL' }}</span>
                     </div>
                     <div class="nums"><span class="money">{{ a.valorTotal | currency: 'BRL' }}</span>
-                      <small class="tc-status" [class.is-active]="a.situacao === 'ACTIVE'" [class.is-success]="a.situacao === 'COMPLETED'" [class.is-inactive]="a.situacao === 'CANCELLED'">{{ a.situacao | label: 'agreementStatus' }}</small></div>
-                    @if (a.situacao === 'ACTIVE' && a.parcelasPagas === 0 && canEdit()) {
-                      <button mat-button (click)="cancelAgreement(a)">Cancelar</button>
+                      <small class="tc-status" [class.is-active]="a.situacao === 'ACTIVE'" [class.is-success]="a.situacao === 'COMPLETED'" [class.is-inactive]="a.situacao === 'CANCELLED'">{{ a.situacao | rotulo: 'agreementStatus' }}</small></div>
+                    @if (a.situacao === 'ACTIVE' && a.parcelasPagas === 0 && podeEditar()) {
+                      <button mat-button (click)="cancelarAcordo(a)">Cancelar</button>
                     }
                   </div>
                 } @empty {
-                  <tc-empty-state icon="handshake" title="Nenhum acordo" description="Acordos são criados no demonstrativo de débitos da unidade (aba Inadimplência)." />
+                  <tc-estado-vazio icone="handshake" titulo="Nenhum acordo" descricao="Acordos são criados no demonstrativo de débitos da unidade (aba Inadimplência)." />
                 }
               </section>
             </ng-template>
           </mat-tab>
-          <mat-tab label="Retorno bancário"><ng-template matTabContent><tc-bank-return-tab /></ng-template></mat-tab>
+          <mat-tab label="Retorno bancário"><ng-template matTabContent><tc-retorno-bancario-tab /></ng-template></mat-tab>
         </mat-tab-group>
       }
     </div>
@@ -144,38 +144,38 @@ import { BankReturnTab } from './retorno-bancario-tab';
     }
   `,
 })
-export class BillingPage {
-  protected readonly context = inject(CondominiumContext);
-  private readonly api = inject(FinanceApi);
+export class CobrancaPage {
+  protected readonly contexto = inject(CondominioContexto);
+  private readonly api = inject(FinanceiroApi);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
-  private readonly tick = signal(0);
-  protected readonly canEdit = computed(() => this.context.can('BILLING_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
-  private readonly source = combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(filter(([c]) => !!c));
+  private readonly notificacao = inject(NotificacaoService);
+  private readonly recarga = signal(0);
+  protected readonly podeEditar = computed(() => this.contexto.pode('BILLING_EDIT') && this.contexto.selecionado()?.situacao === 'ACTIVE');
+  private readonly origem = combineLatest([toObservable(this.contexto.id), toObservable(this.recarga)]).pipe(filter(([c]) => !!c));
 
-  protected readonly allocations = toSignal(this.source.pipe(switchMap(([c]) => this.api.allocations(c!).pipe(catchError(() => of([] as Rateio[]))))));
-  protected readonly delinquency = toSignal(this.source.pipe(switchMap(([c]) => this.api.delinquency(c!).pipe(catchError(() => of(null as Inadimplencia | null))))));
-  protected readonly agreements = toSignal(this.source.pipe(switchMap(([c]) => this.api.agreements(c!).pipe(catchError(() => of([] as Acordo[]))))));
+  protected readonly rateios = toSignal(this.origem.pipe(switchMap(([c]) => this.api.rateios(c!).pipe(catchError(() => of([] as Rateio[]))))));
+  protected readonly inadimplencia = toSignal(this.origem.pipe(switchMap(([c]) => this.api.inadimplencia(c!).pipe(catchError(() => of(null as Inadimplencia | null))))));
+  protected readonly acordos = toSignal(this.origem.pipe(switchMap(([c]) => this.api.acordos(c!).pipe(catchError(() => of([] as Acordo[]))))));
 
-  generate(): void {
-    this.dialog.open(AllocationDialog, { data: { condominiumId: this.context.id()! }, width: '760px', maxWidth: '95vw' })
+  gerar(): void {
+    this.dialog.open(RateioDialog, { data: { idCondominio: this.contexto.id()! }, width: '760px', maxWidth: '95vw' })
       .afterClosed().pipe(filter((r) => !!r)).subscribe(() => {
-        this.notify.success('Cobranças geradas.');
-        this.tick.update((t) => t + 1);
+        this.notificacao.sucesso('Cobranças geradas.');
+        this.recarga.update((t) => t + 1);
       });
   }
 
-  cancelAllocation(a: Rateio): void {
-    askReason(this.dialog, 'Cancelar cobranças', `Cancelar "${a.descricao}" e as ${a.quantidadeUnidades} cobranças geradas?`, 'Cancelar cobranças')
-      .pipe(switchMap((motivo) => this.api.cancelAllocation(this.context.id()!, a.id, motivo)))
-      .subscribe({ next: () => { this.notify.success('Cobranças canceladas.'); this.tick.update((t) => t + 1); },
-        error: (err: unknown) => this.notify.error(toProblem(err).detail) });
+  cancelarRateio(a: Rateio): void {
+    pedirMotivo(this.dialog, 'Cancelar cobranças', `Cancelar "${a.descricao}" e as ${a.quantidadeUnidades} cobranças geradas?`, 'Cancelar cobranças')
+      .pipe(switchMap((motivo) => this.api.cancelarRateio(this.contexto.id()!, a.id, motivo)))
+      .subscribe({ next: () => { this.notificacao.sucesso('Cobranças canceladas.'); this.recarga.update((t) => t + 1); },
+        error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail) });
   }
 
-  cancelAgreement(a: Acordo): void {
-    askReason(this.dialog, 'Cancelar acordo', 'As parcelas serão canceladas e os débitos originais voltarão a ficar em aberto.', 'Cancelar acordo')
-      .pipe(switchMap((motivo) => this.api.cancelAgreement(this.context.id()!, a.id, motivo)))
-      .subscribe({ next: () => { this.notify.success('Acordo cancelado.'); this.tick.update((t) => t + 1); },
-        error: (err: unknown) => this.notify.error(toProblem(err).detail) });
+  cancelarAcordo(a: Acordo): void {
+    pedirMotivo(this.dialog, 'Cancelar acordo', 'As parcelas serão canceladas e os débitos originais voltarão a ficar em aberto.', 'Cancelar acordo')
+      .pipe(switchMap((motivo) => this.api.cancelarAcordo(this.contexto.id()!, a.id, motivo)))
+      .subscribe({ next: () => { this.notificacao.sucesso('Acordo cancelado.'); this.recarga.update((t) => t + 1); },
+        error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail) });
   }
 }

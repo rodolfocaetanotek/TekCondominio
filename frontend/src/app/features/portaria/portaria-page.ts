@@ -8,58 +8,58 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { catchError, combineLatest, filter, map, of, switchMap } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { LabelPipe } from '../../comum/rotulo.pipe';
-import { options } from '../../comum/rotulos';
-import { CondominiumRequired } from '../../comum/ui/condominio-obrigatorio';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { openForm } from '../../comum/ui/formulario-dialog';
-import { IsoDatePipe } from '../../comum/ui/data-iso.pipe';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
-import { StructureService } from '../estrutura/estrutura.service';
-import { AutorizacaoVisita, VisitorApi } from './portaria-api';
+import { paraProblema } from '../../core/api/api.models';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { RotuloPipe } from '../../comum/rotulo.pipe';
+import { opcoes } from '../../comum/rotulos';
+import { CondominioObrigatorio } from '../../comum/ui/condominio-obrigatorio';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { abrirFormulario } from '../../comum/ui/formulario-dialog';
+import { DataIsoPipe } from '../../comum/ui/data-iso.pipe';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
+import { EstruturaService } from '../estrutura/estrutura.service';
+import { AutorizacaoVisita, PortariaApi } from './portaria-api';
 
 /** Painel da portaria: entrada por código, chegadas sem aviso, quem está no condomínio e saídas. */
 @Component({
-  selector: 'tc-gate-page',
-  imports: [DatePipe, ReactiveFormsModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, PageHeader,
-    CondominiumRequired, EmptyState, IsoDatePipe, LabelPipe],
+  selector: 'tc-portaria-page',
+  imports: [DatePipe, ReactiveFormsModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, CabecalhoPagina,
+    CondominioObrigatorio, EstadoVazio, DataIsoPipe, RotuloPipe],
   template: `
     <div class="tc-page">
-      <tc-page-header eyebrow="Administração" title="Portaria" [subtitle]="context.selected()?.nome">
-        @if (canEdit()) { <button mat-flat-button (click)="arrival()"><mat-icon>person_add</mat-icon> Registrar chegada</button> }
-      </tc-page-header>
-      @if (!context.id()) {
-        <tc-condominium-required />
+      <tc-cabecalho-pagina sobretitulo="Administração" titulo="Portaria" [subtitulo]="contexto.selecionado()?.nome">
+        @if (podeEditar()) { <button mat-flat-button (click)="chegada()"><mat-icon>person_add</mat-icon> Registrar chegada</button> }
+      </tc-cabecalho-pagina>
+      @if (!contexto.id()) {
+        <tc-condominio-obrigatorio />
       } @else {
-        @if (canEdit()) {
+        @if (podeEditar()) {
           <section class="tc-card code">
             <span class="code-icon" aria-hidden="true"><mat-icon>pin</mat-icon></span>
             <mat-form-field class="code-field" subscriptSizing="dynamic"><mat-label>Código de acesso (6 dígitos)</mat-label>
-              <input matInput [formControl]="code" inputmode="numeric" maxlength="6" autocomplete="off" (keydown.enter)="checkInByCode()" /></mat-form-field>
-            <button mat-flat-button class="code-btn" (click)="checkInByCode()" [disabled]="code.invalid"><mat-icon>login</mat-icon> Liberar entrada</button>
+              <input matInput [formControl]="codigo" inputmode="numeric" maxlength="6" autocomplete="off" (keydown.enter)="registrarEntradaPorCodigo()" /></mat-form-field>
+            <button mat-flat-button class="code-btn" (click)="registrarEntradaPorCodigo()" [disabled]="codigo.invalid"><mat-icon>login</mat-icon> Liberar entrada</button>
           </section>
         }
-        @for (group of groups(); track group.title; let gi = $index) {
+        @for (grupo of grupos(); track grupo.titulo; let gi = $index) {
           <section class="tc-card group" [class.g-inside]="gi === 0" [class.g-expected]="gi === 1" [class.g-left]="gi === 2">
-            <h3 class="tc-section-title">{{ group.title }} ({{ group.items.length }})</h3>
-            @for (v of group.items; track v.id) {
+            <h3 class="tc-section-title">{{ grupo.titulo }} ({{ grupo.itens.length }})</h3>
+            @for (v of grupo.itens; track v.id) {
               <div class="row">
-                <div class="who"><strong>{{ v.nome }}</strong> · {{ v.tipo | label: 'visitorKind' }} · unid. {{ v.rotuloUnidade }}<br />
+                <div class="who"><strong>{{ v.nome }}</strong> · {{ v.tipo | rotulo: 'visitorKind' }} · unid. {{ v.rotuloUnidade }}<br />
                   <span class="tc-muted small">{{ v.empresa ?? '' }}{{ v.documento ? ' · doc. ' + v.documento : '' }}{{ v.placaVeiculo ? ' · placa ' + v.placaVeiculo : '' }}
-                    · autorizado por {{ v.nomeAutorizadoPor }}{{ v.validaDe !== v.validaAte ? ' · válido até ' + (v.validaAte | isoDate) : '' }}
+                    · autorizado por {{ v.nomeAutorizadoPor }}{{ v.validaDe !== v.validaAte ? ' · válido até ' + (v.validaAte | dataIso) : '' }}
                     {{ v.entradaEm ? ' · entrada ' + (v.entradaEm | date: 'HH:mm') : '' }}{{ v.saidaEm ? ' · saída ' + (v.saidaEm | date: 'HH:mm') : '' }}</span></div>
-                @if (canEdit()) {
-                  @if (v.situacao === 'EXPECTED') { <button mat-flat-button class="act" (click)="act(v, 'in')"><mat-icon>login</mat-icon> Entrada</button> }
-                  @if (v.situacao === 'INSIDE') { <button mat-stroked-button class="act" (click)="act(v, 'out')"><mat-icon>logout</mat-icon> Saída</button> }
+                @if (podeEditar()) {
+                  @if (v.situacao === 'EXPECTED') { <button mat-flat-button class="act" (click)="executarAcao(v, 'in')"><mat-icon>login</mat-icon> Entrada</button> }
+                  @if (v.situacao === 'INSIDE') { <button mat-stroked-button class="act" (click)="executarAcao(v, 'out')"><mat-icon>logout</mat-icon> Saída</button> }
                 }
               </div>
             } @empty { <p class="tc-muted none">Nenhum registro.</p> }
           </section>
         }
-        @if ((list() ?? []).length === 0) { <section class="tc-card"><tc-empty-state icon="badge" title="Sem movimentação hoje" /></section> }
+        @if ((lista() ?? []).length === 0) { <section class="tc-card"><tc-estado-vazio icone="badge" titulo="Sem movimentação hoje" /></section> }
       }
     </div>
   `,
@@ -92,63 +92,63 @@ import { AutorizacaoVisita, VisitorApi } from './portaria-api';
     }
   `,
 })
-export class GatePage {
-  protected readonly context = inject(CondominiumContext);
-  private readonly api = inject(VisitorApi);
-  private readonly structure = inject(StructureService);
+export class PortariaPage {
+  protected readonly contexto = inject(CondominioContexto);
+  private readonly api = inject(PortariaApi);
+  private readonly estrutura = inject(EstruturaService);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
-  private readonly tick = signal(0);
-  protected readonly code = new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/^\d{6}$/)] });
+  private readonly notificacao = inject(NotificacaoService);
+  private readonly recarga = signal(0);
+  protected readonly codigo = new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/^\d{6}$/)] });
 
-  protected readonly canEdit = computed(() => this.context.can('ACCESS_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
-  protected readonly list = toSignal(combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(
-    filter(([c]) => !!c), switchMap(([c]) => this.api.today(c!).pipe(catchError(() => of([] as AutorizacaoVisita[]))))));
-  protected readonly groups = computed(() => {
-    const all = this.list() ?? [];
+  protected readonly podeEditar = computed(() => this.contexto.pode('ACCESS_EDIT') && this.contexto.selecionado()?.situacao === 'ACTIVE');
+  protected readonly lista = toSignal(combineLatest([toObservable(this.contexto.id), toObservable(this.recarga)]).pipe(
+    filter(([c]) => !!c), switchMap(([c]) => this.api.hoje(c!).pipe(catchError(() => of([] as AutorizacaoVisita[]))))));
+  protected readonly grupos = computed(() => {
+    const todos = this.lista() ?? [];
     return [
-      { title: 'No condomínio agora', items: all.filter((v) => v.situacao === 'INSIDE') },
-      { title: 'Esperados hoje', items: all.filter((v) => v.situacao === 'EXPECTED') },
-      { title: 'Saíram hoje', items: all.filter((v) => v.situacao === 'LEFT') },
+      { titulo: 'No condomínio agora', itens: todos.filter((v) => v.situacao === 'INSIDE') },
+      { titulo: 'Esperados hoje', itens: todos.filter((v) => v.situacao === 'EXPECTED') },
+      { titulo: 'Saíram hoje', itens: todos.filter((v) => v.situacao === 'LEFT') },
     ];
   });
 
-  checkInByCode(): void {
-    if (this.code.invalid) return;
-    this.api.checkInByCode(this.context.id()!, this.code.value).subscribe({
+  registrarEntradaPorCodigo(): void {
+    if (this.codigo.invalid) return;
+    this.api.registrarEntradaPorCodigo(this.contexto.id()!, this.codigo.value).subscribe({
       next: (v) => {
-        this.notify.success(`Entrada liberada: ${v.nome} (unid. ${v.rotuloUnidade}).`);
-        this.code.reset();
-        this.tick.update((t) => t + 1);
+        this.notificacao.sucesso(`Entrada liberada: ${v.nome} (unid. ${v.rotuloUnidade}).`);
+        this.codigo.reset();
+        this.recarga.update((t) => t + 1);
       },
-      error: (err: unknown) => this.notify.error(toProblem(err).detail),
+      error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail),
     });
   }
 
-  act(v: AutorizacaoVisita, action: 'in' | 'out'): void {
-    const c = this.context.id()!;
-    (action === 'in' ? this.api.checkIn(c, v.id) : this.api.checkOut(c, v.id)).subscribe({
-      next: () => this.tick.update((t) => t + 1),
-      error: (err: unknown) => this.notify.error(toProblem(err).detail),
+  executarAcao(v: AutorizacaoVisita, acao: 'in' | 'out'): void {
+    const c = this.contexto.id()!;
+    (acao === 'in' ? this.api.registrarEntrada(c, v.id) : this.api.registrarSaida(c, v.id)).subscribe({
+      next: () => this.recarga.update((t) => t + 1),
+      error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail),
     });
   }
 
-  arrival(): void {
-    const c = this.context.id()!;
-    this.structure.units(c, { page: 0, size: 500, active: 'true' }).pipe(map((p) => p.conteudo)).subscribe((units) =>
-      openForm(this.dialog, {
-        title: 'Registrar chegada',
-        intro: 'Colete apenas os dados necessários. O documento é exibido mascarado e os registros são anonimizados após o prazo de retenção.',
-        fields: [
-          { key: 'idUnidade', label: 'Unidade de destino', type: 'select', required: true, span: 6, options: units.map((u) => ({ value: u.id, label: u.rotulo })) },
-          { key: 'tipo', label: 'Tipo', type: 'select', required: true, value: 'VISITOR', span: 6, options: options('visitorKind') },
-          { key: 'nome', label: 'Nome', required: true, maxLength: 150 },
-          { key: 'documento', label: 'Documento (opcional)', maxLength: 20, span: 6 },
-          { key: 'placaVeiculo', label: 'Placa (opcional)', maxLength: 8, span: 6 },
-          { key: 'empresa', label: 'Empresa (prestador/entrega)', maxLength: 120 },
+  chegada(): void {
+    const c = this.contexto.id()!;
+    this.estrutura.unidades(c, { pagina: 0, tamanho: 500, ativo: 'true' }).pipe(map((p) => p.conteudo)).subscribe((unidades) =>
+      abrirFormulario(this.dialog, {
+        titulo: 'Registrar chegada',
+        introducao: 'Colete apenas os dados necessários. O documento é exibido mascarado e os registros são anonimizados após o prazo de retenção.',
+        campos: [
+          { chave: 'idUnidade', rotulo: 'Unidade de destino', tipo: 'select', obrigatorio: true, colunas: 6, opcoes: unidades.map((u) => ({ valor: u.id, rotulo: u.rotulo })) },
+          { chave: 'tipo', rotulo: 'Tipo', tipo: 'select', obrigatorio: true, valor: 'VISITOR', colunas: 6, opcoes: opcoes('visitorKind') },
+          { chave: 'nome', rotulo: 'Nome', obrigatorio: true, tamanhoMaximo: 150 },
+          { chave: 'documento', rotulo: 'Documento (opcional)', tamanhoMaximo: 20, colunas: 6 },
+          { chave: 'placaVeiculo', rotulo: 'Placa (opcional)', tamanhoMaximo: 8, colunas: 6 },
+          { chave: 'empresa', rotulo: 'Empresa (prestador/entrega)', tamanhoMaximo: 120 },
         ],
-        submitLabel: 'Registrar entrada',
-        submit: (v) => this.api.arrival(c, v),
-      }).pipe(filter((r) => !!r)).subscribe(() => this.tick.update((t) => t + 1)));
+        rotuloEnviar: 'Registrar entrada',
+        enviar: (v) => this.api.chegada(c, v),
+      }).pipe(filter((r) => !!r)).subscribe(() => this.recarga.update((t) => t + 1)));
   }
 }

@@ -4,41 +4,41 @@ import { Permissao } from './auth.models';
 import { AuthService } from './auth.service';
 
 /** Exige sessão ativa; caso contrário, redireciona ao login preservando o destino. */
-export const authGuard: CanActivateFn = (_route, state) => {
+export const autenticadoGuard: CanActivateFn = (_rota, estado) => {
   const auth = inject(AuthService);
-  return auth.isAuthenticated()
+  return auth.autenticado()
     ? true
-    : inject(Router).createUrlTree(['/login'], { queryParams: { retorno: state.url } });
+    : inject(Router).createUrlTree(['/login'], { queryParams: { retorno: estado.url } });
 };
 
 /** Bloqueia a tela de login para quem já está autenticado. */
-export const guestGuard: CanActivateFn = () => {
+export const visitanteGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
-  return auth.isAuthenticated() ? inject(Router).createUrlTree(['/']) : true;
+  return auth.autenticado() ? inject(Router).createUrlTree(['/']) : true;
 };
 
-export const platformAdminGuard: CanActivateFn = () => {
+export const administradorPlataformaGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
-  return auth.user()?.administradorPlataforma ? true : inject(Router).createUrlTree(['/']);
+  return auth.usuario()?.administradorPlataforma ? true : inject(Router).createUrlTree(['/']);
 };
 
 /** Exige a permissão em ao menos um condomínio. A autorização definitiva é sempre do backend. */
-export function permissionGuard(permission: Permissao): CanActivateFn {
+export function permissaoGuard(permissao: Permissao): CanActivateFn {
   return () => {
     const auth = inject(AuthService);
-    return auth.canAny(permission) ? true : inject(Router).createUrlTree(['/']);
+    return auth.podeAlgum(permissao) ? true : inject(Router).createUrlTree(['/']);
   };
 }
 
 /** Página inicial adequada ao perfil: administrador da plataforma vai às organizações. */
-export const homeRedirectGuard: CanActivateFn = () => {
+export const redirecionamentoInicialGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
-  const me = auth.user();
-  if (me?.administradorPlataforma && !auth.isOrganizationMember()) {
+  const perfil = auth.usuario();
+  if (perfil?.administradorPlataforma && !auth.membroAdministradora()) {
     return inject(Router).createUrlTree(['/organizacoes']);
   }
-  const residentOnly = !!me && me.permissoesAdministradora.length === 0
-    && Object.values(me.permissoesCondominio).length > 0
-    && Object.values(me.permissoesCondominio).every((p) => p.length === 1 && p[0] === 'PORTAL_ACCESS');
-  return residentOnly ? inject(Router).createUrlTree(['/portal']) : true;
+  const apenasMorador = !!perfil && perfil.permissoesAdministradora.length === 0
+    && Object.values(perfil.permissoesCondominio).length > 0
+    && Object.values(perfil.permissoesCondominio).every((p) => p.length === 1 && p[0] === 'PORTAL_ACCESS');
+  return apenasMorador ? inject(Router).createUrlTree(['/portal']) : true;
 };

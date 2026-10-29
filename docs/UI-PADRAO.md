@@ -25,7 +25,7 @@ estilos no componente.
   - em telas menores que 960px, vira uma gaveta que abre por cima da tela;
   - rodapé com o usuário logado.
 - **Cabeçalho:** seletor de condomínio, administradora, aparência, notificações e menu do usuário.
-- **Página:** `.tc-page` com `<tc-page-header eyebrow title subtitle>`. As ações da página entram como conteúdo
+- **Página:** `.tc-page` com `<tc-cabecalho-pagina sobretitulo titulo subtitulo>`. As ações da página entram como conteúdo
   do cabeçalho.
 
 ## Componentes e classes
@@ -41,16 +41,16 @@ estilos no componente.
 | Filtros | `.filters` (campo largo `.search`); no celular cada campo ocupa a linha |
 | Tabelas | `mat-table` dentro de `.tc-table-card`; tabela HTML `table.lines` |
 | Formulário | `.tc-grid` + `.span-N` (12 colunas); campos Material `outline` com fundo suave |
-| Diálogos | Faixa de título na cor principal (`.is-danger` em vermelho para ações perigosas), `<tc-dialog-close />` e rodapé cinza. Formulários simples: `openForm()`; confirmações: `askConfirm()` / `askReason()` |
+| Diálogos | Faixa de título na cor principal (`.is-danger` em vermelho para ações perigosas), `<tc-fechar-dialog />` e rodapé cinza. Formulários simples: `abrirFormulario()`; confirmações: `pedirConfirmacao()` / `pedirMotivo()` |
 | Arquivo | `.tc-file-button` |
 | Ícone em destaque | `.tc-ico` |
 | Painéis expansíveis | `mat-accordion.tc-accordion-cards` |
-| Vazio / carregando / erro | `<tc-empty-state icon title description>`; `mat-progress-bar` com a classe `idle` quando parado |
+| Vazio / carregando / erro | `<tc-estado-vazio icone titulo descricao>`; `mat-progress-bar` com a classe `idle` quando parado |
 
 ## Celular
 
 - **Tabelas viram cartões** abaixo de 720px: `mat-table` dentro de `.tc-table-card`, ou `table.lines.tc-cards-mobile`.
-  - O rótulo de cada célula vem do cabeçalho da tabela: a diretiva `tcResponsiveTables`, aplicada no `main` do
+  - O rótulo de cada célula vem do cabeçalho da tabela: a diretiva `tcTabelasResponsivas`, aplicada no `main` do
     shell, preenche o `data-label` sozinha. Não é preciso repetir o rótulo nos templates.
   - A primeira coluna vira o título do cartão.
   - Tabelas largas de relatório usam `.tc-table-wide` (ou omitem `tc-cards-mobile`) e rolam dentro do próprio

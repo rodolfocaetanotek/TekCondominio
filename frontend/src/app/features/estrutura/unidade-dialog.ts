@@ -5,35 +5,35 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { toProblem } from '../../core/api/api.models';
-import { FieldError } from '../../comum/formularios/erro-campo';
-import { applyServerErrors } from '../../comum/formularios/erros-servidor';
-import { Bloco, TipoUnidade, UNIT_TYPE_LABELS, Unidade } from './estrutura.models';
-import { StructureService } from './estrutura.service';
-import { DialogClose } from '../../comum/ui/fechar-dialog';
+import { paraProblema } from '../../core/api/api.models';
+import { MensagemErroCampo } from '../../comum/formularios/erro-campo';
+import { aplicarErrosServidor } from '../../comum/formularios/erros-servidor';
+import { Bloco, TipoUnidade, ROTULOS_TIPO_UNIDADE, Unidade } from './estrutura.models';
+import { EstruturaService } from './estrutura.service';
+import { FecharDialog } from '../../comum/ui/fechar-dialog';
 
-export interface UnitDialogData {
-  condominiumId: string;
-  buildings: Bloco[];
-  unit?: Unidade;
+export interface DadosUnidadeDialog {
+  idCondominio: string;
+  blocos: Bloco[];
+  unidade?: Unidade;
 }
 
 @Component({
-  selector: 'tc-unit-dialog',
-  imports: [DialogClose, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, FieldError],
+  selector: 'tc-unidade-dialog',
+  imports: [FecharDialog, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, MensagemErroCampo],
   template: `
-    <h2 mat-dialog-title>{{ data.unit ? 'Editar unidade' : 'Nova unidade' }} <tc-dialog-close /></h2>
-    <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <h2 mat-dialog-title>{{ data.unidade ? 'Editar unidade' : 'Nova unidade' }} <tc-fechar-dialog /></h2>
+    <form [formGroup]="form" (ngSubmit)="salvar()" novalidate>
       <mat-dialog-content>
-        @if (error(); as message) {
-          <p class="tc-alert" role="alert">{{ message }}</p>
+        @if (erro(); as mensagem) {
+          <p class="tc-alert" role="alert">{{ mensagem }}</p>
         }
         <div class="tc-grid">
           <mat-form-field class="span-6">
             <mat-label>Bloco/torre</mat-label>
             <mat-select formControlName="idBloco">
               <mat-option [value]="null">Sem bloco</mat-option>
-              @for (b of activeBuildings; track b.id) {
+              @for (b of blocosAtivos; track b.id) {
                 <mat-option [value]="b.id">{{ b.nome }}</mat-option>
               }
             </mat-select>
@@ -41,12 +41,12 @@ export interface UnitDialogData {
           <mat-form-field class="span-6">
             <mat-label>Identificação</mat-label>
             <input matInput formControlName="identificacao" required maxlength="30" placeholder="Ex.: 101, Casa 12, Loja 3" cdkFocusInitial />
-            <mat-error><tc-field-error [control]="form.controls.identificacao" /></mat-error>
+            <mat-error><tc-erro-campo [controle]="form.controls.identificacao" /></mat-error>
           </mat-form-field>
           <mat-form-field class="span-6">
             <mat-label>Tipo</mat-label>
             <mat-select formControlName="tipo" required>
-              @for (t of types; track t[0]) {
+              @for (t of tipos; track t[0]) {
                 <mat-option [value]="t[0]">{{ t[1] }}</mat-option>
               }
             </mat-select>
@@ -59,12 +59,12 @@ export interface UnitDialogData {
             <mat-label>Fração ideal (%)</mat-label>
             <input matInput type="number" step="0.000001" min="0" max="100" formControlName="fracaoIdeal" />
             <mat-hint>Usada no rateio por fração ideal</mat-hint>
-            <mat-error><tc-field-error [control]="form.controls.fracaoIdeal" /></mat-error>
+            <mat-error><tc-erro-campo [controle]="form.controls.fracaoIdeal" /></mat-error>
           </mat-form-field>
           <mat-form-field class="span-6">
             <mat-label>Área privativa (m²)</mat-label>
             <input matInput type="number" step="0.01" min="0" formControlName="area" />
-            <mat-error><tc-field-error [control]="form.controls.area" /></mat-error>
+            <mat-error><tc-erro-campo [controle]="form.controls.area" /></mat-error>
           </mat-form-field>
           <mat-form-field>
             <mat-label>Observações</mat-label>
@@ -74,40 +74,40 @@ export interface UnitDialogData {
       </mat-dialog-content>
       <mat-dialog-actions align="end">
         <button mat-button type="button" mat-dialog-close>Cancelar</button>
-        <button mat-flat-button type="submit" [disabled]="saving()">{{ saving() ? 'Salvando…' : 'Salvar' }}</button>
+        <button mat-flat-button type="submit" [disabled]="salvando()">{{ salvando() ? 'Salvando…' : 'Salvar' }}</button>
       </mat-dialog-actions>
     </form>
   `,
 })
-export class UnitDialog {
-  protected readonly data = inject<UnitDialogData>(MAT_DIALOG_DATA);
-  private readonly ref = inject(MatDialogRef<UnitDialog, Unidade>);
-  private readonly service = inject(StructureService);
+export class UnidadeDialog {
+  protected readonly data = inject<DadosUnidadeDialog>(MAT_DIALOG_DATA);
+  private readonly ref = inject(MatDialogRef<UnidadeDialog, Unidade>);
+  private readonly service = inject(EstruturaService);
 
-  protected readonly types = Object.entries(UNIT_TYPE_LABELS) as [TipoUnidade, string][];
-  protected readonly activeBuildings = this.data.buildings.filter((b) => b.ativo || b.id === this.data.unit?.idBloco);
-  protected readonly saving = signal(false);
-  protected readonly error = signal<string | null>(null);
+  protected readonly tipos = Object.entries(ROTULOS_TIPO_UNIDADE) as [TipoUnidade, string][];
+  protected readonly blocosAtivos = this.data.blocos.filter((b) => b.ativo || b.id === this.data.unidade?.idBloco);
+  protected readonly salvando = signal(false);
+  protected readonly erro = signal<string | null>(null);
 
   protected readonly form = inject(FormBuilder).group({
-    idBloco: [this.data.unit?.idBloco ?? (null as string | null)],
-    identificacao: [this.data.unit?.identificacao ?? '', [Validators.required, Validators.maxLength(30)]],
-    tipo: [this.data.unit?.tipo ?? ('APARTMENT' as TipoUnidade), Validators.required],
-    andar: [this.data.unit?.andar ?? ''],
-    fracaoIdeal: [this.data.unit?.fracaoIdeal ?? (null as number | null)],
-    area: [this.data.unit?.area ?? (null as number | null)],
-    observacoes: [this.data.unit?.observacoes ?? ''],
+    idBloco: [this.data.unidade?.idBloco ?? (null as string | null)],
+    identificacao: [this.data.unidade?.identificacao ?? '', [Validators.required, Validators.maxLength(30)]],
+    tipo: [this.data.unidade?.tipo ?? ('APARTMENT' as TipoUnidade), Validators.required],
+    andar: [this.data.unidade?.andar ?? ''],
+    fracaoIdeal: [this.data.unidade?.fracaoIdeal ?? (null as number | null)],
+    area: [this.data.unidade?.area ?? (null as number | null)],
+    observacoes: [this.data.unidade?.observacoes ?? ''],
   });
 
-  save(): void {
+  salvar(): void {
     this.form.markAllAsTouched();
-    if (this.form.invalid || this.saving()) return;
-    this.saving.set(true);
-    this.error.set(null);
+    if (this.form.invalid || this.salvando()) return;
+    this.salvando.set(true);
+    this.erro.set(null);
     const v = this.form.getRawValue();
     this.service
-      .saveUnit(
-        this.data.condominiumId,
+      .salvarUnidade(
+        this.data.idCondominio,
         {
           idBloco: v.idBloco ?? null,
           identificacao: (v.identificacao ?? '').trim(),
@@ -116,17 +116,17 @@ export class UnitDialog {
           fracaoIdeal: v.fracaoIdeal ?? null,
           area: v.area ?? null,
           observacoes: v.observacoes?.trim() || null,
-          versao: this.data.unit?.versao,
+          versao: this.data.unidade?.versao,
         },
-        this.data.unit?.id,
+        this.data.unidade?.id,
       )
       .subscribe({
         next: (u) => this.ref.close(u),
         error: (err: unknown) => {
-          this.saving.set(false);
-          const p = toProblem(err);
-          const rest = p.codigo === 'VALIDATION_ERROR' ? applyServerErrors(this.form, p) : [p.detail];
-          if (rest.length) this.error.set(rest.join(' '));
+          this.salvando.set(false);
+          const p = paraProblema(err);
+          const restante = p.codigo === 'VALIDATION_ERROR' ? aplicarErrosServidor(this.form, p) : [p.detail];
+          if (restante.length) this.erro.set(restante.join(' '));
         },
       });
   }

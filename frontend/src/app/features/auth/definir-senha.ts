@@ -6,29 +6,29 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Router, RouterLink } from '@angular/router';
-import { toProblem } from '../../core/api/api.models';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { FieldError } from '../../comum/formularios/erro-campo';
-import { applyServerErrors } from '../../comum/formularios/erros-servidor';
-import { AuthCard } from './cartao-acesso';
-import { passwordsMatch } from './senhas-iguais';
-import { PasswordService, TokenSenhaInfo } from './senha.service';
+import { paraProblema } from '../../core/api/api.models';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { MensagemErroCampo } from '../../comum/formularios/erro-campo';
+import { aplicarErrosServidor } from '../../comum/formularios/erros-servidor';
+import { CartaoAcesso } from './cartao-acesso';
+import { senhasIguais } from './senhas-iguais';
+import { SenhaService, TokenSenhaInfo } from './senha.service';
 
 /**
  * Definição de senha a partir do link enviado por e-mail (convite ou redefinição).
  * O token chega no fragmento da URL (#token=...) e é removido da barra de endereços assim que lido.
  */
 @Component({
-  selector: 'tc-set-password',
-  imports: [ReactiveFormsModule, RouterLink, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, MatProgressBarModule, FieldError, AuthCard],
+  selector: 'tc-definir-senha',
+  imports: [ReactiveFormsModule, RouterLink, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, MatProgressBarModule, MensagemErroCampo, CartaoAcesso],
   template: `
-    <tc-auth-card [title]="info()?.finalidade === 'INVITE' ? 'Ative seu acesso' : 'Criar nova senha'">
-      @if (checking()) {
+    <tc-cartao-acesso [titulo]="info()?.finalidade === 'INVITE' ? 'Ative seu acesso' : 'Criar nova senha'">
+      @if (verificando()) {
         <mat-progress-bar mode="indeterminate" aria-label="Verificando link" />
-      } @else if (invalid(); as message) {
+      } @else if (invalido(); as mensagem) {
         <div class="state" role="alert">
           <mat-icon>link_off</mat-icon>
-          <p>{{ message }}</p>
+          <p>{{ mensagem }}</p>
         </div>
         <a mat-flat-button routerLink="/esqueci-senha" class="wide">Solicitar novo link</a>
         <a mat-button routerLink="/login" class="wide">Ir para o login</a>
@@ -37,26 +37,26 @@ import { PasswordService, TokenSenhaInfo } from './senha.service';
           {{ i.finalidade === 'INVITE' ? 'Bem-vindo(a), ' + i.nome + '! Crie uma senha para' : 'Defina a nova senha de' }}
           <strong>{{ i.email }}</strong>.
         </p>
-        @if (error(); as message) {
-          <p class="tc-alert" role="alert">{{ message }}</p>
+        @if (erro(); as mensagem) {
+          <p class="tc-alert" role="alert">{{ mensagem }}</p>
         }
-        <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <form [formGroup]="form" (ngSubmit)="enviar()" novalidate>
           <input type="email" [value]="i.email" autocomplete="username" hidden aria-hidden="true" />
           <mat-form-field class="wide">
             <mat-label>Nova senha</mat-label>
             <input matInput type="password" formControlName="novaSenha" autocomplete="new-password" required />
             <mat-hint>Mínimo de 10 caracteres, com letras e números.</mat-hint>
-            <mat-error><tc-field-error [control]="form.controls.novaSenha" /></mat-error>
+            <mat-error><tc-erro-campo [controle]="form.controls.novaSenha" /></mat-error>
           </mat-form-field>
           <mat-form-field class="wide">
             <mat-label>Confirme a nova senha</mat-label>
-            <input matInput type="password" formControlName="confirm" autocomplete="new-password" required />
-            <mat-error><tc-field-error [control]="form.controls.confirm" /></mat-error>
+            <input matInput type="password" formControlName="confirmar" autocomplete="new-password" required />
+            <mat-error><tc-erro-campo [controle]="form.controls.confirmar" /></mat-error>
           </mat-form-field>
-          <button mat-flat-button type="submit" class="wide" [disabled]="saving()">{{ saving() ? 'Salvando…' : 'Salvar senha' }}</button>
+          <button mat-flat-button type="submit" class="wide" [disabled]="salvando()">{{ salvando() ? 'Salvando…' : 'Salvar senha' }}</button>
         </form>
       }
-    </tc-auth-card>
+    </tc-cartao-acesso>
   `,
   styles: `
     .wide { width: 100%; }
@@ -68,68 +68,68 @@ import { PasswordService, TokenSenhaInfo } from './senha.service';
     .state p { margin: 0; }
   `,
 })
-export class SetPassword implements OnInit {
-  private readonly service = inject(PasswordService);
+export class DefinirSenha implements OnInit {
+  private readonly service = inject(SenhaService);
   private readonly router = inject(Router);
-  private readonly notify = inject(NotificationService);
+  private readonly notificacao = inject(NotificacaoService);
 
   private token = '';
-  protected readonly checking = signal(true);
-  protected readonly saving = signal(false);
+  protected readonly verificando = signal(true);
+  protected readonly salvando = signal(false);
   protected readonly info = signal<TokenSenhaInfo | null>(null);
-  protected readonly invalid = signal<string | null>(null);
-  protected readonly error = signal<string | null>(null);
+  protected readonly invalido = signal<string | null>(null);
+  protected readonly erro = signal<string | null>(null);
 
   protected readonly form = inject(FormBuilder).nonNullable.group(
     {
       novaSenha: ['', [Validators.required]],
-      confirm: ['', [Validators.required]],
+      confirmar: ['', [Validators.required]],
     },
-    { validators: passwordsMatch('novaSenha', 'confirm') },
+    { validators: senhasIguais('novaSenha', 'confirmar') },
   );
 
   ngOnInit(): void {
-    const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-    this.token = fragment.get('token') ?? '';
+    const fragmento = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    this.token = fragmento.get('token') ?? '';
     // Remove o token da barra de endereços e do histórico.
     history.replaceState(history.state, '', window.location.pathname);
     if (!this.token) {
-      this.checking.set(false);
-      this.invalid.set('Link incompleto. Abra novamente o link recebido por e-mail.');
+      this.verificando.set(false);
+      this.invalido.set('Link incompleto. Abra novamente o link recebido por e-mail.');
       return;
     }
-    this.service.describe(this.token).subscribe({
+    this.service.consultarToken(this.token).subscribe({
       next: (info) => {
         this.info.set(info);
-        this.checking.set(false);
+        this.verificando.set(false);
       },
       error: (err: unknown) => {
-        this.invalid.set(toProblem(err).detail);
-        this.checking.set(false);
+        this.invalido.set(paraProblema(err).detail);
+        this.verificando.set(false);
       },
     });
   }
 
-  submit(): void {
+  enviar(): void {
     this.form.markAllAsTouched();
-    if (this.form.invalid || this.saving()) return;
-    this.saving.set(true);
-    this.error.set(null);
-    this.service.reset(this.token, this.form.controls.novaSenha.value).subscribe({
+    if (this.form.invalid || this.salvando()) return;
+    this.salvando.set(true);
+    this.erro.set(null);
+    this.service.redefinir(this.token, this.form.controls.novaSenha.value).subscribe({
       next: () => {
-        this.notify.success('Senha definida. Entre com seu e-mail e a nova senha.');
+        this.notificacao.sucesso('Senha definida. Entre com seu e-mail e a nova senha.');
         void this.router.navigate(['/login']);
       },
       error: (err: unknown) => {
-        this.saving.set(false);
-        const problem = toProblem(err);
-        if (problem.codigo === 'INVALID_LINK') {
-          this.invalid.set(problem.detail);
-        } else if (problem.codigo === 'VALIDATION_ERROR') {
-          const rest = applyServerErrors(this.form, problem);
-          if (rest.length) this.error.set(rest.join(' '));
+        this.salvando.set(false);
+        const problema = paraProblema(err);
+        if (problema.codigo === 'INVALID_LINK') {
+          this.invalido.set(problema.detail);
+        } else if (problema.codigo === 'VALIDATION_ERROR') {
+          const restante = aplicarErrosServidor(this.form, problema);
+          if (restante.length) this.erro.set(restante.join(' '));
         } else {
-          this.error.set(problem.detail);
+          this.erro.set(problema.detail);
         }
       },
     });

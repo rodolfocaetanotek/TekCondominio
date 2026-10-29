@@ -15,8 +15,8 @@
   </section>
 
   <main class="panel">
-    <form class="card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-      @if (loading()) {
+    <form class="card" [formGroup]="form" (ngSubmit)="enviar()" novalidate>
+      @if (carregando()) {
         <mat-progress-bar mode="indeterminate" class="bar" aria-label="Entrando" />
       }
       <div class="mobile-brand" aria-hidden="true">
@@ -29,23 +29,23 @@
       @if (expirada()) {
         <p class="notice" role="status"><mat-icon>schedule</mat-icon> Sua sessão expirou. Entre novamente.</p>
       }
-      @if (error(); as message) {
-        <p class="alert" role="alert"><mat-icon>error</mat-icon> {{ message }}</p>
+      @if (erro(); as mensagem) {
+        <p class="alert" role="alert"><mat-icon>error</mat-icon> {{ mensagem }}</p>
       }
 
       <mat-form-field>
         <mat-label>E-mail</mat-label>
         <input matInput type="email" formControlName="email" autocomplete="username" required />
         <mat-icon matPrefix>mail</mat-icon>
-        <mat-error><tc-field-error [control]="form.controls.email" /></mat-error>
+        <mat-error><tc-erro-campo [controle]="form.controls.email" /></mat-error>
       </mat-form-field>
 
       <mat-form-field>
         <mat-label>Senha</mat-label>
         <input
           matInput
-          [type]="showPassword() ? 'text' : 'password'"
-          formControlName="password"
+          [type]="mostrarSenha() ? 'text' : 'password'"
+          formControlName="senha"
           autocomplete="current-password"
           required
         />
@@ -54,17 +54,17 @@
           mat-icon-button
           matSuffix
           type="button"
-          (click)="showPassword.set(!showPassword())"
-          [attr.aria-label]="showPassword() ? 'Ocultar senha' : 'Mostrar senha'"
-          [attr.aria-pressed]="showPassword()"
+          (click)="mostrarSenha.set(!mostrarSenha())"
+          [attr.aria-label]="mostrarSenha() ? 'Ocultar senha' : 'Mostrar senha'"
+          [attr.aria-pressed]="mostrarSenha()"
         >
-          <mat-icon>{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          <mat-icon>{{ mostrarSenha() ? 'visibility_off' : 'visibility' }}</mat-icon>
         </button>
-        <mat-error><tc-field-error [control]="form.controls.password" /></mat-error>
+        <mat-error><tc-erro-campo [controle]="form.controls.senha" /></mat-error>
       </mat-form-field>
 
-      <button mat-flat-button type="submit" class="submit" [disabled]="loading()">
-        {{ loading() ? 'Entrando…' : 'Entrar' }}
+      <button mat-flat-button type="submit" class="submit" [disabled]="carregando()">
+        {{ carregando() ? 'Entrando…' : 'Entrar' }}
       </button>
       <a mat-button routerLink="/esqueci-senha" class="forgot">Esqueci minha senha</a>
     </form>

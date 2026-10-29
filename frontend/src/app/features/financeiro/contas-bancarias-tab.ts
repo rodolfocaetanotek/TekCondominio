@@ -9,52 +9,52 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { catchError, combineLatest, filter, of, switchMap } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { LabelPipe } from '../../comum/rotulo.pipe';
-import { options } from '../../comum/rotulos';
-import { todayIso } from '../../comum/ui/datas';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { openForm } from '../../comum/ui/formulario-dialog';
-import { IsoDatePipe } from '../../comum/ui/data-iso.pipe';
-import { ContaBancaria, FinanceApi, Extrato } from './financeiro-api';
+import { paraProblema } from '../../core/api/api.models';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { RotuloPipe } from '../../comum/rotulo.pipe';
+import { opcoes } from '../../comum/rotulos';
+import { hojeIso } from '../../comum/ui/datas';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { abrirFormulario } from '../../comum/ui/formulario-dialog';
+import { DataIsoPipe } from '../../comum/ui/data-iso.pipe';
+import { ContaBancaria, FinanceiroApi, Extrato } from './financeiro-api';
 
 @Component({
-  selector: 'tc-bank-tab',
+  selector: 'tc-contas-bancarias-tab',
   imports: [CurrencyPipe, ReactiveFormsModule, MatButtonModule, MatIconModule, MatCheckboxModule, MatFormFieldModule, MatInputModule,
-    LabelPipe, IsoDatePipe, EmptyState],
+    RotuloPipe, DataIsoPipe, EstadoVazio],
   template: `
     <div class="head">
       <p class="tc-muted">Saldos calculados a partir do saldo inicial e de todas as movimentações registradas.</p>
-      @if (canEdit()) {
-        <button mat-flat-button (click)="newAccount()"><mat-icon>add</mat-icon> Nova conta</button>
+      @if (podeEditar()) {
+        <button mat-flat-button (click)="novaConta()"><mat-icon>add</mat-icon> Nova conta</button>
       }
     </div>
     <div class="accounts">
-      @for (a of accounts() ?? []; track a.id) {
-        <button type="button" class="account tc-kpi tc-card" [class.tone-danger]="a.saldo < 0" [class.selected]="selected() === a.id"
-          [class.inactive]="!a.ativo" [attr.aria-pressed]="selected() === a.id" (click)="selected.set(a.id)">
+      @for (a of contas() ?? []; track a.id) {
+        <button type="button" class="account tc-kpi tc-card" [class.tone-danger]="a.saldo < 0" [class.selected]="selecionado() === a.id"
+          [class.inactive]="!a.ativo" [attr.aria-pressed]="selecionado() === a.id" (click)="selecionado.set(a.id)">
           <span class="icon"><mat-icon aria-hidden="true">{{ a.tipo === 'CASH' ? 'payments' : 'account_balance' }}</mat-icon></span>
           <span class="label">{{ a.nome }}</span>
           <span class="value money" [class.negative]="a.saldo < 0">{{ a.saldo | currency: 'BRL' }}</span>
-          <span class="sub">{{ a.tipo | label: 'bankKind' }}{{ a.codigoBanco ? ' · ' + a.codigoBanco + ' ag. ' + a.agencia + ' c/c ' + a.numeroConta : '' }}</span>
+          <span class="sub">{{ a.tipo | rotulo: 'bankKind' }}{{ a.codigoBanco ? ' · ' + a.codigoBanco + ' ag. ' + a.agencia + ' c/c ' + a.numeroConta : '' }}</span>
         </button>
       } @empty {
         <section class="tc-card empty">
-          <tc-empty-state icon="account_balance" title="Nenhuma conta cadastrada" description="Cadastre a conta corrente e o caixa do condomínio para registrar pagamentos." />
+          <tc-estado-vazio icone="account_balance" titulo="Nenhuma conta cadastrada" descricao="Cadastre a conta corrente e o caixa do condomínio para registrar pagamentos." />
         </section>
       }
     </div>
 
-    @if (selected()) {
+    @if (selecionado()) {
       <section class="tc-card statement">
         <div class="filters">
           <h3 class="tc-section-title">Extrato e conciliação</h3>
-          <mat-form-field><mat-label>De</mat-label><input matInput type="date" [formControl]="from" /></mat-form-field>
-          <mat-form-field><mat-label>Até</mat-label><input matInput type="date" [formControl]="to" /></mat-form-field>
+          <mat-form-field><mat-label>De</mat-label><input matInput type="date" [formControl]="de" /></mat-form-field>
+          <mat-form-field><mat-label>Até</mat-label><input matInput type="date" [formControl]="ate" /></mat-form-field>
         </div>
-        @if (statement(); as s) {
+        @if (extrato(); as s) {
           <div class="summary">
             <div><span class="tc-section-label">Saldo anterior</span><strong class="money">{{ s.saldoInicial | currency: 'BRL' }}</strong></div>
             <div><span class="tc-section-label">Saldo final</span><strong class="money">{{ s.saldoFinal | currency: 'BRL' }}</strong></div>
@@ -66,9 +66,9 @@ import { ContaBancaria, FinanceApi, Extrato } from './financeiro-api';
               <tbody>
                 @for (l of s.movimentacoes; track l.id + l.tipo) {
                   <tr>
-                    <td><mat-checkbox [checked]="l.conciliada" [disabled]="!canEdit()" (change)="toggle(l.tipo, l.id, $event.checked)"
+                    <td><mat-checkbox [checked]="l.conciliada" [disabled]="!podeEditar()" (change)="alternar(l.tipo, l.id, $event.checked)"
                       [attr.aria-label]="'Conciliar ' + l.descricao" /></td>
-                    <td>{{ l.data | isoDate }}</td>
+                    <td>{{ l.data | dataIso }}</td>
                     <td>{{ l.descricao }}</td>
                     <td class="money" [class.negative]="l.valor < 0" [class.positive]="l.valor > 0">{{ l.valor | currency: 'BRL' }}</td>
                     <td class="money">{{ l.saldo | currency: 'BRL' }}</td>
@@ -105,58 +105,58 @@ import { ContaBancaria, FinanceApi, Extrato } from './financeiro-api';
     .scroll { overflow-x: auto; }
   `,
 })
-export class BankTab {
-  private readonly context = inject(CondominiumContext);
-  private readonly api = inject(FinanceApi);
+export class ContasBancariasTab {
+  private readonly contexto = inject(CondominioContexto);
+  private readonly api = inject(FinanceiroApi);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
+  private readonly notificacao = inject(NotificacaoService);
 
-  protected readonly canEdit = computed(() => this.context.can('FINANCE_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
-  protected readonly selected = signal<string | null>(null);
-  private readonly tick = signal(0);
-  protected readonly from = new FormControl(todayIso().slice(0, 8) + '01', { nonNullable: true });
-  protected readonly to = new FormControl(todayIso(), { nonNullable: true });
-  private readonly fromValue = toSignal(this.from.valueChanges, { initialValue: this.from.value });
-  private readonly toValue = toSignal(this.to.valueChanges, { initialValue: this.to.value });
+  protected readonly podeEditar = computed(() => this.contexto.pode('FINANCE_EDIT') && this.contexto.selecionado()?.situacao === 'ACTIVE');
+  protected readonly selecionado = signal<string | null>(null);
+  private readonly recarga = signal(0);
+  protected readonly de = new FormControl(hojeIso().slice(0, 8) + '01', { nonNullable: true });
+  protected readonly ate = new FormControl(hojeIso(), { nonNullable: true });
+  private readonly valorDe = toSignal(this.de.valueChanges, { initialValue: this.de.value });
+  private readonly valorAte = toSignal(this.ate.valueChanges, { initialValue: this.ate.value });
 
-  protected readonly accounts = toSignal(
-    combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(
+  protected readonly contas = toSignal(
+    combineLatest([toObservable(this.contexto.id), toObservable(this.recarga)]).pipe(
       filter(([c]) => !!c),
-      switchMap(([c]) => this.api.bankAccounts(c!).pipe(catchError(() => of([] as ContaBancaria[])))),
+      switchMap(([c]) => this.api.contasBancarias(c!).pipe(catchError(() => of([] as ContaBancaria[])))),
     ),
   );
 
-  protected readonly statement = toSignal(
-    combineLatest([toObservable(this.selected), toObservable(this.fromValue), toObservable(this.toValue), toObservable(this.tick)]).pipe(
-      filter(([id]) => !!id && !!this.context.id()),
-      switchMap(([id, from, to]) => this.api.statement(this.context.id()!, id!, from, to).pipe(catchError(() => of(null as Extrato | null)))),
+  protected readonly extrato = toSignal(
+    combineLatest([toObservable(this.selecionado), toObservable(this.valorDe), toObservable(this.valorAte), toObservable(this.recarga)]).pipe(
+      filter(([id]) => !!id && !!this.contexto.id()),
+      switchMap(([id, de, ate]) => this.api.extrato(this.contexto.id()!, id!, de, ate).pipe(catchError(() => of(null as Extrato | null)))),
     ),
   );
 
-  newAccount(): void {
-    openForm(this.dialog, {
-      title: 'Nova conta bancária ou caixa',
-      intro: 'O saldo inicial e a data de abertura não podem ser alterados depois (integridade do histórico).',
-      fields: [
-        { key: 'nome', label: 'Nome', required: true, span: 8, maxLength: 80 },
-        { key: 'tipo', label: 'Tipo', type: 'select', required: true, value: 'CHECKING', span: 4, options: options('bankKind') },
-        { key: 'codigoBanco', label: 'Banco (código)', span: 4, maxLength: 5 },
-        { key: 'agencia', label: 'Agência', span: 4, maxLength: 10 },
-        { key: 'numeroConta', label: 'Conta', span: 4, maxLength: 20 },
-        { key: 'saldoInicial', label: 'Saldo inicial (R$)', type: 'number', value: 0, span: 6 },
-        { key: 'dataAbertura', label: 'Data do saldo inicial', type: 'date', value: todayIso(), span: 6 },
+  novaConta(): void {
+    abrirFormulario(this.dialog, {
+      titulo: 'Nova conta bancária ou caixa',
+      introducao: 'O saldo inicial e a data de abertura não podem ser alterados depois (integridade do histórico).',
+      campos: [
+        { chave: 'nome', rotulo: 'Nome', obrigatorio: true, colunas: 8, tamanhoMaximo: 80 },
+        { chave: 'tipo', rotulo: 'Tipo', tipo: 'select', obrigatorio: true, valor: 'CHECKING', colunas: 4, opcoes: opcoes('bankKind') },
+        { chave: 'codigoBanco', rotulo: 'Banco (código)', colunas: 4, tamanhoMaximo: 5 },
+        { chave: 'agencia', rotulo: 'Agência', colunas: 4, tamanhoMaximo: 10 },
+        { chave: 'numeroConta', rotulo: 'Conta', colunas: 4, tamanhoMaximo: 20 },
+        { chave: 'saldoInicial', rotulo: 'Saldo inicial (R$)', tipo: 'number', valor: 0, colunas: 6 },
+        { chave: 'dataAbertura', rotulo: 'Data do saldo inicial', tipo: 'date', valor: hojeIso(), colunas: 6 },
       ],
-      submit: (v) => this.api.createBankAccount(this.context.id()!, v),
+      enviar: (v) => this.api.cadastrarContaBancaria(this.contexto.id()!, v),
     }).pipe(filter((r) => !!r)).subscribe(() => {
-      this.notify.success('Conta cadastrada.');
-      this.tick.update((t) => t + 1);
+      this.notificacao.sucesso('Conta cadastrada.');
+      this.recarga.update((t) => t + 1);
     });
   }
 
-  toggle(type: string, id: string, reconciled: boolean): void {
-    this.api.reconcile(this.context.id()!, [{ tipo: type, id }], reconciled).subscribe({
-      next: () => this.tick.update((t) => t + 1),
-      error: (err: unknown) => this.notify.error(toProblem(err).detail),
+  alternar(tipo: string, id: string, conciliada: boolean): void {
+    this.api.conciliar(this.contexto.id()!, [{ tipo, id }], conciliada).subscribe({
+      next: () => this.recarga.update((t) => t + 1),
+      error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail),
     });
   }
 }

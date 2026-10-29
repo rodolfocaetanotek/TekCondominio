@@ -9,45 +9,45 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { catchError, filter, finalize, of, switchMap, tap } from 'rxjs';
-import { PaginaResponse, toProblem } from '../../core/api/api.models';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { DocPipe } from '../../comum/formato/documento.pipe';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
-import { OrganizationDialog } from './administradora-dialog';
-import { Administradora, OrganizationService } from './administradora.service';
+import { PaginaResponse, paraProblema } from '../../core/api/api.models';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { DocumentoPipe } from '../../comum/formato/documento.pipe';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
+import { AdministradoraDialog } from './administradora-dialog';
+import { Administradora, AdministradoraService } from './administradora.service';
 
 @Component({
-  selector: 'tc-organization-list',
-  imports: [DatePipe, DocPipe, MatTableModule, MatPaginatorModule, MatButtonModule, MatIconModule, MatProgressBarModule, PageHeader, EmptyState],
+  selector: 'tc-administradora-lista',
+  imports: [DatePipe, DocumentoPipe, MatTableModule, MatPaginatorModule, MatButtonModule, MatIconModule, MatProgressBarModule, CabecalhoPagina, EstadoVazio],
   template: `
     <div class="tc-page">
-      <tc-page-header eyebrow="Plataforma" title="Administradoras"
-        subtitle="Organizações clientes. Cada uma tem dados totalmente isolados das demais.">
-        <button mat-flat-button (click)="create()"><mat-icon>add</mat-icon> Nova administradora</button>
-      </tc-page-header>
+      <tc-cabecalho-pagina sobretitulo="Plataforma" titulo="Administradoras"
+        subtitulo="Organizações clientes. Cada uma tem dados totalmente isolados das demais.">
+        <button mat-flat-button (click)="cadastrar()"><mat-icon>add</mat-icon> Nova administradora</button>
+      </tc-cabecalho-pagina>
 
-      <section class="tc-table-card" [attr.aria-busy]="loading()">
-        <mat-progress-bar [mode]="loading() ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="!loading()" />
-        @if (error(); as message) {
-          <tc-empty-state icon="cloud_off" title="Não foi possível carregar" [description]="message" />
-        } @else if (result(); as page) {
-          @if (page.totalElementos === 0) {
-            <tc-empty-state icon="corporate_fare" title="Nenhuma administradora cadastrada"
-              description="Cadastre a primeira administradora e seu administrador para iniciar o uso da plataforma.">
-              <button mat-flat-button (click)="create()">Cadastrar administradora</button>
-            </tc-empty-state>
+      <section class="tc-table-card" [attr.aria-busy]="carregando()">
+        <mat-progress-bar [mode]="carregando() ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="!carregando()" />
+        @if (erro(); as mensagem) {
+          <tc-estado-vazio icone="cloud_off" titulo="Não foi possível carregar" [descricao]="mensagem" />
+        } @else if (resultado(); as pagina) {
+          @if (pagina.totalElementos === 0) {
+            <tc-estado-vazio icone="corporate_fare" titulo="Nenhuma administradora cadastrada"
+              descricao="Cadastre a primeira administradora e seu administrador para iniciar o uso da plataforma.">
+              <button mat-flat-button (click)="cadastrar()">Cadastrar administradora</button>
+            </tc-estado-vazio>
           } @else {
             <div class="table-scroll">
-              <table mat-table [dataSource]="page.conteudo">
+              <table mat-table [dataSource]="pagina.conteudo">
                 <caption class="sr-only">Administradoras</caption>
                 <ng-container matColumnDef="name">
                   <th mat-header-cell *matHeaderCellDef>Nome</th>
-                  <td mat-cell *matCellDef="let o"><strong>{{ o.name }}</strong></td>
+                  <td mat-cell *matCellDef="let o"><strong>{{ o.nome }}</strong></td>
                 </ng-container>
                 <ng-container matColumnDef="cnpj">
                   <th mat-header-cell *matHeaderCellDef>CNPJ</th>
-                  <td mat-cell *matCellDef="let o" class="mono">{{ o.cnpj | doc: 'cnpj' }}</td>
+                  <td mat-cell *matCellDef="let o" class="mono">{{ o.cnpj | documento: 'cnpj' }}</td>
                 </ng-container>
                 <ng-container matColumnDef="created">
                   <th mat-header-cell *matHeaderCellDef>Cadastro</th>
@@ -56,68 +56,68 @@ import { Administradora, OrganizationService } from './administradora.service';
                 <ng-container matColumnDef="status">
                   <th mat-header-cell *matHeaderCellDef>Situação</th>
                   <td mat-cell *matCellDef="let o">
-                    <span class="tc-status" [class.is-active]="o.active" [class.is-inactive]="!o.active">{{ o.active ? 'Ativa' : 'Inativa' }}</span>
+                    <span class="tc-status" [class.is-active]="o.ativo" [class.is-inactive]="!o.ativo">{{ o.ativo ? 'Ativa' : 'Inativa' }}</span>
                   </td>
                 </ng-container>
-                <tr mat-header-row *matHeaderRowDef="columns"></tr>
-                <tr mat-row *matRowDef="let row; columns: columns" class="is-clickable" tabindex="0" role="link"
-                  [attr.aria-label]="'Abrir ' + row.name" (click)="open(row)" (keydown.enter)="open(row)"></tr>
+                <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+                <tr mat-row *matRowDef="let linha; colunas: colunas" class="is-clickable" tabindex="0" role="link"
+                  [attr.aria-label]="'Abrir ' + linha.nome" (click)="abrir(linha)" (keydown.enter)="abrir(linha)"></tr>
               </table>
             </div>
-            <mat-paginator [length]="page.totalElementos" [pageIndex]="page.pagina" [pageSize]="page.tamanho"
-              [pageSizeOptions]="[20, 50, 100]" (page)="onPage($event)" aria-label="Paginação" />
+            <mat-paginator [length]="pagina.totalElementos" [pageIndex]="pagina.pagina" [pageSize]="pagina.tamanho"
+              [pageSizeOptions]="[20, 50, 100]" (page)="aoPaginar($event)" aria-label="Paginação" />
           }
         }
       </section>
     </div>
   `,
 })
-export class OrganizationList {
-  private readonly service = inject(OrganizationService);
+export class AdministradoraLista {
+  private readonly service = inject(AdministradoraService);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
+  private readonly notificacao = inject(NotificacaoService);
   private readonly router = inject(Router);
 
-  protected readonly columns = ['name', 'cnpj', 'created', 'status'];
-  protected readonly query = signal({ page: 0, size: 20 });
-  protected readonly loading = signal(false);
-  protected readonly error = signal<string | null>(null);
+  protected readonly colunas = ['name', 'cnpj', 'created', 'status'];
+  protected readonly consulta = signal({ pagina: 0, tamanho: 20 });
+  protected readonly carregando = signal(false);
+  protected readonly erro = signal<string | null>(null);
 
-  protected readonly result = toSignal(
-    toObservable(this.query).pipe(
+  protected readonly resultado = toSignal(
+    toObservable(this.consulta).pipe(
       tap(() => {
-        this.loading.set(true);
-        this.error.set(null);
+        this.carregando.set(true);
+        this.erro.set(null);
       }),
       switchMap((q) =>
-        this.service.list(q.page, q.size).pipe(
+        this.service.listar(q.pagina, q.tamanho).pipe(
           catchError((err: unknown) => {
-            this.error.set(toProblem(err).detail);
+            this.erro.set(paraProblema(err).detail);
             return of<PaginaResponse<Administradora> | null>(null);
           }),
-          finalize(() => this.loading.set(false)),
+          finalize(() => this.carregando.set(false)),
         ),
       ),
     ),
     { initialValue: null },
   );
 
-  create(): void {
+  cadastrar(): void {
     this.dialog
-      .open<OrganizationDialog, void, Administradora>(OrganizationDialog, { width: '720px', maxWidth: '95vw' })
+      .open<AdministradoraDialog, void, Administradora>(AdministradoraDialog, { width: '720px', maxWidth: '95vw' })
       .afterClosed()
-      .pipe(filter((org): org is Administradora => !!org))
-      .subscribe((org) => {
-        this.notify.success(`Administradora "${org.nome}" cadastrada.`);
-        this.query.update((q) => ({ ...q }));
+      .pipe(filter((administradora): administradora is Administradora => !!administradora))
+      .subscribe((administradora) => {
+        this.notificacao.sucesso(`Administradora "${administradora.nome}" cadastrada.`);
+        this.consulta.update((q) => ({ ...q }));
       });
   }
 
-  open(o: Administradora): void {
+  abrir(o: Administradora): void {
     void this.router.navigate(['/organizacoes', o.id]);
   }
 
-  onPage(event: PageEvent): void {
-    this.query.set({ page: event.pageIndex, size: event.pageSize });
+  aoPaginar(evento: PageEvent): void {
+    this.consulta.set({ pagina: evento.pageIndex, tamanho: evento.pageSize });
   }
 }

@@ -6,24 +6,24 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { catchError, debounceTime, distinctUntilChanged, map, of, startWith, switchMap } from 'rxjs';
-import { DocPipe } from '../../comum/formato/documento.pipe';
+import { DocumentoPipe } from '../../comum/formato/documento.pipe';
 import { PessoaResumo } from './estrutura.models';
-import { StructureService } from './estrutura.service';
+import { EstruturaService } from './estrutura.service';
 
 /** Busca de pessoa por nome, e-mail ou CPF/CNPJ (autocomplete no servidor). */
 @Component({
-  selector: 'tc-person-picker',
-  imports: [ReactiveFormsModule, MatAutocompleteModule, MatFormFieldModule, MatInputModule, MatIconModule, DocPipe],
+  selector: 'tc-seletor-pessoa',
+  imports: [ReactiveFormsModule, MatAutocompleteModule, MatFormFieldModule, MatInputModule, MatIconModule, DocumentoPipe],
   template: `
     <mat-form-field class="full">
-      <mat-label>{{ label() }}</mat-label>
+      <mat-label>{{ rotulo() }}</mat-label>
       <mat-icon matPrefix>person_search</mat-icon>
-      <input matInput [formControl]="term" [matAutocomplete]="auto" placeholder="Nome, e-mail ou CPF/CNPJ" />
-      <mat-autocomplete #auto="matAutocomplete" [displayWith]="display" (optionSelected)="picked.emit($event.option.value)">
-        @for (p of results(); track p.id) {
+      <input matInput [formControl]="termo" [matAutocomplete]="autocompletar" placeholder="Nome, e-mail ou CPF/CNPJ" />
+      <mat-autocomplete #autocompletar="matAutocomplete" [displayWith]="exibir" (optionSelected)="escolhido.emit($event.option.value)">
+        @for (p of resultados(); track p.id) {
           <mat-option [value]="p">
             <span>{{ p.nome }}</span>
-            <small class="tc-muted"> · {{ p.documento ? (p.documento | doc: (p.documento.length === 14 ? 'cnpj' : 'cpf')) : (p.email ?? 'sem documento') }}</small>
+            <small class="tc-muted"> · {{ p.documento ? (p.documento | documento: (p.documento.length === 14 ? 'cnpj' : 'cpf')) : (p.email ?? 'sem documento') }}</small>
           </mat-option>
         }
       </mat-autocomplete>
@@ -31,22 +31,22 @@ import { StructureService } from './estrutura.service';
   `,
   styles: `.full { width: 100%; }`,
 })
-export class PersonPicker {
-  private readonly service = inject(StructureService);
-  readonly label = input('Pessoa');
-  readonly picked = output<PessoaResumo>();
-  protected readonly term = new FormControl<string | PessoaResumo>('', { nonNullable: true });
+export class SeletorPessoa {
+  private readonly service = inject(EstruturaService);
+  readonly rotulo = input('Pessoa');
+  readonly escolhido = output<PessoaResumo>();
+  protected readonly termo = new FormControl<string | PessoaResumo>('', { nonNullable: true });
 
-  protected readonly results = toSignal(
-    this.term.valueChanges.pipe(
+  protected readonly resultados = toSignal(
+    this.termo.valueChanges.pipe(
       startWith(''),
       map((v) => (typeof v === 'string' ? v.trim() : '')),
       debounceTime(250),
       distinctUntilChanged(),
-      switchMap((search) =>
-        search.length < 2
+      switchMap((busca) =>
+        busca.length < 2
           ? of([])
-          : this.service.people({ search, active: 'true', page: 0, size: 10 }).pipe(
+          : this.service.pessoas({ busca, ativo: 'true', pagina: 0, tamanho: 10 }).pipe(
               map((p) => p.conteudo),
               catchError(() => of([])),
             ),
@@ -55,5 +55,5 @@ export class PersonPicker {
     { initialValue: [] as PessoaResumo[] },
   );
 
-  display = (p: PessoaResumo | string | null): string => (p && typeof p === 'object' ? p.nome : (p ?? ''));
+  exibir = (p: PessoaResumo | string | null): string => (p && typeof p === 'object' ? p.nome : (p ?? ''));
 }

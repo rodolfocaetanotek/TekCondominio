@@ -1,6 +1,6 @@
 export type TipoUnidade = 'APARTMENT' | 'HOUSE' | 'ROOM' | 'STORE' | 'PARKING' | 'OTHER';
 
-export const UNIT_TYPE_LABELS: Record<TipoUnidade, string> = {
+export const ROTULOS_TIPO_UNIDADE: Record<TipoUnidade, string> = {
   APARTMENT: 'Apartamento',
   HOUSE: 'Casa',
   ROOM: 'Sala',
@@ -64,7 +64,7 @@ export interface ResultadoImportacao {
 
 export type TipoVinculo = 'OWNER' | 'TENANT' | 'RESIDENT';
 
-export const OCCUPANCY_ROLE_LABELS: Record<TipoVinculo, string> = {
+export const ROTULOS_TIPO_VINCULO: Record<TipoVinculo, string> = {
   OWNER: 'Proprietário',
   TENANT: 'Inquilino',
   RESIDENT: 'Morador',

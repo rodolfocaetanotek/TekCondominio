@@ -5,38 +5,38 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { catchError, combineLatest, filter, of, switchMap } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { askReason } from '../../comum/ui/confirmacao-dialog';
-import { openForm } from '../../comum/ui/formulario-dialog';
-import { IsoDatePipe } from '../../comum/ui/data-iso.pipe';
-import { SituacaoFechamento, FinanceApi } from './financeiro-api';
+import { paraProblema } from '../../core/api/api.models';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { pedirMotivo } from '../../comum/ui/confirmacao-dialog';
+import { abrirFormulario } from '../../comum/ui/formulario-dialog';
+import { DataIsoPipe } from '../../comum/ui/data-iso.pipe';
+import { SituacaoFechamento, FinanceiroApi } from './financeiro-api';
 
 /** Fechamento mensal: congela o período conferido e guarda a fotografia dos saldos para a prestação de contas. */
 @Component({
-  selector: 'tc-closing-tab',
-  imports: [CurrencyPipe, DatePipe, MatButtonModule, MatIconModule, IsoDatePipe],
+  selector: 'tc-fechamento-tab',
+  imports: [CurrencyPipe, DatePipe, MatButtonModule, MatIconModule, DataIsoPipe],
   template: `
-    @if (status(); as s) {
+    @if (situacao(); as s) {
       <section class="tc-card state">
         <div>
           <span class="tc-section-label">Período fechado até</span>
-          <strong>{{ s.fechadoAte ? (s.fechadoAte | isoDate) : 'Nenhum período fechado' }}</strong>
+          <strong>{{ s.fechadoAte ? (s.fechadoAte | dataIso) : 'Nenhum período fechado' }}</strong>
           <p class="tc-muted small">Após o fechamento, baixas, estornos, transferências, conciliações e lançamentos com data ou
             competência no período ficam bloqueados. A reabertura exige justificativa e fica registrada.</p>
         </div>
-        @if (canClose()) {
+        @if (podeEncerrar()) {
           <div class="actions">
-            @if (s.fechadoAte) { <button mat-stroked-button (click)="reopen()"><mat-icon>lock_open</mat-icon> Reabrir</button> }
+            @if (s.fechadoAte) { <button mat-stroked-button (click)="reabrir()"><mat-icon>lock_open</mat-icon> Reabrir</button> }
           </div>
         }
       </section>
 
       @if (s.sugestaoAte) {
         <section class="tc-card">
-          <h3 class="tc-section-title">Conferência para fechar até {{ s.sugestaoAte | isoDate }}</h3>
-          @if (check(); as c) {
+          <h3 class="tc-section-title">Conferência para fechar até {{ s.sugestaoAte | dataIso }}</h3>
+          @if (verificacao(); as c) {
             <div class="tc-kpis inset">
               <div class="tc-kpi tc-card tone-success">
                 <span class="icon"><mat-icon aria-hidden="true">trending_up</mat-icon></span>
@@ -56,7 +56,7 @@ import { SituacaoFechamento, FinanceApi } from './financeiro-api';
               </div>
             </div>
             <table class="lines tc-cards-mobile">
-              <thead><tr><th>Conta</th><th class="money">Saldo em {{ c.ate | isoDate }}</th><th class="money">Saldo conciliado</th></tr></thead>
+              <thead><tr><th>Conta</th><th class="money">Saldo em {{ c.ate | dataIso }}</th><th class="money">Saldo conciliado</th></tr></thead>
               <tbody>
                 @for (b of c.saldos; track b.id) {
                   <tr><td>{{ b.nome }}</td><td class="money">{{ b.saldo | currency: 'BRL' }}</td>
@@ -67,9 +67,9 @@ import { SituacaoFechamento, FinanceApi } from './financeiro-api';
             @if (c.movimentacoesNaoConciliadas > 0 || c.aprovacoesPendentes > 0) {
               <p class="tc-alert" role="status">Há pendências. O fechamento é permitido, mas recomenda-se conciliar o extrato antes.</p>
             }
-            @if (canClose()) {
+            @if (podeEncerrar()) {
               <div class="tc-actions">
-                <button mat-flat-button (click)="close(s.sugestaoAte!)"><mat-icon>lock</mat-icon> Fechar até {{ s.sugestaoAte | isoDate }}</button>
+                <button mat-flat-button (click)="fechamento(s.sugestaoAte!)"><mat-icon>lock</mat-icon> Fechar até {{ s.sugestaoAte | dataIso }}</button>
               </div>
             }
           }
@@ -85,7 +85,7 @@ import { SituacaoFechamento, FinanceApi } from './financeiro-api';
               <tr>
                 <td>{{ h.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</td>
                 <td>{{ h.acao === 'CLOSE' ? 'Fechamento' : 'Reabertura' }}</td>
-                <td>{{ h.acao === 'CLOSE' ? 'até ' + (h.fechadoAte | isoDate) : 'de ' + (h.fechadoAteAnterior | isoDate) + ' para ' + (h.fechadoAte ? (h.fechadoAte | isoDate) : 'aberto') }}</td>
+                <td>{{ h.acao === 'CLOSE' ? 'até ' + (h.fechadoAte | dataIso) : 'de ' + (h.fechadoAteAnterior | dataIso) + ' para ' + (h.fechadoAte ? (h.fechadoAte | dataIso) : 'aberto') }}</td>
                 <td>{{ h.nomeCriadoPor }}</td>
                 <td>{{ h.observacoes ?? '' }}{{ h.fotografia ? ' · Recebido R$ ' + h.fotografia.income + ' · Pago R$ ' + h.fotografia.expense : '' }}</td>
               </tr>
@@ -110,45 +110,45 @@ import { SituacaoFechamento, FinanceApi } from './financeiro-api';
     section { overflow-x: auto; }
   `,
 })
-export class ClosingTab {
-  private readonly context = inject(CondominiumContext);
-  private readonly api = inject(FinanceApi);
+export class FechamentoTab {
+  private readonly contexto = inject(CondominioContexto);
+  private readonly api = inject(FinanceiroApi);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
-  private readonly tick = signal(0);
+  private readonly notificacao = inject(NotificacaoService);
+  private readonly recarga = signal(0);
 
-  protected readonly canClose = computed(() => this.context.can('FINANCE_CLOSE'));
-  protected readonly status = toSignal(combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(
+  protected readonly podeEncerrar = computed(() => this.contexto.pode('FINANCE_CLOSE'));
+  protected readonly situacao = toSignal(combineLatest([toObservable(this.contexto.id), toObservable(this.recarga)]).pipe(
     filter(([c]) => !!c),
-    switchMap(([c]) => this.api.closing(c!).pipe(catchError(() => of(null as SituacaoFechamento | null)))),
+    switchMap(([c]) => this.api.fechamento(c!).pipe(catchError(() => of(null as SituacaoFechamento | null)))),
   ));
-  protected readonly check = toSignal(toObservable(this.status).pipe(
+  protected readonly verificacao = toSignal(toObservable(this.situacao).pipe(
     filter((s) => !!s?.sugestaoAte),
-    switchMap((s) => this.api.closingCheck(this.context.id()!, s!.sugestaoAte!).pipe(catchError(() => of(null)))),
+    switchMap((s) => this.api.verificarFechamento(this.contexto.id()!, s!.sugestaoAte!).pipe(catchError(() => of(null)))),
   ));
 
-  close(until: string): void {
-    openForm(this.dialog, {
-      title: 'Fechar período',
-      intro: 'Confira os saldos com os extratos bancários antes de fechar. Alterações retroativas exigirão reabertura justificada.',
-      fields: [{ key: 'observacoes', label: 'Observação (opcional)', type: 'textarea', maxLength: 500 }],
-      submitLabel: 'Fechar período',
-      submit: (v) => this.api.close(this.context.id()!, until, (v['observacoes'] as string) ?? null),
+  fechamento(ate: string): void {
+    abrirFormulario(this.dialog, {
+      titulo: 'Fechar período',
+      introducao: 'Confira os saldos com os extratos bancários antes de fechar. Alterações retroativas exigirão reabertura justificada.',
+      campos: [{ chave: 'observacoes', rotulo: 'Observação (opcional)', tipo: 'textarea', tamanhoMaximo: 500 }],
+      rotuloEnviar: 'Fechar período',
+      enviar: (v) => this.api.fechar(this.contexto.id()!, ate, (v['observacoes'] as string) ?? null),
     }).pipe(filter((r) => !!r)).subscribe(() => {
-      this.notify.success('Período fechado.');
-      this.tick.update((t) => t + 1);
+      this.notificacao.sucesso('Período fechado.');
+      this.recarga.update((t) => t + 1);
     });
   }
 
-  reopen(): void {
-    askReason(this.dialog, 'Reabrir período', 'Todo o período fechado será reaberto. Informe o motivo (fica na auditoria).', 'Reabrir')
-      .pipe(switchMap((reason) => this.api.reopen(this.context.id()!, null, reason)))
+  reabrir(): void {
+    pedirMotivo(this.dialog, 'Reabrir período', 'Todo o período fechado será reaberto. Informe o motivo (fica na auditoria).', 'Reabrir')
+      .pipe(switchMap((motivo) => this.api.reabrir(this.contexto.id()!, null, motivo)))
       .subscribe({
         next: () => {
-          this.notify.success('Período reaberto.');
-          this.tick.update((t) => t + 1);
+          this.notificacao.sucesso('Período reaberto.');
+          this.recarga.update((t) => t + 1);
         },
-        error: (err: unknown) => this.notify.error(toProblem(err).detail),
+        error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail),
       });
   }
 }

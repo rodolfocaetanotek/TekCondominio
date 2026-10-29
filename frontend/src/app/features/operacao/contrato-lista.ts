@@ -6,62 +6,62 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { catchError, combineLatest, filter, map, of, switchMap } from 'rxjs';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { LabelPipe } from '../../comum/rotulo.pipe';
-import { options } from '../../comum/rotulos';
-import { CondominiumRequired } from '../../comum/ui/condominio-obrigatorio';
-import { todayIso } from '../../comum/ui/datas';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { openForm } from '../../comum/ui/formulario-dialog';
-import { IsoDatePipe } from '../../comum/ui/data-iso.pipe';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
-import { FinanceApi } from '../financeiro/financeiro-api';
-import { Attachments } from './anexos';
-import { Contrato, OpsApi } from './operacao-api';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { RotuloPipe } from '../../comum/rotulo.pipe';
+import { opcoes } from '../../comum/rotulos';
+import { CondominioObrigatorio } from '../../comum/ui/condominio-obrigatorio';
+import { hojeIso } from '../../comum/ui/datas';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { abrirFormulario } from '../../comum/ui/formulario-dialog';
+import { DataIsoPipe } from '../../comum/ui/data-iso.pipe';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
+import { FinanceiroApi } from '../financeiro/financeiro-api';
+import { Anexos } from './anexos';
+import { Contrato, OperacaoApi } from './operacao-api';
 
 @Component({
-  selector: 'tc-contract-list',
-  imports: [CurrencyPipe, DatePipe, MatButtonModule, MatIconModule, MatExpansionModule, PageHeader, EmptyState, CondominiumRequired,
-    IsoDatePipe, LabelPipe, Attachments],
+  selector: 'tc-contrato-lista',
+  imports: [CurrencyPipe, DatePipe, MatButtonModule, MatIconModule, MatExpansionModule, CabecalhoPagina, EstadoVazio, CondominioObrigatorio,
+    DataIsoPipe, RotuloPipe, Anexos],
   template: `
     <div class="tc-page narrow">
-      <tc-page-header eyebrow="Fornecedores" title="Contratos" [subtitle]="context.selected()?.nome">
-        @if (canEdit()) { <button mat-flat-button (click)="edit()"><mat-icon>contract</mat-icon> Novo contrato</button> }
-      </tc-page-header>
-      @if (!context.id()) {
-        <tc-condominium-required />
+      <tc-cabecalho-pagina sobretitulo="Fornecedores" titulo="Contratos" [subtitulo]="contexto.selecionado()?.nome">
+        @if (podeEditar()) { <button mat-flat-button (click)="editar()"><mat-icon>contract</mat-icon> Novo contrato</button> }
+      </tc-cabecalho-pagina>
+      @if (!contexto.id()) {
+        <tc-condominio-obrigatorio />
       } @else {
         <mat-accordion class="tc-accordion-cards">
-          @for (c of list() ?? []; track c.id) {
-            <mat-expansion-panel (opened)="openHistory(c)">
+          @for (c of lista() ?? []; track c.id) {
+            <mat-expansion-panel (opened)="abrirHistorico(c)">
               <mat-expansion-panel-header>
                 <mat-panel-title>{{ c.titulo }}</mat-panel-title>
                 <mat-panel-description>
-                  <span class="meta">{{ c.nomeFornecedor }} · <span class="money">{{ c.valor | currency: 'BRL' }}</span> {{ c.periodicidade | label: 'periodicity' }}</span>
+                  <span class="meta">{{ c.nomeFornecedor }} · <span class="money">{{ c.valor | currency: 'BRL' }}</span> {{ c.periodicidade | rotulo: 'periodicity' }}</span>
                   <span class="tc-status" [class.is-active]="c.situacao === 'ACTIVE' && !c.aVencer && !c.vencido"
                     [class.is-pending]="c.situacao !== 'TERMINATED' && !c.vencido && c.aVencer" [class.is-danger]="c.situacao !== 'TERMINATED' && c.vencido"
                     [class.is-inactive]="c.situacao === 'TERMINATED'">{{ c.situacao === 'TERMINATED' ? 'Encerrado' : c.vencido ? 'Vencido' : c.aVencer ? 'A vencer' : 'Vigente' }}</span>
                 </mat-panel-description>
               </mat-expansion-panel-header>
-              <p class="terms">Vigência: {{ c.dataInicio | isoDate }} a {{ c.dataFim ? (c.dataFim | isoDate) : 'indeterminado' }} · aviso prévio {{ c.diasAvisoPrevio }} dias
+              <p class="terms">Vigência: {{ c.dataInicio | dataIso }} a {{ c.dataFim ? (c.dataFim | dataIso) : 'indeterminado' }} · aviso prévio {{ c.diasAvisoPrevio }} dias
                 {{ c.indiceReajuste ? ' · reajuste ' + c.indiceReajuste + (c.mesReajuste ? ' em ' + c.mesReajuste + '/ano' : '') : '' }}</p>
               @if (c.descricao) { <p class="pre">{{ c.descricao }}</p> }
-              @if (c.motivoEncerramento) { <p class="tc-muted">Encerrado em {{ c.dataEncerramento | isoDate }}: {{ c.motivoEncerramento }}</p> }
+              @if (c.motivoEncerramento) { <p class="tc-muted">Encerrado em {{ c.dataEncerramento | dataIso }}: {{ c.motivoEncerramento }}</p> }
               <h4 class="tc-section-label">Histórico</h4>
-              @for (h of history()[c.id] ?? []; track h.criadoEm) {
+              @for (h of historico()[c.id] ?? []; track h.criadoEm) {
                 <p class="small hist"><strong>{{ h.criadoEm | date: 'dd/MM/yy HH:mm' }}</strong> {{ h.nomeCriadoPor }}: {{ h.alteracao }}</p>
               }
-              <tc-attachments [condominiumId]="context.id()!" entityType="Contract" [entityId]="c.id" category="CONTRACT" [canEdit]="canEdit()" />
-              @if (canEdit() && c.situacao === 'ACTIVE') {
+              <tc-anexos [idCondominio]="contexto.id()!" tipoEntidade="Contract" [idEntidade]="c.id" categoria="CONTRACT" [podeEditar]="podeEditar()" />
+              @if (podeEditar() && c.situacao === 'ACTIVE') {
                 <div class="tc-actions foot">
-                  <button mat-button (click)="terminate(c)">Encerrar contrato</button>
-                  <button mat-stroked-button (click)="edit(c)">Editar</button>
+                  <button mat-button (click)="encerrar(c)">Encerrar contrato</button>
+                  <button mat-stroked-button (click)="editar(c)">Editar</button>
                 </div>
               }
             </mat-expansion-panel>
           } @empty {
-            <section class="tc-card"><tc-empty-state icon="contract" title="Nenhum contrato cadastrado" /></section>
+            <section class="tc-card"><tc-estado-vazio icone="contract" titulo="Nenhum contrato cadastrado" /></section>
           }
         </mat-accordion>
       }
@@ -79,52 +79,52 @@ import { Contrato, OpsApi } from './operacao-api';
     .foot { margin-top: 12px; }
   `,
 })
-export class ContractList {
-  protected readonly context = inject(CondominiumContext);
-  private readonly api = inject(OpsApi);
-  private readonly finance = inject(FinanceApi);
+export class ContratoLista {
+  protected readonly contexto = inject(CondominioContexto);
+  private readonly api = inject(OperacaoApi);
+  private readonly financeiro = inject(FinanceiroApi);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
-  private readonly tick = signal(0);
-  protected readonly history = signal<Record<string, Contrato['historico']>>({});
-  protected readonly canEdit = computed(() => this.context.can('SUPPLIER_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
-  protected readonly list = toSignal(combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(
-    filter(([c]) => !!c), switchMap(([c]) => this.api.contracts(c!).pipe(catchError(() => of([] as Contrato[]))))));
+  private readonly notificacao = inject(NotificacaoService);
+  private readonly recarga = signal(0);
+  protected readonly historico = signal<Record<string, Contrato['historico']>>({});
+  protected readonly podeEditar = computed(() => this.contexto.pode('SUPPLIER_EDIT') && this.contexto.selecionado()?.situacao === 'ACTIVE');
+  protected readonly lista = toSignal(combineLatest([toObservable(this.contexto.id), toObservable(this.recarga)]).pipe(
+    filter(([c]) => !!c), switchMap(([c]) => this.api.contratos(c!).pipe(catchError(() => of([] as Contrato[]))))));
 
-  openHistory(c: Contrato): void {
-    this.api.contract(this.context.id()!, c.id).subscribe((full) => this.history.update((h) => ({ ...h, [c.id]: full.historico })));
+  abrirHistorico(c: Contrato): void {
+    this.api.contrato(this.contexto.id()!, c.id).subscribe((completo) => this.historico.update((h) => ({ ...h, [c.id]: completo.historico })));
   }
 
-  edit(c?: Contrato): void {
-    this.finance.suppliers('', 0, 100).pipe(map((p) => p.conteudo)).subscribe((suppliers) => openForm(this.dialog, {
-      title: c ? 'Editar contrato' : 'Novo contrato',
-      fields: [
-        { key: 'idFornecedor', label: 'Fornecedor', type: 'select', required: true, value: c?.idFornecedor, span: 6,
-          options: suppliers.filter((s) => s.ativo || s.id === c?.idFornecedor).map((s) => ({ value: s.id, label: s.nome })),
-          hint: 'Cadastre o fornecedor em Fornecedores, se necessário.' },
-        { key: 'titulo', label: 'Objeto', required: true, value: c?.titulo, span: 6, maxLength: 200 },
-        { key: 'valor', label: 'Valor (R$)', type: 'number', required: true, value: c?.valor, span: 4, min: 0 },
-        { key: 'periodicidade', label: 'Periodicidade', type: 'select', required: true, value: c?.periodicidade ?? 'MONTHLY', span: 4, options: options('periodicity') },
-        { key: 'diasAvisoPrevio', label: 'Aviso prévio (dias)', type: 'number', value: c?.diasAvisoPrevio ?? 30, span: 4, min: 0 },
-        { key: 'dataInicio', label: 'Início', type: 'date', required: true, value: c?.dataInicio ?? todayIso(), span: 6 },
-        { key: 'dataFim', label: 'Término', type: 'date', value: c?.dataFim, span: 6 },
-        { key: 'indiceReajuste', label: 'Índice de reajuste', value: c?.indiceReajuste, span: 6, hint: 'Ex.: IPCA, IGP-M', maxLength: 20 },
-        { key: 'mesReajuste', label: 'Mês do reajuste (1–12)', type: 'number', value: c?.mesReajuste, span: 6, min: 1 },
-        { key: 'descricao', label: 'Descrição / cláusulas', type: 'textarea', value: c?.descricao, maxLength: 2000 },
+  editar(c?: Contrato): void {
+    this.financeiro.fornecedores('', 0, 100).pipe(map((p) => p.conteudo)).subscribe((fornecedores) => abrirFormulario(this.dialog, {
+      titulo: c ? 'Editar contrato' : 'Novo contrato',
+      campos: [
+        { chave: 'idFornecedor', rotulo: 'Fornecedor', tipo: 'select', obrigatorio: true, valor: c?.idFornecedor, colunas: 6,
+          opcoes: fornecedores.filter((s) => s.ativo || s.id === c?.idFornecedor).map((s) => ({ valor: s.id, rotulo: s.nome })),
+          dica: 'Cadastre o fornecedor em Fornecedores, se necessário.' },
+        { chave: 'titulo', rotulo: 'Objeto', obrigatorio: true, valor: c?.titulo, colunas: 6, tamanhoMaximo: 200 },
+        { chave: 'valor', rotulo: 'Valor (R$)', tipo: 'number', obrigatorio: true, valor: c?.valor, colunas: 4, min: 0 },
+        { chave: 'periodicidade', rotulo: 'Periodicidade', tipo: 'select', obrigatorio: true, valor: c?.periodicidade ?? 'MONTHLY', colunas: 4, opcoes: opcoes('periodicity') },
+        { chave: 'diasAvisoPrevio', rotulo: 'Aviso prévio (dias)', tipo: 'number', valor: c?.diasAvisoPrevio ?? 30, colunas: 4, min: 0 },
+        { chave: 'dataInicio', rotulo: 'Início', tipo: 'date', obrigatorio: true, valor: c?.dataInicio ?? hojeIso(), colunas: 6 },
+        { chave: 'dataFim', rotulo: 'Término', tipo: 'date', valor: c?.dataFim, colunas: 6 },
+        { chave: 'indiceReajuste', rotulo: 'Índice de reajuste', valor: c?.indiceReajuste, colunas: 6, dica: 'Ex.: IPCA, IGP-M', tamanhoMaximo: 20 },
+        { chave: 'mesReajuste', rotulo: 'Mês do reajuste (1–12)', tipo: 'number', valor: c?.mesReajuste, colunas: 6, min: 1 },
+        { chave: 'descricao', rotulo: 'Descrição / cláusulas', tipo: 'textarea', valor: c?.descricao, tamanhoMaximo: 2000 },
       ],
-      submit: (v) => this.api.saveContract(this.context.id()!, { ...v, versao: c?.versao }, c?.id),
-    }, '680px').pipe(filter((r) => !!r)).subscribe(() => { this.notify.success('Contrato salvo.'); this.tick.update((t) => t + 1); }));
+      enviar: (v) => this.api.salvarContrato(this.contexto.id()!, { ...v, versao: c?.versao }, c?.id),
+    }, '680px').pipe(filter((r) => !!r)).subscribe(() => { this.notificacao.sucesso('Contrato salvo.'); this.recarga.update((t) => t + 1); }));
   }
 
-  terminate(c: Contrato): void {
-    openForm(this.dialog, {
-      title: 'Encerrar contrato',
-      fields: [
-        { key: 'dataEncerramento', label: 'Data de encerramento', type: 'date', required: true, value: todayIso() },
-        { key: 'motivo', label: 'Motivo', required: true, maxLength: 255 },
+  encerrar(c: Contrato): void {
+    abrirFormulario(this.dialog, {
+      titulo: 'Encerrar contrato',
+      campos: [
+        { chave: 'dataEncerramento', rotulo: 'Data de encerramento', tipo: 'date', obrigatorio: true, valor: hojeIso() },
+        { chave: 'motivo', rotulo: 'Motivo', obrigatorio: true, tamanhoMaximo: 255 },
       ],
-      submitLabel: 'Encerrar',
-      submit: (v) => this.api.terminateContract(this.context.id()!, c.id, v),
-    }, '440px').pipe(filter((r) => !!r)).subscribe(() => { this.notify.success('Contrato encerrado.'); this.tick.update((t) => t + 1); });
+      rotuloEnviar: 'Encerrar',
+      enviar: (v) => this.api.encerrarContrato(this.contexto.id()!, c.id, v),
+    }, '440px').pipe(filter((r) => !!r)).subscribe(() => { this.notificacao.sucesso('Contrato encerrado.'); this.recarga.update((t) => t + 1); });
   }
 }

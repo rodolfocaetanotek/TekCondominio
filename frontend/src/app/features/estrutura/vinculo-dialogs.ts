@@ -6,35 +6,35 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { toProblem } from '../../core/api/api.models';
-import { FieldError } from '../../comum/formularios/erro-campo';
-import { todayIso } from '../../comum/ui/datas';
-import { PersonPicker } from './seletor-pessoa';
-import { OCCUPANCY_ROLE_LABELS, PessoaResumo, TipoVinculo, Vinculo } from './estrutura.models';
-import { StructureService } from './estrutura.service';
-import { DialogClose } from '../../comum/ui/fechar-dialog';
+import { paraProblema } from '../../core/api/api.models';
+import { MensagemErroCampo } from '../../comum/formularios/erro-campo';
+import { hojeIso } from '../../comum/ui/datas';
+import { SeletorPessoa } from './seletor-pessoa';
+import { ROTULOS_TIPO_VINCULO, PessoaResumo, TipoVinculo, Vinculo } from './estrutura.models';
+import { EstruturaService } from './estrutura.service';
+import { FecharDialog } from '../../comum/ui/fechar-dialog';
 
 /** Vincular pessoa a uma unidade. */
 @Component({
-  selector: 'tc-occupancy-dialog',
-  imports: [DialogClose, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatCheckboxModule, FieldError, PersonPicker],
+  selector: 'tc-vinculo-dialog',
+  imports: [FecharDialog, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule,
+    MatCheckboxModule, MensagemErroCampo, SeletorPessoa],
   template: `
-    <h2 mat-dialog-title>Vincular pessoa · {{ data.unitLabel }} <tc-dialog-close /></h2>
-    <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <h2 mat-dialog-title>Vincular pessoa · {{ data.rotuloUnidade }} <tc-fechar-dialog /></h2>
+    <form [formGroup]="form" (ngSubmit)="salvar()" novalidate>
       <mat-dialog-content>
-        @if (error(); as message) {
-          <p class="tc-alert" role="alert">{{ message }}</p>
+        @if (erro(); as mensagem) {
+          <p class="tc-alert" role="alert">{{ mensagem }}</p>
         }
-        <tc-person-picker label="Pessoa" (picked)="person.set($event)" />
-        @if (!person()) {
+        <tc-seletor-pessoa rotulo="Pessoa" (escolhido)="pessoa.set($event)" />
+        @if (!pessoa()) {
           <p class="tc-muted small">Não encontrou? Cadastre a pessoa no menu <strong>Pessoas</strong> e volte aqui.</p>
         }
         <div class="tc-grid">
           <mat-form-field class="span-6">
             <mat-label>Vínculo</mat-label>
             <mat-select formControlName="tipo">
-              @for (r of roles; track r[0]) {
+              @for (r of papeis; track r[0]) {
                 <mat-option [value]="r[0]">{{ r[1] }}</mat-option>
               }
             </mat-select>
@@ -42,47 +42,47 @@ import { DialogClose } from '../../comum/ui/fechar-dialog';
           <mat-form-field class="span-6">
             <mat-label>Início</mat-label>
             <input matInput type="date" formControlName="dataInicio" required />
-            <mat-error><tc-field-error [control]="form.controls.dataInicio" /></mat-error>
+            <mat-error><tc-erro-campo [controle]="form.controls.dataInicio" /></mat-error>
           </mat-form-field>
         </div>
         <mat-checkbox formControlName="responsavelFinanceiro">Responsável financeiro (recebe as cobranças da unidade)</mat-checkbox>
       </mat-dialog-content>
       <mat-dialog-actions align="end">
         <button mat-button type="button" mat-dialog-close>Cancelar</button>
-        <button mat-flat-button type="submit" [disabled]="saving() || !person()">Vincular</button>
+        <button mat-flat-button type="submit" [disabled]="salvando() || !pessoa()">Vincular</button>
       </mat-dialog-actions>
     </form>
   `,
   styles: `.small { font: var(--mat-sys-body-small); margin-top: -8px; }`,
 })
-export class OccupancyDialog {
-  protected readonly data = inject<{ condominiumId: string; unitId: string; unitLabel: string; hasFinancial: boolean }>(MAT_DIALOG_DATA);
-  private readonly ref = inject(MatDialogRef<OccupancyDialog, Vinculo>);
-  private readonly service = inject(StructureService);
-  protected readonly roles = Object.entries(OCCUPANCY_ROLE_LABELS) as [TipoVinculo, string][];
-  protected readonly person = signal<PessoaResumo | null>(null);
-  protected readonly saving = signal(false);
-  protected readonly error = signal<string | null>(null);
+export class VinculoDialog {
+  protected readonly data = inject<{ idCondominio: string; idUnidade: string; rotuloUnidade: string; temFinanceiro: boolean }>(MAT_DIALOG_DATA);
+  private readonly ref = inject(MatDialogRef<VinculoDialog, Vinculo>);
+  private readonly service = inject(EstruturaService);
+  protected readonly papeis = Object.entries(ROTULOS_TIPO_VINCULO) as [TipoVinculo, string][];
+  protected readonly pessoa = signal<PessoaResumo | null>(null);
+  protected readonly salvando = signal(false);
+  protected readonly erro = signal<string | null>(null);
   protected readonly form = inject(FormBuilder).nonNullable.group({
     tipo: ['OWNER' as TipoVinculo],
-    dataInicio: [todayIso(), Validators.required],
-    responsavelFinanceiro: [!this.data.hasFinancial],
+    dataInicio: [hojeIso(), Validators.required],
+    responsavelFinanceiro: [!this.data.temFinanceiro],
   });
 
-  save(): void {
-    const person = this.person();
+  salvar(): void {
+    const pessoa = this.pessoa();
     this.form.markAllAsTouched();
-    if (!person || this.form.invalid || this.saving()) return;
-    this.saving.set(true);
-    this.error.set(null);
+    if (!pessoa || this.form.invalid || this.salvando()) return;
+    this.salvando.set(true);
+    this.erro.set(null);
     const v = this.form.getRawValue();
     this.service
-      .addOccupancy(this.data.condominiumId, { idUnidade: this.data.unitId, idPessoa: person.id, ...v })
+      .adicionarVinculo(this.data.idCondominio, { idUnidade: this.data.idUnidade, idPessoa: pessoa.id, ...v })
       .subscribe({
         next: (o) => this.ref.close(o),
         error: (err: unknown) => {
-          this.saving.set(false);
-          this.error.set(toProblem(err).detail);
+          this.salvando.set(false);
+          this.erro.set(paraProblema(err).detail);
         },
       });
   }
@@ -90,20 +90,20 @@ export class OccupancyDialog {
 
 /** Encerrar vínculo (o histórico é mantido). */
 @Component({
-  selector: 'tc-end-occupancy-dialog',
-  imports: [DialogClose, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, FieldError],
+  selector: 'tc-encerrar-vinculo-dialog',
+  imports: [FecharDialog, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MensagemErroCampo],
   template: `
-    <h2 mat-dialog-title>Encerrar vínculo <tc-dialog-close /></h2>
-    <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <h2 mat-dialog-title>Encerrar vínculo <tc-fechar-dialog /></h2>
+    <form [formGroup]="form" (ngSubmit)="salvar()" novalidate>
       <mat-dialog-content>
-        <p>{{ data.occupancy.nomePessoa }} — {{ data.occupancy.rotuloUnidade }}</p>
-        @if (error(); as message) {
-          <p class="tc-alert" role="alert">{{ message }}</p>
+        <p>{{ data.vinculo.nomePessoa }} — {{ data.vinculo.rotuloUnidade }}</p>
+        @if (erro(); as mensagem) {
+          <p class="tc-alert" role="alert">{{ mensagem }}</p>
         }
         <mat-form-field class="full">
           <mat-label>Data de encerramento</mat-label>
           <input matInput type="date" formControlName="dataFim" required />
-          <mat-error><tc-field-error [control]="form.controls.dataFim" /></mat-error>
+          <mat-error><tc-erro-campo [controle]="form.controls.dataFim" /></mat-error>
         </mat-form-field>
         <mat-form-field class="full">
           <mat-label>Motivo</mat-label>
@@ -112,33 +112,33 @@ export class OccupancyDialog {
       </mat-dialog-content>
       <mat-dialog-actions align="end">
         <button mat-button type="button" mat-dialog-close>Cancelar</button>
-        <button mat-flat-button type="submit" [disabled]="saving()">Encerrar</button>
+        <button mat-flat-button type="submit" [disabled]="salvando()">Encerrar</button>
       </mat-dialog-actions>
     </form>
   `,
   styles: `.full { width: 100%; }`,
 })
-export class EndOccupancyDialog {
-  protected readonly data = inject<{ condominiumId: string; occupancy: Vinculo }>(MAT_DIALOG_DATA);
-  private readonly ref = inject(MatDialogRef<EndOccupancyDialog, Vinculo>);
-  private readonly service = inject(StructureService);
-  protected readonly saving = signal(false);
-  protected readonly error = signal<string | null>(null);
+export class EncerrarVinculoDialog {
+  protected readonly data = inject<{ idCondominio: string; vinculo: Vinculo }>(MAT_DIALOG_DATA);
+  private readonly ref = inject(MatDialogRef<EncerrarVinculoDialog, Vinculo>);
+  private readonly service = inject(EstruturaService);
+  protected readonly salvando = signal(false);
+  protected readonly erro = signal<string | null>(null);
   protected readonly form = inject(FormBuilder).nonNullable.group({
-    dataFim: [todayIso(), Validators.required],
+    dataFim: [hojeIso(), Validators.required],
     motivo: [''],
   });
 
-  save(): void {
+  salvar(): void {
     this.form.markAllAsTouched();
-    if (this.form.invalid || this.saving()) return;
-    this.saving.set(true);
+    if (this.form.invalid || this.salvando()) return;
+    this.salvando.set(true);
     const v = this.form.getRawValue();
-    this.service.endOccupancy(this.data.condominiumId, this.data.occupancy.id, v.dataFim, v.motivo.trim() || null).subscribe({
+    this.service.encerrarVinculo(this.data.idCondominio, this.data.vinculo.id, v.dataFim, v.motivo.trim() || null).subscribe({
       next: (o) => this.ref.close(o),
       error: (err: unknown) => {
-        this.saving.set(false);
-        this.error.set(toProblem(err).detail);
+        this.salvando.set(false);
+        this.erro.set(paraProblema(err).detail);
       },
     });
   }

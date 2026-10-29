@@ -8,20 +8,20 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { catchError, combineLatest, filter, of, switchMap } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { LabelPipe } from '../../comum/rotulo.pipe';
-import { askReason } from '../../comum/ui/confirmacao-dialog';
-import { todayIso } from '../../comum/ui/datas';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { openForm } from '../../comum/ui/formulario-dialog';
-import { IsoDatePipe } from '../../comum/ui/data-iso.pipe';
-import { AreaComum, HorarioOcupado, Reserva, ReservationApi } from './reserva-api';
+import { paraProblema } from '../../core/api/api.models';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { RotuloPipe } from '../../comum/rotulo.pipe';
+import { pedirMotivo } from '../../comum/ui/confirmacao-dialog';
+import { hojeIso } from '../../comum/ui/datas';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { abrirFormulario } from '../../comum/ui/formulario-dialog';
+import { DataIsoPipe } from '../../comum/ui/data-iso.pipe';
+import { AreaComum, HorarioOcupado, Reserva, ReservaApi } from './reserva-api';
 
 /** Reservas no portal do morador: consulta de horários ocupados, pedido de reserva e cancelamento. */
 @Component({
-  selector: 'tc-portal-reservations',
-  imports: [CurrencyPipe, ReactiveFormsModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatSelectModule, EmptyState, IsoDatePipe, LabelPipe],
+  selector: 'tc-portal-reservas',
+  imports: [CurrencyPipe, ReactiveFormsModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatSelectModule, EstadoVazio, DataIsoPipe, RotuloPipe],
   template: `
     <section class="tc-card mt">
       <div class="bar">
@@ -29,37 +29,37 @@ import { AreaComum, HorarioOcupado, Reserva, ReservationApi } from './reserva-ap
           <mat-select [formControl]="area">
             @for (a of areas() ?? []; track a.id) { <mat-option [value]="a.id">{{ a.nome }}</mat-option> }
           </mat-select></mat-form-field>
-        @if (selectedArea()) { <button mat-flat-button class="primary" (click)="book(selectedArea()!)"><mat-icon>event_available</mat-icon> Reservar</button> }
+        @if (areaSelecionada()) { <button mat-flat-button class="primary" (click)="reservar(areaSelecionada()!)"><mat-icon>event_available</mat-icon> Reservar</button> }
       </div>
-      @if (selectedArea(); as a) {
+      @if (areaSelecionada(); as a) {
         <p class="small info">Funciona das {{ a.horaAbertura.slice(0, 5) }} às {{ a.horaFechamento.slice(0, 5) }} · até {{ a.duracaoMaximaMinutos / 60 }} h por reserva
           · antecedência mínima de {{ a.antecedenciaMinimaHoras }} h{{ a.taxa > 0 ? ' · taxa de uso ' : '' }}{{ a.taxa > 0 ? (a.taxa | currency: 'BRL') : '' }}
           {{ a.exigeAprovacao ? ' · sujeita à aprovação da administração' : '' }}</p>
         @if (a.regras) { <p class="rules small">{{ a.regras }}</p> }
         <h4 class="tc-section-label">Horários já reservados (próximos 60 dias)</h4>
         <ul class="slots">
-          @for (s of slots() ?? []; track s.data + s.horaInicio) {
-            <li><mat-icon aria-hidden="true">event_busy</mat-icon><span>{{ s.data | isoDate }} · {{ s.horaInicio.slice(0, 5) }}–{{ s.horaFim.slice(0, 5) }}{{ s.situacao === 'PENDING' ? ' (aguardando aprovação)' : '' }}</span></li>
+          @for (s of horarios() ?? []; track s.data + s.horaInicio) {
+            <li><mat-icon aria-hidden="true">event_busy</mat-icon><span>{{ s.data | dataIso }} · {{ s.horaInicio.slice(0, 5) }}–{{ s.horaFim.slice(0, 5) }}{{ s.situacao === 'PENDING' ? ' (aguardando aprovação)' : '' }}</span></li>
           } @empty { <li class="tc-muted none">Nenhum horário reservado.</li> }
         </ul>
       } @else if ((areas() ?? []).length === 0) {
-        <tc-empty-state icon="deck" title="Nenhuma área disponível para reserva" />
+        <tc-estado-vazio icone="deck" titulo="Nenhuma área disponível para reserva" />
       }
     </section>
 
     <section class="tc-card mt">
       <h3 class="tc-section-title first">Minhas reservas</h3>
-      @for (r of mine() ?? []; track r.id) {
+      @for (r of minhas() ?? []; track r.id) {
         <div class="row">
           <div class="who"><strong>{{ r.nomeArea }}</strong> · unid. {{ r.rotuloUnidade }}<br />
-            <span class="tc-muted small">{{ r.data | isoDate }} · {{ r.horaInicio.slice(0, 5) }}–{{ r.horaFim.slice(0, 5) }}
+            <span class="tc-muted small">{{ r.data | dataIso }} · {{ r.horaInicio.slice(0, 5) }}–{{ r.horaFim.slice(0, 5) }}
               {{ r.taxa > 0 ? ' · taxa ' : '' }}{{ r.taxa > 0 ? (r.taxa | currency: 'BRL') : '' }}</span>
             @if (r.observacaoDecisao || r.motivoCancelamento) { <br /><span class="small note">{{ r.motivoCancelamento ?? r.observacaoDecisao }}</span> }</div>
           <div class="right">
             <span class="tc-status" [class.is-success]="r.situacao === 'CONFIRMED'" [class.is-pending]="r.situacao === 'PENDING'"
-              [class.is-danger]="r.situacao === 'REJECTED'" [class.is-inactive]="r.situacao === 'CANCELLED'">{{ r.situacao | label: 'reservationStatus' }}</span>
-            @if ((r.situacao === 'PENDING' || r.situacao === 'CONFIRMED') && r.data >= today) {
-              <button mat-stroked-button (click)="cancel(r)">Cancelar</button>
+              [class.is-danger]="r.situacao === 'REJECTED'" [class.is-inactive]="r.situacao === 'CANCELLED'">{{ r.situacao | rotulo: 'reservationStatus' }}</span>
+            @if ((r.situacao === 'PENDING' || r.situacao === 'CONFIRMED') && r.data >= hoje) {
+              <button mat-stroked-button (click)="cancelar(r)">Cancelar</button>
             }
           </div>
         </div>
@@ -92,62 +92,62 @@ import { AreaComum, HorarioOcupado, Reserva, ReservationApi } from './reserva-ap
     }
   `,
 })
-export class PortalReservations {
-  readonly condominiumId = input.required<string>();
-  readonly units = input.required<{ idUnidade: string; rotulo: string }[]>();
-  private readonly api = inject(ReservationApi);
+export class PortalReservas {
+  readonly idCondominio = input.required<string>();
+  readonly unidades = input.required<{ idUnidade: string; rotulo: string }[]>();
+  private readonly api = inject(ReservaApi);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
-  private readonly tick = signal(0);
-  protected readonly today = todayIso();
+  private readonly notificacao = inject(NotificacaoService);
+  private readonly recarga = signal(0);
+  protected readonly hoje = hojeIso();
   protected readonly area = new FormControl<string | null>(null);
-  private readonly areaValue = toSignal(this.area.valueChanges, { initialValue: null });
+  private readonly valorArea = toSignal(this.area.valueChanges, { initialValue: null });
 
-  protected readonly areas = toSignal(toObservable(this.condominiumId).pipe(
+  protected readonly areas = toSignal(toObservable(this.idCondominio).pipe(
     switchMap((c) => this.api.portalAreas(c).pipe(catchError(() => of([] as AreaComum[]))))));
-  protected readonly selectedArea = computed(() => (this.areas() ?? []).find((a) => a.id === this.areaValue()) ?? null);
-  protected readonly slots = toSignal(combineLatest([toObservable(this.areaValue), toObservable(this.tick)]).pipe(
+  protected readonly areaSelecionada = computed(() => (this.areas() ?? []).find((a) => a.id === this.valorArea()) ?? null);
+  protected readonly horarios = toSignal(combineLatest([toObservable(this.valorArea), toObservable(this.recarga)]).pipe(
     filter(([a]) => !!a),
-    switchMap(([a]) => this.api.portalOccupancy(this.condominiumId(), a!, this.today, plusDays(this.today, 60)).pipe(catchError(() => of([] as HorarioOcupado[]))))));
-  protected readonly mine = toSignal(combineLatest([toObservable(this.condominiumId), toObservable(this.tick)]).pipe(
-    switchMap(([c]) => this.api.portalMine(c).pipe(catchError(() => of([] as Reserva[]))))));
+    switchMap(([a]) => this.api.portalOcupacao(this.idCondominio(), a!, this.hoje, somarDias(this.hoje, 60)).pipe(catchError(() => of([] as HorarioOcupado[]))))));
+  protected readonly minhas = toSignal(combineLatest([toObservable(this.idCondominio), toObservable(this.recarga)]).pipe(
+    switchMap(([c]) => this.api.portalMinhas(c).pipe(catchError(() => of([] as Reserva[]))))));
 
-  book(a: AreaComum): void {
-    openForm(this.dialog, {
-      title: 'Reservar ' + a.nome,
-      intro: a.exigeAprovacao ? 'A reserva ficará aguardando a aprovação da administração.' : undefined,
-      fields: [
-        { key: 'idUnidade', label: 'Unidade', type: 'select', required: true, value: this.units()[0]?.idUnidade,
-          options: this.units().map((u) => ({ value: u.idUnidade, label: u.rotulo })) },
-        { key: 'data', label: 'Data', type: 'date', required: true, span: 4 },
-        { key: 'horaInicio', label: 'Início', type: 'time', required: true, span: 4 },
-        { key: 'horaFim', label: 'Fim', type: 'time', required: true, span: 4 },
-        { key: 'convidados', label: 'Convidados', type: 'number', span: 4 },
-        { key: 'observacoes', label: 'Observações', maxLength: 500, span: 8 },
+  reservar(a: AreaComum): void {
+    abrirFormulario(this.dialog, {
+      titulo: 'Reservar ' + a.nome,
+      introducao: a.exigeAprovacao ? 'A reserva ficará aguardando a aprovação da administração.' : undefined,
+      campos: [
+        { chave: 'idUnidade', rotulo: 'Unidade', tipo: 'select', obrigatorio: true, valor: this.unidades()[0]?.idUnidade,
+          opcoes: this.unidades().map((u) => ({ valor: u.idUnidade, rotulo: u.rotulo })) },
+        { chave: 'data', rotulo: 'Data', tipo: 'date', obrigatorio: true, colunas: 4 },
+        { chave: 'horaInicio', rotulo: 'Início', tipo: 'time', obrigatorio: true, colunas: 4 },
+        { chave: 'horaFim', rotulo: 'Fim', tipo: 'time', obrigatorio: true, colunas: 4 },
+        { chave: 'convidados', rotulo: 'Convidados', tipo: 'number', colunas: 4 },
+        { chave: 'observacoes', rotulo: 'Observações', tamanhoMaximo: 500, colunas: 8 },
       ],
-      submitLabel: 'Reservar',
-      submit: (v) => this.api.portalBook(this.condominiumId(), { ...v, idArea: a.id }),
+      rotuloEnviar: 'Reservar',
+      enviar: (v) => this.api.portalReservar(this.idCondominio(), { ...v, idArea: a.id }),
     }).pipe(filter((r): r is Reserva => !!r)).subscribe((r) => {
-      this.notify.success(r.situacao === 'PENDING' ? 'Pedido enviado para aprovação.' : 'Reserva confirmada.');
-      this.tick.update((t) => t + 1);
+      this.notificacao.sucesso(r.situacao === 'PENDING' ? 'Pedido enviado para aprovação.' : 'Reserva confirmada.');
+      this.recarga.update((t) => t + 1);
     });
   }
 
-  cancel(r: Reserva): void {
-    askReason(this.dialog, 'Cancelar reserva', `${r.nomeArea} em ${r.data.split('-').reverse().join('/')}.`, 'Cancelar reserva')
-      .pipe(switchMap((reason) => this.api.portalCancel(this.condominiumId(), r.id, reason)))
+  cancelar(r: Reserva): void {
+    pedirMotivo(this.dialog, 'Cancelar reserva', `${r.nomeArea} em ${r.data.split('-').reverse().join('/')}.`, 'Cancelar reserva')
+      .pipe(switchMap((motivo) => this.api.portalCancelar(this.idCondominio(), r.id, motivo)))
       .subscribe({
         next: () => {
-          this.notify.success('Reserva cancelada.');
-          this.tick.update((t) => t + 1);
+          this.notificacao.sucesso('Reserva cancelada.');
+          this.recarga.update((t) => t + 1);
         },
-        error: (err: unknown) => this.notify.error(toProblem(err).detail),
+        error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail),
       });
   }
 }
 
-function plusDays(iso: string, days: number): string {
+function somarDias(iso: string, dias: number): string {
   const d = new Date(iso + 'T12:00:00');
-  d.setDate(d.getDate() + days);
+  d.setDate(d.getDate() + dias);
   return d.toISOString().slice(0, 10);
 }

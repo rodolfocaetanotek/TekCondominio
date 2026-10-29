@@ -5,17 +5,17 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
-import { toProblem } from '../../core/api/api.models';
-import { FieldError } from '../../comum/formularios/erro-campo';
-import { AuthCard } from './cartao-acesso';
-import { PasswordService } from './senha.service';
+import { paraProblema } from '../../core/api/api.models';
+import { MensagemErroCampo } from '../../comum/formularios/erro-campo';
+import { CartaoAcesso } from './cartao-acesso';
+import { SenhaService } from './senha.service';
 
 @Component({
-  selector: 'tc-forgot-password',
-  imports: [ReactiveFormsModule, RouterLink, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, FieldError, AuthCard],
+  selector: 'tc-esqueci-senha',
+  imports: [ReactiveFormsModule, RouterLink, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, MensagemErroCampo, CartaoAcesso],
   template: `
-    <tc-auth-card title="Esqueci minha senha">
-      @if (sent()) {
+    <tc-cartao-acesso titulo="Esqueci minha senha">
+      @if (enviado()) {
         <div class="done" role="status">
           <mat-icon>mark_email_read</mat-icon>
           <p>Se houver uma conta ativa para <strong>{{ email.value }}</strong>, enviaremos em instantes um link para criar
@@ -24,21 +24,21 @@ import { PasswordService } from './senha.service';
         <a mat-flat-button routerLink="/login" class="wide">Voltar ao login</a>
       } @else {
         <p class="tc-muted">Informe o e-mail cadastrado. Você receberá um link válido por tempo limitado.</p>
-        @if (error(); as message) {
-          <p class="tc-alert" role="alert">{{ message }}</p>
+        @if (erro(); as mensagem) {
+          <p class="tc-alert" role="alert">{{ mensagem }}</p>
         }
-        <form (ngSubmit)="submit()" novalidate>
+        <form (ngSubmit)="enviar()" novalidate>
           <mat-form-field class="wide">
             <mat-label>E-mail</mat-label>
             <input matInput type="email" [formControl]="email" autocomplete="username" required />
             <mat-icon matPrefix>mail</mat-icon>
-            <mat-error><tc-field-error [control]="email" /></mat-error>
+            <mat-error><tc-erro-campo [controle]="email" /></mat-error>
           </mat-form-field>
-          <button mat-flat-button type="submit" class="wide" [disabled]="loading()">{{ loading() ? 'Enviando…' : 'Enviar link' }}</button>
+          <button mat-flat-button type="submit" class="wide" [disabled]="carregando()">{{ carregando() ? 'Enviando…' : 'Enviar link' }}</button>
         </form>
         <a mat-button routerLink="/login" class="wide back">Voltar ao login</a>
       }
-    </tc-auth-card>
+    </tc-cartao-acesso>
   `,
   styles: `
     .wide { width: 100%; }
@@ -50,26 +50,26 @@ import { PasswordService } from './senha.service';
     .done p { margin: 0; }
   `,
 })
-export class ForgotPassword {
-  private readonly service = inject(PasswordService);
+export class EsqueciSenha {
+  private readonly service = inject(SenhaService);
   protected readonly email = new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] });
-  protected readonly loading = signal(false);
-  protected readonly sent = signal(false);
-  protected readonly error = signal<string | null>(null);
+  protected readonly carregando = signal(false);
+  protected readonly enviado = signal(false);
+  protected readonly erro = signal<string | null>(null);
 
-  submit(): void {
+  enviar(): void {
     this.email.markAsTouched();
-    if (this.email.invalid || this.loading()) return;
-    this.loading.set(true);
-    this.error.set(null);
-    this.service.forgot(this.email.value.trim()).subscribe({
+    if (this.email.invalid || this.carregando()) return;
+    this.carregando.set(true);
+    this.erro.set(null);
+    this.service.esqueciSenha(this.email.value.trim()).subscribe({
       next: () => {
-        this.loading.set(false);
-        this.sent.set(true);
+        this.carregando.set(false);
+        this.enviado.set(true);
       },
       error: (err: unknown) => {
-        this.loading.set(false);
-        this.error.set(toProblem(err).detail);
+        this.carregando.set(false);
+        this.erro.set(paraProblema(err).detail);
       },
     });
   }

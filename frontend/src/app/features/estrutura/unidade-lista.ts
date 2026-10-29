@@ -15,59 +15,59 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { catchError, debounceTime, distinctUntilChanged, filter, finalize, forkJoin, map, of, switchMap, tap } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { CondominiumRequired } from '../../comum/ui/condominio-obrigatorio';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
-import { BuildingDialog } from './bloco-dialog';
-import { ImportDialog } from './importacao-dialog';
-import { Bloco, Unidade, UNIT_TYPE_LABELS } from './estrutura.models';
-import { StructureService } from './estrutura.service';
-import { UnitDialog, UnitDialogData } from './unidade-dialog';
+import { paraProblema } from '../../core/api/api.models';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { CondominioObrigatorio } from '../../comum/ui/condominio-obrigatorio';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
+import { BlocoDialog } from './bloco-dialog';
+import { ImportacaoDialog } from './importacao-dialog';
+import { Bloco, Unidade, ROTULOS_TIPO_UNIDADE } from './estrutura.models';
+import { EstruturaService } from './estrutura.service';
+import { UnidadeDialog, DadosUnidadeDialog } from './unidade-dialog';
 
 @Component({
-  selector: 'tc-unit-list',
+  selector: 'tc-unidade-lista',
   imports: [DecimalPipe, ReactiveFormsModule, MatTableModule, MatPaginatorModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatIconModule, MatMenuModule, MatProgressBarModule, MatTooltipModule,
-    PageHeader, EmptyState, CondominiumRequired],
+    CabecalhoPagina, EstadoVazio, CondominioObrigatorio],
   template: `
     <div class="tc-page">
-      <tc-page-header eyebrow="Estrutura" title="Unidades" [subtitle]="context.selected()?.nome">
-        @if (canEdit()) {
-          <button mat-stroked-button (click)="openImport()"><mat-icon>upload_file</mat-icon> Importar planilha</button>
-          <button mat-flat-button (click)="openUnit()"><mat-icon>add</mat-icon> Nova unidade</button>
+      <tc-cabecalho-pagina sobretitulo="Estrutura" titulo="Unidades" [subtitulo]="contexto.selecionado()?.nome">
+        @if (podeEditar()) {
+          <button mat-stroked-button (click)="abrirImportacao()"><mat-icon>upload_file</mat-icon> Importar planilha</button>
+          <button mat-flat-button (click)="abrirUnidade()"><mat-icon>add</mat-icon> Nova unidade</button>
         }
-      </tc-page-header>
+      </tc-cabecalho-pagina>
 
-      @if (!context.id()) {
-        <tc-condominium-required />
+      @if (!contexto.id()) {
+        <tc-condominio-obrigatorio />
       } @else {
         @if (data(); as d) {
           <section class="summary">
-            <div class="tc-kpi tc-card fraction" [class.tone-success]="d.summary.fechada" [class.tone-warning]="!d.summary.fechada" role="status">
-              <span class="icon"><mat-icon aria-hidden="true">{{ d.summary.fechada ? 'check_circle' : 'warning' }}</mat-icon></span>
+            <div class="tc-kpi tc-card fraction" [class.tone-success]="d.resumo.fechada" [class.tone-warning]="!d.resumo.fechada" role="status">
+              <span class="icon"><mat-icon aria-hidden="true">{{ d.resumo.fechada ? 'check_circle' : 'warning' }}</mat-icon></span>
               <span class="label">Frações ideais</span>
-              <span class="value">{{ d.summary.total | number: '1.2-6' }}%</span>
-              <span class="sub">{{ d.summary.unidadesAtivas }} unidade(s) ativa(s) ·
-                {{ d.summary.fechada ? 'soma correta, rateio por fração liberado' : 'faltam ' + (d.summary.diferenca | number: '1.2-6') + ' p.p. para 100%' }}</span>
+              <span class="value">{{ d.resumo.total | number: '1.2-6' }}%</span>
+              <span class="sub">{{ d.resumo.unidadesAtivas }} unidade(s) ativa(s) ·
+                {{ d.resumo.fechada ? 'soma correta, rateio por fração liberado' : 'faltam ' + (d.resumo.diferenca | number: '1.2-6') + ' p.p. para 100%' }}</span>
             </div>
             <div class="tc-card buildings">
               <p class="tc-section-label">Blocos</p>
               <div class="chips">
-              @for (b of d.buildings; track b.id) {
-                <button mat-stroked-button class="chip" [class.inactive]="!b.ativo" [matMenuTriggerFor]="bm" [disabled]="!canEdit()"
+              @for (b of d.blocos; track b.id) {
+                <button mat-stroked-button class="chip" [class.inactive]="!b.ativo" [matMenuTriggerFor]="menuBloco" [disabled]="!podeEditar()"
                   [matTooltip]="b.unidadesAtivas + ' unidade(s) ativa(s)'">{{ b.nome }} ({{ b.unidadesAtivas }})</button>
-                <mat-menu #bm="matMenu">
-                  <button mat-menu-item (click)="openBuilding(b)"><mat-icon>edit</mat-icon>Editar</button>
-                  <button mat-menu-item (click)="toggleBuilding(b)"><mat-icon>{{ b.ativo ? 'block' : 'check_circle' }}</mat-icon>{{ b.ativo ? 'Inativar' : 'Reativar' }}</button>
+                <mat-menu #menuBloco="matMenu">
+                  <button mat-menu-item (click)="abrirBloco(b)"><mat-icon>edit</mat-icon>Editar</button>
+                  <button mat-menu-item (click)="alternarBloco(b)"><mat-icon>{{ b.ativo ? 'block' : 'check_circle' }}</mat-icon>{{ b.ativo ? 'Inativar' : 'Reativar' }}</button>
                 </mat-menu>
               } @empty {
                 <span class="tc-muted">nenhum</span>
               }
-              @if (canEdit()) {
-                <button mat-button (click)="openBuilding()"><mat-icon>add</mat-icon> Bloco</button>
+              @if (podeEditar()) {
+                <button mat-button (click)="abrirBloco()"><mat-icon>add</mat-icon> Bloco</button>
               }
               </div>
             </div>
@@ -78,20 +78,20 @@ import { UnitDialog, UnitDialogData } from './unidade-dialog';
           <mat-form-field class="search">
             <mat-label>Buscar unidade</mat-label>
             <mat-icon matPrefix>search</mat-icon>
-            <input matInput [formControl]="search" autocomplete="off" />
+            <input matInput [formControl]="busca" autocomplete="off" />
           </mat-form-field>
           <mat-form-field>
             <mat-label>Bloco</mat-label>
-            <mat-select [formControl]="building">
+            <mat-select [formControl]="bloco">
               <mat-option value="">Todos</mat-option>
-              @for (b of data()?.buildings ?? []; track b.id) {
+              @for (b of data()?.blocos ?? []; track b.id) {
                 <mat-option [value]="b.id">{{ b.nome }}</mat-option>
               }
             </mat-select>
           </mat-form-field>
           <mat-form-field>
             <mat-label>Situação</mat-label>
-            <mat-select [formControl]="active">
+            <mat-select [formControl]="ativo">
               <mat-option value="">Todas</mat-option>
               <mat-option value="true">Ativas</mat-option>
               <mat-option value="false">Inativas</mat-option>
@@ -99,17 +99,17 @@ import { UnitDialog, UnitDialogData } from './unidade-dialog';
           </mat-form-field>
         </div>
 
-        <section class="tc-table-card" [attr.aria-busy]="loading()">
-          <mat-progress-bar [mode]="loading() ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="!loading()" />
-          @if (error(); as message) {
-            <tc-empty-state icon="cloud_off" title="Não foi possível carregar" [description]="message" />
+        <section class="tc-table-card" [attr.aria-busy]="carregando()">
+          <mat-progress-bar [mode]="carregando() ? 'indeterminate' : 'determinate'" [value]="0" [class.idle]="!carregando()" />
+          @if (erro(); as mensagem) {
+            <tc-estado-vazio icone="cloud_off" titulo="Não foi possível carregar" [descricao]="mensagem" />
           } @else if (data(); as d) {
-            @if (d.page.totalElementos === 0) {
-              <tc-empty-state icon="door_front" title="Nenhuma unidade"
-                description="Cadastre as unidades uma a uma ou importe uma planilha com unidades e proprietários." />
+            @if (d.pagina.totalElementos === 0) {
+              <tc-estado-vazio icone="door_front" titulo="Nenhuma unidade"
+                descricao="Cadastre as unidades uma a uma ou importe uma planilha com unidades e proprietários." />
             } @else {
               <div class="table-scroll">
-                <table mat-table [dataSource]="d.page.conteudo">
+                <table mat-table [dataSource]="d.pagina.conteudo">
                   <caption class="sr-only">Unidades</caption>
                   <ng-container matColumnDef="label">
                     <th mat-header-cell *matHeaderCellDef>Unidade</th>
@@ -117,7 +117,7 @@ import { UnitDialog, UnitDialogData } from './unidade-dialog';
                   </ng-container>
                   <ng-container matColumnDef="type">
                     <th mat-header-cell *matHeaderCellDef>Tipo</th>
-                    <td mat-cell *matCellDef="let u">{{ typeLabel(u) }}</td>
+                    <td mat-cell *matCellDef="let u">{{ rotuloTipo(u) }}</td>
                   </ng-container>
                   <ng-container matColumnDef="fraction">
                     <th mat-header-cell *matHeaderCellDef class="num">Fração (%)</th>
@@ -135,13 +135,13 @@ import { UnitDialog, UnitDialogData } from './unidade-dialog';
                     <th mat-header-cell *matHeaderCellDef>Situação</th>
                     <td mat-cell *matCellDef="let u"><span class="tc-status" [class.is-active]="u.ativo" [class.is-inactive]="!u.ativo">{{ u.ativo ? 'Ativa' : 'Inativa' }}</span></td>
                   </ng-container>
-                  <tr mat-header-row *matHeaderRowDef="columns"></tr>
-                  <tr mat-row *matRowDef="let row; columns: columns" class="is-clickable" tabindex="0" role="link"
-                    [attr.aria-label]="'Abrir unidade ' + row.rotulo" (click)="open(row)" (keydown.enter)="open(row)"></tr>
+                  <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+                  <tr mat-row *matRowDef="let linha; colunas: colunas" class="is-clickable" tabindex="0" role="link"
+                    [attr.aria-label]="'Abrir unidade ' + linha.rotulo" (click)="abrir(linha)" (keydown.enter)="abrir(linha)"></tr>
                 </table>
               </div>
-              <mat-paginator [length]="d.page.totalElementos" [pageIndex]="d.page.pagina" [pageSize]="d.page.tamanho"
-                [pageSizeOptions]="[25, 50, 100]" (page)="onPage($event)" aria-label="Paginação de unidades" />
+              <mat-paginator [length]="d.pagina.totalElementos" [pageIndex]="d.pagina.pagina" [pageSize]="d.pagina.tamanho"
+                [pageSizeOptions]="[25, 50, 100]" (page)="aoPaginar($event)" aria-label="Paginação de unidades" />
             }
           }
         </section>
@@ -157,42 +157,42 @@ import { UnitDialog, UnitDialogData } from './unidade-dialog';
     @media (max-width: 720px) { .summary { grid-template-columns: minmax(0, 1fr); } }
   `,
 })
-export class UnitList {
-  protected readonly context = inject(CondominiumContext);
-  private readonly service = inject(StructureService);
+export class UnidadeLista {
+  protected readonly contexto = inject(CondominioContexto);
+  private readonly service = inject(EstruturaService);
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
-  private readonly notify = inject(NotificationService);
+  private readonly notificacao = inject(NotificacaoService);
 
-  protected readonly columns = ['label', 'type', 'fraction', 'owner', 'financial', 'status'];
-  protected readonly search = new FormControl('', { nonNullable: true });
-  protected readonly building = new FormControl('', { nonNullable: true });
-  protected readonly active = new FormControl('true', { nonNullable: true });
-  private readonly paging = signal({ page: 0, size: 50, search: '', buildingId: '', active: 'true', tick: 0 });
-  protected readonly loading = signal(false);
-  protected readonly error = signal<string | null>(null);
-  protected readonly canEdit = computed(() => this.context.can('STRUCTURE_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
+  protected readonly colunas = ['label', 'type', 'fraction', 'owner', 'financial', 'status'];
+  protected readonly busca = new FormControl('', { nonNullable: true });
+  protected readonly bloco = new FormControl('', { nonNullable: true });
+  protected readonly ativo = new FormControl('true', { nonNullable: true });
+  private readonly paginacao = signal({ pagina: 0, tamanho: 50, busca: '', idBloco: '', ativo: 'true', recarga: 0 });
+  protected readonly carregando = signal(false);
+  protected readonly erro = signal<string | null>(null);
+  protected readonly podeEditar = computed(() => this.contexto.pode('STRUCTURE_EDIT') && this.contexto.selecionado()?.situacao === 'ACTIVE');
 
-  private readonly query = computed(() => ({ condo: this.context.id(), ...this.paging() }));
+  private readonly consulta = computed(() => ({ condominio: this.contexto.id(), ...this.paginacao() }));
 
   protected readonly data = toSignal(
-    toObservable(this.query).pipe(
-      filter((q) => !!q.condo),
+    toObservable(this.consulta).pipe(
+      filter((q) => !!q.condominio),
       tap(() => {
-        this.loading.set(true);
-        this.error.set(null);
+        this.carregando.set(true);
+        this.erro.set(null);
       }),
       switchMap((q) =>
         forkJoin({
-          page: this.service.units(q.condo!, q),
-          buildings: this.service.buildings(q.condo!),
-          summary: this.service.fractionSummary(q.condo!),
+          pagina: this.service.unidades(q.condominio!, q),
+          blocos: this.service.blocos(q.condominio!),
+          resumo: this.service.resumoFracoes(q.condominio!),
         }).pipe(
           catchError((err: unknown) => {
-            this.error.set(toProblem(err).detail);
+            this.erro.set(paraProblema(err).detail);
             return of(null);
           }),
-          finalize(() => this.loading.set(false)),
+          finalize(() => this.carregando.set(false)),
         ),
       ),
     ),
@@ -200,63 +200,63 @@ export class UnitList {
   );
 
   constructor() {
-    this.search.valueChanges
+    this.busca.valueChanges
       .pipe(debounceTime(300), map((v) => v.trim()), distinctUntilChanged(), takeUntilDestroyed())
-      .subscribe((search) => this.paging.update((p) => ({ ...p, search, page: 0 })));
-    this.building.valueChanges.pipe(takeUntilDestroyed()).subscribe((buildingId) => this.paging.update((p) => ({ ...p, buildingId, page: 0 })));
-    this.active.valueChanges.pipe(takeUntilDestroyed()).subscribe((active) => this.paging.update((p) => ({ ...p, active, page: 0 })));
+      .subscribe((busca) => this.paginacao.update((p) => ({ ...p, busca, pagina: 0 })));
+    this.bloco.valueChanges.pipe(takeUntilDestroyed()).subscribe((idBloco) => this.paginacao.update((p) => ({ ...p, idBloco, pagina: 0 })));
+    this.ativo.valueChanges.pipe(takeUntilDestroyed()).subscribe((ativo) => this.paginacao.update((p) => ({ ...p, ativo, pagina: 0 })));
   }
 
-  typeLabel(u: Unidade): string {
-    return UNIT_TYPE_LABELS[u.tipo];
+  rotuloTipo(u: Unidade): string {
+    return ROTULOS_TIPO_UNIDADE[u.tipo];
   }
 
-  onPage(e: PageEvent): void {
-    this.paging.update((p) => ({ ...p, page: e.pageIndex, size: e.pageSize }));
+  aoPaginar(e: PageEvent): void {
+    this.paginacao.update((p) => ({ ...p, pagina: e.pageIndex, tamanho: e.pageSize }));
   }
 
-  open(u: Unidade): void {
+  abrir(u: Unidade): void {
     void this.router.navigate(['/unidades', u.id]);
   }
 
-  openUnit(): void {
-    const condominiumId = this.context.id()!;
+  abrirUnidade(): void {
+    const idCondominio = this.contexto.id()!;
     this.dialog
-      .open<UnitDialog, UnitDialogData, Unidade>(UnitDialog, { data: { condominiumId, buildings: this.data()?.buildings ?? [] }, width: '640px', maxWidth: '95vw' })
+      .open<UnidadeDialog, DadosUnidadeDialog, Unidade>(UnidadeDialog, { data: { idCondominio, blocos: this.data()?.blocos ?? [] }, width: '640px', maxWidth: '95vw' })
       .afterClosed()
       .pipe(filter((u): u is Unidade => !!u))
       .subscribe((u) => {
-        this.notify.success(`Unidade ${u.rotulo} cadastrada.`);
-        this.refresh();
+        this.notificacao.sucesso(`Unidade ${u.rotulo} cadastrada.`);
+        this.renovar();
       });
   }
 
-  openBuilding(building?: Bloco): void {
+  abrirBloco(bloco?: Bloco): void {
     this.dialog
-      .open(BuildingDialog, { data: { condominiumId: this.context.id()!, building }, width: '440px' })
+      .open(BlocoDialog, { data: { idCondominio: this.contexto.id()!, bloco }, width: '440px' })
       .afterClosed()
       .pipe(filter((b) => !!b))
       .subscribe(() => {
-        this.notify.success('Bloco salvo.');
-        this.refresh();
+        this.notificacao.sucesso('Bloco salvo.');
+        this.renovar();
       });
   }
 
-  toggleBuilding(b: Bloco): void {
-    this.service.setBuildingActive(this.context.id()!, b.id, !b.ativo).subscribe({
-      next: () => this.refresh(),
-      error: (err: unknown) => this.notify.error(toProblem(err).detail),
+  alternarBloco(b: Bloco): void {
+    this.service.alterarBlocoAtivo(this.contexto.id()!, b.id, !b.ativo).subscribe({
+      next: () => this.renovar(),
+      error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail),
     });
   }
 
-  openImport(): void {
+  abrirImportacao(): void {
     this.dialog
-      .open(ImportDialog, { data: { condominiumId: this.context.id()! }, width: '640px', maxWidth: '95vw' })
+      .open(ImportacaoDialog, { data: { idCondominio: this.contexto.id()! }, width: '640px', maxWidth: '95vw' })
       .afterClosed()
-      .subscribe(() => this.refresh());
+      .subscribe(() => this.renovar());
   }
 
-  private refresh(): void {
-    this.paging.update((p) => ({ ...p, tick: p.tick + 1 }));
+  private renovar(): void {
+    this.paginacao.update((p) => ({ ...p, recarga: p.recarga + 1 }));
   }
 }

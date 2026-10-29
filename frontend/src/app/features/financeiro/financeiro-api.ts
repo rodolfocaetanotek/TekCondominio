@@ -58,7 +58,7 @@ export interface ArquivoRetorno { id: string; idContaBancaria: string; nomeArqui
 export interface ItemRetorno { id: string; idArquivo: string; sequencia: number; codigoMovimento: string; descricaoMovimento: string; nossoNumero?: string; seuNumero?: string; dataVencimento?: string; valorTitulo: number; encargos: number; desconto: number; valorPago: number; tarifa: number; dataOcorrencia?: string; dataCredito?: string; situacao: 'SETTLED' | 'PENDING' | 'INFO' | 'IGNORED'; idLancamento?: string; descricaoLancamento?: string; rotuloUnidade?: string; mensagem?: string; }
 
 @Injectable({ providedIn: 'root' })
-export class FinanceApi {
+export class FinanceiroApi {
   private readonly http = inject(HttpClient);
   private b(c: string): string {
     return `/api/v1/condominios/${c}/financeiro`;
@@ -67,105 +67,105 @@ export class FinanceApi {
     return `/api/v1/condominios/${c}/cobranca`;
   }
 
-  chartAccounts(): Observable<ContaPlano[]> { return this.http.get<ContaPlano[]>('/api/v1/financeiro/plano-contas'); }
-  createChartAccount(body: { codigo: string; nome: string; natureza: string }): Observable<ContaPlano> { return this.http.post<ContaPlano>('/api/v1/financeiro/plano-contas', body); }
-  settings(c: string): Observable<ParametrosFinanceiros> { return this.http.get<ParametrosFinanceiros>(`${this.b(c)}/parametros`); }
-  saveSettings(c: string, s: ParametrosFinanceiros): Observable<ParametrosFinanceiros> { return this.http.put<ParametrosFinanceiros>(`${this.b(c)}/parametros`, s); }
-  costCenters(c: string): Observable<CentroCusto[]> { return this.http.get<CentroCusto[]>(`${this.b(c)}/centros-custo`); }
-  saveCostCenter(c: string, nome: string, id?: string, ativo?: boolean): Observable<CentroCusto> {
+  contasPlano(): Observable<ContaPlano[]> { return this.http.get<ContaPlano[]>('/api/v1/financeiro/plano-contas'); }
+  cadastrarContaPlano(corpo: { codigo: string; nome: string; natureza: string }): Observable<ContaPlano> { return this.http.post<ContaPlano>('/api/v1/financeiro/plano-contas', corpo); }
+  parametros(c: string): Observable<ParametrosFinanceiros> { return this.http.get<ParametrosFinanceiros>(`${this.b(c)}/parametros`); }
+  salvarParametros(c: string, s: ParametrosFinanceiros): Observable<ParametrosFinanceiros> { return this.http.put<ParametrosFinanceiros>(`${this.b(c)}/parametros`, s); }
+  centrosCusto(c: string): Observable<CentroCusto[]> { return this.http.get<CentroCusto[]>(`${this.b(c)}/centros-custo`); }
+  salvarCentroCusto(c: string, nome: string, id?: string, ativo?: boolean): Observable<CentroCusto> {
     return id
       ? this.http.put<CentroCusto>(`${this.b(c)}/centros-custo/${id}`, { nome }, { params: ativo === undefined ? {} : { ativo } })
       : this.http.post<CentroCusto>(`${this.b(c)}/centros-custo`, { nome });
   }
-  bankAccounts(c: string): Observable<ContaBancaria[]> { return this.http.get<ContaBancaria[]>(`${this.b(c)}/contas-bancarias`); }
-  createBankAccount(c: string, body: Record<string, unknown>): Observable<ContaBancaria> { return this.http.post<ContaBancaria>(`${this.b(c)}/contas-bancarias`, body); }
-  updateBankAccount(c: string, id: string, body: Record<string, unknown>, ativo?: boolean): Observable<ContaBancaria> {
-    return this.http.put<ContaBancaria>(`${this.b(c)}/contas-bancarias/${id}`, body, { params: ativo === undefined ? {} : { ativo } });
+  contasBancarias(c: string): Observable<ContaBancaria[]> { return this.http.get<ContaBancaria[]>(`${this.b(c)}/contas-bancarias`); }
+  cadastrarContaBancaria(c: string, corpo: Record<string, unknown>): Observable<ContaBancaria> { return this.http.post<ContaBancaria>(`${this.b(c)}/contas-bancarias`, corpo); }
+  atualizarContaBancaria(c: string, id: string, corpo: Record<string, unknown>, ativo?: boolean): Observable<ContaBancaria> {
+    return this.http.put<ContaBancaria>(`${this.b(c)}/contas-bancarias/${id}`, corpo, { params: ativo === undefined ? {} : { ativo } });
   }
-  statement(c: string, id: string, de: string, ate: string): Observable<Extrato> {
+  extrato(c: string, id: string, de: string, ate: string): Observable<Extrato> {
     return this.http.get<Extrato>(`${this.b(c)}/contas-bancarias/${id}/extrato`, { params: { de, ate } });
   }
-  reconcile(c: string, itens: { tipo: string; id: string }[], conciliada: boolean): Observable<unknown> {
+  conciliar(c: string, itens: { tipo: string; id: string }[], conciliada: boolean): Observable<unknown> {
     return this.http.post(`${this.b(c)}/conciliar`, { itens, conciliada });
   }
 
-  entries(c: string, q: Record<string, string | number | string[] | undefined>): Observable<PaginaResponse<LancamentoResumo>> {
-    let params = new HttpParams();
+  lancamentos(c: string, q: Record<string, string | number | string[] | undefined>): Observable<PaginaResponse<LancamentoResumo>> {
+    let parametros = new HttpParams();
     for (const [k, v] of Object.entries(q)) {
       if (v === undefined || v === '' || v === null) continue;
-      params = Array.isArray(v) ? v.reduce((p, x) => p.append(k, x), params) : params.set(k, String(v));
+      parametros = Array.isArray(v) ? v.reduce((p, x) => p.append(k, x), parametros) : parametros.set(k, String(v));
     }
-    return this.http.get<PaginaResponse<LancamentoResumo>>(`${this.b(c)}/lancamentos`, { params });
+    return this.http.get<PaginaResponse<LancamentoResumo>>(`${this.b(c)}/lancamentos`, { params: parametros });
   }
-  entry(c: string, id: string): Observable<LancamentoDetalhe> { return this.http.get<LancamentoDetalhe>(`${this.b(c)}/lancamentos/${id}`); }
-  createEntry(c: string, body: LancamentoRequest): Observable<LancamentoDetalhe[]> { return this.http.post<LancamentoDetalhe[]>(`${this.b(c)}/lancamentos`, body); }
-  updateEntry(c: string, id: string, body: LancamentoRequest): Observable<LancamentoDetalhe> { return this.http.put<LancamentoDetalhe>(`${this.b(c)}/lancamentos/${id}`, body); }
-  approve(c: string, id: string, approve: boolean, observacao: string | null): Observable<LancamentoDetalhe> {
-    return this.http.post<LancamentoDetalhe>(`${this.b(c)}/lancamentos/${id}/${approve ? 'aprovar' : 'reprovar'}`, { observacao });
+  lancamento(c: string, id: string): Observable<LancamentoDetalhe> { return this.http.get<LancamentoDetalhe>(`${this.b(c)}/lancamentos/${id}`); }
+  cadastrarLancamento(c: string, corpo: LancamentoRequest): Observable<LancamentoDetalhe[]> { return this.http.post<LancamentoDetalhe[]>(`${this.b(c)}/lancamentos`, corpo); }
+  atualizarLancamento(c: string, id: string, corpo: LancamentoRequest): Observable<LancamentoDetalhe> { return this.http.put<LancamentoDetalhe>(`${this.b(c)}/lancamentos/${id}`, corpo); }
+  aprovar(c: string, id: string, aprovar: boolean, observacao: string | null): Observable<LancamentoDetalhe> {
+    return this.http.post<LancamentoDetalhe>(`${this.b(c)}/lancamentos/${id}/${aprovar ? 'aprovar' : 'reprovar'}`, { observacao });
   }
-  cancelEntry(c: string, id: string, motivo: string): Observable<LancamentoDetalhe> { return this.http.post<LancamentoDetalhe>(`${this.b(c)}/lancamentos/${id}/cancelar`, { motivo }); }
-  quote(c: string, id: string, data: string): Observable<CalculoEncargos> { return this.http.get<CalculoEncargos>(`${this.b(c)}/lancamentos/${id}/encargos`, { params: { data } }); }
-  pay(c: string, id: string, body: Record<string, unknown>): Observable<LancamentoDetalhe> { return this.http.post<LancamentoDetalhe>(`${this.b(c)}/lancamentos/${id}/baixas`, body); }
-  reversePayment(c: string, idBaixa: string, motivo: string): Observable<LancamentoDetalhe> {
+  cancelarLancamento(c: string, id: string, motivo: string): Observable<LancamentoDetalhe> { return this.http.post<LancamentoDetalhe>(`${this.b(c)}/lancamentos/${id}/cancelar`, { motivo }); }
+  calcularEncargos(c: string, id: string, data: string): Observable<CalculoEncargos> { return this.http.get<CalculoEncargos>(`${this.b(c)}/lancamentos/${id}/encargos`, { params: { data } }); }
+  baixar(c: string, id: string, corpo: Record<string, unknown>): Observable<LancamentoDetalhe> { return this.http.post<LancamentoDetalhe>(`${this.b(c)}/lancamentos/${id}/baixas`, corpo); }
+  estornarBaixa(c: string, idBaixa: string, motivo: string): Observable<LancamentoDetalhe> {
     return this.http.post<LancamentoDetalhe>(`${this.b(c)}/baixas/${idBaixa}/estornar`, { motivo });
   }
   // fechamento mensal
-  closing(c: string): Observable<SituacaoFechamento> { return this.http.get<SituacaoFechamento>(`${this.b(c)}/fechamento`); }
-  closingCheck(c: string, ate: string): Observable<Verificacao> { return this.http.get<Verificacao>(`${this.b(c)}/fechamento/verificar`, { params: { ate } }); }
-  close(c: string, ate: string, observacoes: string | null): Observable<SituacaoFechamento> { return this.http.post<SituacaoFechamento>(`${this.b(c)}/fechamento`, { ate, observacoes }); }
-  reopen(c: string, ate: string | null, motivo: string): Observable<SituacaoFechamento> { return this.http.post<SituacaoFechamento>(`${this.b(c)}/fechamento/reabrir`, { ate, motivo }); }
+  fechamento(c: string): Observable<SituacaoFechamento> { return this.http.get<SituacaoFechamento>(`${this.b(c)}/fechamento`); }
+  verificarFechamento(c: string, ate: string): Observable<Verificacao> { return this.http.get<Verificacao>(`${this.b(c)}/fechamento/verificar`, { params: { ate } }); }
+  fechar(c: string, ate: string, observacoes: string | null): Observable<SituacaoFechamento> { return this.http.post<SituacaoFechamento>(`${this.b(c)}/fechamento`, { ate, observacoes }); }
+  reabrir(c: string, ate: string | null, motivo: string): Observable<SituacaoFechamento> { return this.http.post<SituacaoFechamento>(`${this.b(c)}/fechamento/reabrir`, { ate, motivo }); }
 
   // extrato OFX e conciliação
-  importStatement(c: string, idConta: string, arquivo: File, ignorarConferenciaConta = false): Observable<ResultadoImportacao> {
+  importarExtrato(c: string, idConta: string, arquivo: File, ignorarConferenciaConta = false): Observable<ResultadoImportacao> {
     const form = new FormData();
     form.append('arquivo', arquivo);
     return this.http.post<ResultadoImportacao>(`${this.b(c)}/contas-bancarias/${idConta}/extratos`, form, { params: { ignorarConferenciaConta } });
   }
-  statementLines(c: string, idConta: string, situacao?: string): Observable<LinhaExtrato[]> {
+  linhasExtrato(c: string, idConta: string, situacao?: string): Observable<LinhaExtrato[]> {
     return this.http.get<LinhaExtrato[]>(`${this.b(c)}/contas-bancarias/${idConta}/linhas-extrato`, { params: situacao ? { situacao } : {} });
   }
-  matchLine(c: string, id: string, tipo: string, idMovimentacao: string): Observable<LinhaExtrato> { return this.http.post<LinhaExtrato>(`${this.b(c)}/linhas-extrato/${id}/conciliar`, { tipo, idMovimentacao }); }
-  unmatchLine(c: string, id: string): Observable<LinhaExtrato> { return this.http.post<LinhaExtrato>(`${this.b(c)}/linhas-extrato/${id}/desfazer-conciliacao`, null); }
-  ignoreLine(c: string, id: string, observacao: string): Observable<LinhaExtrato> { return this.http.post<LinhaExtrato>(`${this.b(c)}/linhas-extrato/${id}/ignorar`, { observacao }); }
-  registerLine(c: string, id: string, body: Record<string, unknown>): Observable<LinhaExtrato> { return this.http.post<LinhaExtrato>(`${this.b(c)}/linhas-extrato/${id}/lancar`, body); }
+  conciliarLinha(c: string, id: string, tipo: string, idMovimentacao: string): Observable<LinhaExtrato> { return this.http.post<LinhaExtrato>(`${this.b(c)}/linhas-extrato/${id}/conciliar`, { tipo, idMovimentacao }); }
+  desfazerConciliacaoLinha(c: string, id: string): Observable<LinhaExtrato> { return this.http.post<LinhaExtrato>(`${this.b(c)}/linhas-extrato/${id}/desfazer-conciliacao`, null); }
+  ignorarLinha(c: string, id: string, observacao: string): Observable<LinhaExtrato> { return this.http.post<LinhaExtrato>(`${this.b(c)}/linhas-extrato/${id}/ignorar`, { observacao }); }
+  lancarLinha(c: string, id: string, corpo: Record<string, unknown>): Observable<LinhaExtrato> { return this.http.post<LinhaExtrato>(`${this.b(c)}/linhas-extrato/${id}/lancar`, corpo); }
 
   // retorno bancário (CNAB 240)
-  processReturn(c: string, idContaBancaria: string, arquivo: File): Observable<ArquivoRetorno> {
+  processarRetorno(c: string, idContaBancaria: string, arquivo: File): Observable<ArquivoRetorno> {
     const form = new FormData();
     form.append('arquivo', arquivo);
     return this.http.post<ArquivoRetorno>(`${this.cobranca(c)}/retornos-bancarios`, form, { params: { idContaBancaria } });
   }
-  returnFiles(c: string): Observable<ArquivoRetorno[]> { return this.http.get<ArquivoRetorno[]>(`${this.cobranca(c)}/retornos-bancarios`); }
-  returnItems(c: string, idArquivo: string): Observable<ItemRetorno[]> { return this.http.get<ItemRetorno[]>(`${this.cobranca(c)}/retornos-bancarios/${idArquivo}/itens`); }
-  pendingReturnItems(c: string): Observable<ItemRetorno[]> { return this.http.get<ItemRetorno[]>(`${this.cobranca(c)}/itens-retorno/pendentes`); }
-  settleReturnItem(c: string, id: string, idLancamento: string): Observable<ItemRetorno> { return this.http.post<ItemRetorno>(`${this.cobranca(c)}/itens-retorno/${id}/baixar`, { idLancamento }); }
-  ignoreReturnItem(c: string, id: string, observacao: string): Observable<ItemRetorno> { return this.http.post<ItemRetorno>(`${this.cobranca(c)}/itens-retorno/${id}/ignorar`, { observacao }); }
+  arquivosRetorno(c: string): Observable<ArquivoRetorno[]> { return this.http.get<ArquivoRetorno[]>(`${this.cobranca(c)}/retornos-bancarios`); }
+  itensRetorno(c: string, idArquivo: string): Observable<ItemRetorno[]> { return this.http.get<ItemRetorno[]>(`${this.cobranca(c)}/retornos-bancarios/${idArquivo}/itens`); }
+  itensRetornoPendentes(c: string): Observable<ItemRetorno[]> { return this.http.get<ItemRetorno[]>(`${this.cobranca(c)}/itens-retorno/pendentes`); }
+  baixarItemRetorno(c: string, id: string, idLancamento: string): Observable<ItemRetorno> { return this.http.post<ItemRetorno>(`${this.cobranca(c)}/itens-retorno/${id}/baixar`, { idLancamento }); }
+  ignorarItemRetorno(c: string, id: string, observacao: string): Observable<ItemRetorno> { return this.http.post<ItemRetorno>(`${this.cobranca(c)}/itens-retorno/${id}/ignorar`, { observacao }); }
 
-  transfers(c: string): Observable<Transferencia[]> { return this.http.get<Transferencia[]>(`${this.b(c)}/transferencias`); }
-  transfer(c: string, body: Record<string, unknown>): Observable<Transferencia> { return this.http.post<Transferencia>(`${this.b(c)}/transferencias`, body); }
-  reverseTransfer(c: string, id: string, motivo: string): Observable<Transferencia> { return this.http.post<Transferencia>(`${this.b(c)}/transferencias/${id}/estornar`, { motivo }); }
-  budget(c: string, ano: number): Observable<Orcamento> { return this.http.get<Orcamento>(`${this.b(c)}/orcamento/${ano}`); }
-  saveBudget(c: string, ano: number, celulas: { idContaPlano: string; mes: number; valor: number }[]): Observable<Orcamento> {
+  transferencias(c: string): Observable<Transferencia[]> { return this.http.get<Transferencia[]>(`${this.b(c)}/transferencias`); }
+  transferencia(c: string, corpo: Record<string, unknown>): Observable<Transferencia> { return this.http.post<Transferencia>(`${this.b(c)}/transferencias`, corpo); }
+  estornarTransferencia(c: string, id: string, motivo: string): Observable<Transferencia> { return this.http.post<Transferencia>(`${this.b(c)}/transferencias/${id}/estornar`, { motivo }); }
+  orcamento(c: string, ano: number): Observable<Orcamento> { return this.http.get<Orcamento>(`${this.b(c)}/orcamento/${ano}`); }
+  salvarOrcamento(c: string, ano: number, celulas: { idContaPlano: string; mes: number; valor: number }[]): Observable<Orcamento> {
     return this.http.put<Orcamento>(`${this.b(c)}/orcamento/${ano}`, { celulas });
   }
 
-  suppliers(busca: string, pagina = 0, tamanho = 20): Observable<PaginaResponse<Fornecedor>> {
+  fornecedores(busca: string, pagina = 0, tamanho = 20): Observable<PaginaResponse<Fornecedor>> {
     return this.http.get<PaginaResponse<Fornecedor>>('/api/v1/fornecedores', { params: { busca, pagina, tamanho } });
   }
-  saveSupplier(body: Record<string, unknown>, id?: string, ativo?: boolean): Observable<Fornecedor> {
+  salvarFornecedor(corpo: Record<string, unknown>, id?: string, ativo?: boolean): Observable<Fornecedor> {
     return id
-      ? this.http.put<Fornecedor>(`/api/v1/fornecedores/${id}`, body, { params: ativo === undefined ? {} : { ativo } })
-      : this.http.post<Fornecedor>('/api/v1/fornecedores', body);
+      ? this.http.put<Fornecedor>(`/api/v1/fornecedores/${id}`, corpo, { params: ativo === undefined ? {} : { ativo } })
+      : this.http.post<Fornecedor>('/api/v1/fornecedores', corpo);
   }
 
-  allocations(c: string): Observable<Rateio[]> { return this.http.get<Rateio[]>(`${this.cobranca(c)}/rateios`); }
-  previewAllocation(c: string, body: RateioRequest): Observable<SimulacaoRateio> { return this.http.post<SimulacaoRateio>(`${this.cobranca(c)}/rateios/simular`, body); }
-  generateAllocation(c: string, body: RateioRequest): Observable<Rateio> { return this.http.post<Rateio>(`${this.cobranca(c)}/rateios`, body); }
-  cancelAllocation(c: string, id: string, motivo: string): Observable<Rateio> { return this.http.post<Rateio>(`${this.cobranca(c)}/rateios/${id}/cancelar`, { motivo }); }
-  delinquency(c: string, dataBase?: string): Observable<Inadimplencia> { return this.http.get<Inadimplencia>(`${this.cobranca(c)}/inadimplencia`, { params: dataBase ? { dataBase } : {} }); }
-  unitDebt(c: string, idUnidade: string): Observable<DebitosUnidade> { return this.http.get<DebitosUnidade>(`${this.cobranca(c)}/unidades/${idUnidade}/debitos`); }
-  addNote(c: string, idUnidade: string, body: Record<string, unknown>): Observable<NotaCobranca> { return this.http.post<NotaCobranca>(`${this.cobranca(c)}/unidades/${idUnidade}/notas`, body); }
-  agreements(c: string): Observable<Acordo[]> { return this.http.get<Acordo[]>(`${this.cobranca(c)}/acordos`); }
-  createAgreement(c: string, body: Record<string, unknown>): Observable<Acordo> { return this.http.post<Acordo>(`${this.cobranca(c)}/acordos`, body); }
-  cancelAgreement(c: string, id: string, motivo: string): Observable<Acordo> { return this.http.post<Acordo>(`${this.cobranca(c)}/acordos/${id}/cancelar`, { motivo }); }
+  rateios(c: string): Observable<Rateio[]> { return this.http.get<Rateio[]>(`${this.cobranca(c)}/rateios`); }
+  simularRateio(c: string, corpo: RateioRequest): Observable<SimulacaoRateio> { return this.http.post<SimulacaoRateio>(`${this.cobranca(c)}/rateios/simular`, corpo); }
+  gerarRateio(c: string, corpo: RateioRequest): Observable<Rateio> { return this.http.post<Rateio>(`${this.cobranca(c)}/rateios`, corpo); }
+  cancelarRateio(c: string, id: string, motivo: string): Observable<Rateio> { return this.http.post<Rateio>(`${this.cobranca(c)}/rateios/${id}/cancelar`, { motivo }); }
+  inadimplencia(c: string, dataBase?: string): Observable<Inadimplencia> { return this.http.get<Inadimplencia>(`${this.cobranca(c)}/inadimplencia`, { params: dataBase ? { dataBase } : {} }); }
+  debitosUnidade(c: string, idUnidade: string): Observable<DebitosUnidade> { return this.http.get<DebitosUnidade>(`${this.cobranca(c)}/unidades/${idUnidade}/debitos`); }
+  registrarNota(c: string, idUnidade: string, corpo: Record<string, unknown>): Observable<NotaCobranca> { return this.http.post<NotaCobranca>(`${this.cobranca(c)}/unidades/${idUnidade}/notas`, corpo); }
+  acordos(c: string): Observable<Acordo[]> { return this.http.get<Acordo[]>(`${this.cobranca(c)}/acordos`); }
+  cadastrarAcordo(c: string, corpo: Record<string, unknown>): Observable<Acordo> { return this.http.post<Acordo>(`${this.cobranca(c)}/acordos`, corpo); }
+  cancelarAcordo(c: string, id: string, motivo: string): Observable<Acordo> { return this.http.post<Acordo>(`${this.cobranca(c)}/acordos/${id}/cancelar`, { motivo }); }
 }

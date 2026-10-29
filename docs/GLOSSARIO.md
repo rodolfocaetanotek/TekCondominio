@@ -281,3 +281,91 @@ do calendário do portal (`ASSEMBLY`, `CHARGE`); os valores de `tipoEntidade` do
 `Contract`, `FinancialEntry`), que são gravados; as chaves de `details` da auditoria destes módulos (`assignee`,
 `dueDate`, `fee`, `active`, `unit`, `report`, `format`, `rows`…); e os nomes de parâmetros SQL internos que espelham
 colunas do banco.
+
+## Frontend (lote 6)
+
+Pastas e arquivos em kebab-case português, alinhados aos módulos do backend (movidos com `git mv`; os specs
+acompanham os arquivos). Classes com o nome de negócio em português e o sufixo técnico em inglês quando já havia
+um (`Service`, `Api`, `Dialog`, `Tab`, `Page`, `Pipe`, `Directive`, `Guard`, `Interceptor`); componentes sem sufixo
+continuam sem sufixo. Sinais, campos, métodos, parâmetros e variáveis locais também passaram para o português.
+
+| Pasta antiga | Pasta nova | | Pasta antiga | Pasta nova |
+|---|---|---|---|---|
+| `shared/` | `comum/` (`formato/`, `formularios/`, `ui/`) | | `core/context/` | `core/contexto/` |
+| `core/notify/` | `core/notificacao/` | | `features/audit/` | `features/auditoria/` |
+| `features/billing/` | `features/cobranca/` | | `features/condominiums/` | `features/condominios/` |
+| `features/finance/` | `features/financeiro/` | | `features/home/` | `features/painel/` |
+| `features/ops/` | `features/operacao/` | | `features/organizations/` | `features/administradoras/` |
+| `features/reservations/` | `features/reservas/` | | `features/structure/` | `features/estrutura/` |
+| `features/users/` | `features/usuarios/` | | `features/visitors/` | `features/portaria/` |
+
+| Inglês | Português | | Inglês | Português |
+|---|---|---|---|---|
+| `CondominiumContext` (`condominium-context.ts`) | `CondominioContexto` (`condominio-contexto.ts`) | | `ThemeService` / `ThemeMode` | `TemaService` / `ModoTema` |
+| `NotificationService` / `NotificationBell` | `NotificacaoService` / `SinoNotificacoes` | | `ResponsiveTables` | `TabelasResponsivas` |
+| `errorInterceptor` / `ApiProblem` / `toProblem` | `erroInterceptor` / `ProblemaApi` / `paraProblema` | | `authGuard` / `guestGuard` | `autenticadoGuard` / `visitanteGuard` |
+| `permissionGuard` / `platformAdminGuard` / `homeRedirectGuard` | `permissaoGuard` / `administradorPlataformaGuard` / `redirecionamentoInicialGuard` | | `PageHeader` / `EmptyState` / `DialogClose` | `CabecalhoPagina` / `EstadoVazio` / `FecharDialog` |
+| `ConfirmDialog` (`askConfirm`, `askReason`) | `ConfirmacaoDialog` (`pedirConfirmacao`, `pedirMotivo`) | | `FormDialog` / `FieldDef` / `openForm` | `FormularioDialog` / `DefinicaoCampo` / `abrirFormulario` |
+| `FieldError` / `applyServerErrors` / `errorMessage` | `MensagemErroCampo` / `aplicarErrosServidor` / `mensagemErro` | | `CondominiumRequired` | `CondominioObrigatorio` |
+| `LABELS` / `label()` / `options()` (`labels.ts`) | `ROTULOS` / `rotulo()` / `opcoes()` (`rotulos.ts`) | | `MaskDirective` / `MaskKind` / `FORMATTERS` | `MascaraDirective` / `TipoMascara` / `FORMATADORES` |
+| `downloadFile` (`download.ts`) | `baixarArquivo` (`baixar-arquivo.ts`) | | `todayIso` / `formatIsoDate` (`dates.ts`) | `hojeIso` / `formatarDataIso` (`datas.ts`) |
+| `PtBrPaginatorIntl` | `PaginadorIntlPtBr` | | `NavGroup` / `NavItem` | `GrupoMenu` / `ItemMenu` |
+| `Home` / `MonthlyChart` / `MonthPoint` | `PainelPage` / `GraficoMensal` / `PontoMensal` | | `CondominiumService` / `CondominiumList` / `CondominiumForm` | `CondominioService` / `CondominioLista` / `CondominioForm` |
+| `FinanceApi` / `FinancePage` | `FinanceiroApi` / `FinanceiroPage` | | `EntryList` / `EntryDetailPage` / `openEntryForm` | `LancamentoLista` / `LancamentoDetalhePage` / `abrirFormLancamento` |
+| `BankTab` / `BudgetTab` / `ClosingTab` | `ContasBancariasTab` / `OrcamentoTab` / `FechamentoTab` | | `InsightsTab` / `ReconciliationTab` / `SettingsTab` / `TransferTab` | `IndicadoresTab` / `ConciliacaoTab` / `ParametrosTab` / `TransferenciaTab` |
+| `SupplierList` | `FornecedorLista` | | `BillingPage` / `UnitDebtPage` / `AllocationDialog` / `BankReturnTab` | `CobrancaPage` / `DebitosUnidadePage` / `RateioDialog` / `RetornoBancarioTab` |
+| `OpsApi` | `OperacaoApi` | | `OccurrenceList` / `OccurrenceDetailPage` | `OcorrenciaLista` / `OcorrenciaDetalhePage` |
+| `AnnouncementList` / `DocumentList` / `ContractList` / `Attachments` | `ComunicadoLista` / `DocumentoLista` / `ContratoLista` / `Anexos` | | `AssemblyList` / `AssemblyDetailPage` / `openAssemblyForm` | `AssembleiaLista` / `AssembleiaDetalhePage` / `abrirFormAssembleia` |
+| `ReportsPage` | `RelatoriosPage` | | `ReservationApi` / `ReservationPage` / `PortalReservations` | `ReservaApi` / `ReservaPage` / `PortalReservas` |
+| `VisitorApi` / `GatePage` / `PortalVisitors` | `PortariaApi` / `PortariaPage` / `PortalVisitantes` | | `StructureService` | `EstruturaService` |
+| `UnitList` / `UnitDetail` / `UnitDialog` | `UnidadeLista` / `UnidadeDetalhe` / `UnidadeDialog` | | `PersonList` / `PersonDetail` / `PersonDialog` / `PersonPicker` | `PessoaLista` / `PessoaDetalhePage` / `PessoaDialog` / `SeletorPessoa` |
+| `BuildingDialog` / `ImportDialog` | `BlocoDialog` / `ImportacaoDialog` | | `OccupancyDialog` / `EndOccupancyDialog` | `VinculoDialog` / `EncerrarVinculoDialog` |
+| `UserService` / `UserList` / `UserDetail` / `UserCreateDialog` / `RoleFields` | `UsuarioService` / `UsuarioLista` / `UsuarioDetalhePage` / `UsuarioCadastroDialog` / `CamposPapel` | | `OrganizationService` / `OrganizationList` / `OrganizationDetail` / `OrganizationDialog` | `AdministradoraService` / `AdministradoraLista` / `AdministradoraDetalhe` / `AdministradoraDialog` |
+| `AuditService` / `AuditList` / `AuditQuery` | `AuditoriaService` / `AuditoriaLista` / `ConsultaAuditoria` | | `ForgotPassword` / `SetPassword` / `ChangePasswordDialog` | `EsqueciSenha` / `DefinirSenha` / `AlterarSenhaDialog` |
+| `PasswordService` / `passwordsMatch` / `AuthCard` | `SenhaService` / `senhasIguais` / `CartaoAcesso` | | `load` / `save` / `create` / `list` / `get` | `carregar` / `salvar` / `cadastrar` / `listar` / `obter` |
+| `rows` / `loading` / `saving` / `error` / `busy` | `linhas` / `carregando` / `salvando` / `erro` / `ocupado` | | `isHandset` / `canEdit` / `context` / `notify` | `ehCelular` / `podeEditar` / `contexto` / `notificacao` |
+
+`PessoaDetalhePage`, `UsuarioDetalhePage` e `PainelPage` levam o sufixo `Page` porque o nome sem sufixo já é o da
+interface do DTO (`PessoaDetalhe`, `UsuarioDetalhe`, `Painel`); pelo mesmo motivo `FieldError` virou
+`MensagemErroCampo` (`ErroCampo` é o item de `erros` do problem+json).
+
+Seletores, pipes e diretivas (todos os templates foram atualizados):
+
+| Antes | Depois | | Antes | Depois |
+|---|---|---|---|---|
+| `tc-page-header` (`eyebrow`, `title`, `subtitle`) | `tc-cabecalho-pagina` (`sobretitulo`, `titulo`, `subtitulo`) | | `tc-empty-state` (`icon`, `title`, `description`) | `tc-estado-vazio` (`icone`, `titulo`, `descricao`) |
+| `tc-dialog-close` | `tc-fechar-dialog` | | `tc-notification-bell` | `tc-sino-notificacoes` |
+| `tc-field-error` (`control`) | `tc-erro-campo` (`controle`) | | `tc-attachments` (`condominiumId`, `entityType`, `entityId`, `category`, `canEdit`) | `tc-anexos` (`idCondominio`, `tipoEntidade`, `idEntidade`, `categoria`, `podeEditar`) |
+| `tc-entry-list` (`kind`) | `tc-lancamento-lista` (`natureza`) | | `tc-monthly-chart` (`points`) | `tc-grafico-mensal` (`pontos`) |
+| `tc-person-picker` (`label`, `(picked)`) | `tc-seletor-pessoa` (`rotulo`, `(escolhido)`) | | `tc-role-fields` (`roleCode`, `condominiumId`) | `tc-campos-papel` (`codigoPapel`, `idCondominio`) |
+| `tc-portal-reservations` / `tc-portal-visitors` (`condominiumId`, `units`) | `tc-portal-reservas` / `tc-portal-visitantes` (`idCondominio`, `unidades`) | | demais `tc-<nome-em-ingles>` | `tc-<nome-do-arquivo>` (ex.: `tc-condominio-lista`, `tc-lancamento-detalhe`) |
+| diretiva `tcResponsiveTables` | `tcTabelasResponsivas` | | diretiva `tcMask` (tipo `phone`) | `tcMascara` (tipo `telefone`) |
+| pipe `label` | `rotulo` | | pipe `isoDate` / `doc` | `dataIso` / `documento` |
+
+Rota de tela: `cobranca/unidades/:unitId` passou a `cobranca/unidades/:idUnidade` (o parâmetro chega ao componente
+pelo `withComponentInputBinding`); o caminho em si não mudou. Os demais caminhos de tela já eram em português e
+ficaram como estavam, para não quebrar favoritos.
+
+Continuam em inglês no frontend:
+
+- **O que cruza a rede.** URLs, campos JSON, nomes de query e de multipart, o cabeçalho `X-TekCondo-Client`, os
+  campos `accessToken`/`tokenType` (e o método `AuthService.accessToken()`, que os espelha), os membros do
+  problem+json (`detail`, `status`, `title`, `type`) e as chaves da fotografia do fechamento (`income`, `expense`,
+  `unreconciledMovements`, `balances[].account/balance/reconciled`).
+- **Códigos gravados e chaves de dicionário.** Valores de situação e de enum (`OPEN`, `PENDING`, `INCOME`...), os
+  valores de `tipoEntidade` dos anexos (`Occurrence`, `Assembly`...), e as chaves do dicionário `ROTULOS`
+  (`entryStatus`, `occurrenceStatus`... e os códigos dentro deles), como decidido.
+- **Chaves do `localStorage`.** `tc-theme` (valores `system`/`light`/`dark`), `tc-nav-open`, `tc-nav-collapsed` e
+  `tc.condominio`: trocar o nome apagaria a preferência já gravada no navegador do usuário.
+- **Classes CSS.** As classes globais de `styles.scss` (`tc-card`, `tc-kpi`, `tc-status`, `is-*`...), documentadas
+  em `UI-PADRAO.md`, e as classes locais dos componentes. Mudança só visual, com risco de regressão e sem ganho.
+- **Códigos internos de tela.** IDs de coluna das `mat-table` (`matColumnDef`, alguns usados também como chave de
+  ordenação), os filtros de lista (`open`, `overdue`, `pending`, `paid`, `all`), as ações da portaria (`in`/`out`) e
+  os tipos de campo do `FormularioDialog` (`text`, `number`, `select`, `textarea`...), que seguem os tipos do HTML.
+- **Angular e bibliotecas.** `app.config.ts`, `app.routes.ts`, `app.ts`, `main.ts`, o sufixo `*.spec.ts`, ganchos de
+  ciclo de vida, as propriedades sobrescritas de `MatPaginatorIntl` (`itemsPerPageLabel`, `getRangeLabel`...) e
+  `transform` dos pipes.
+- **Termos técnicos.** `Shell`, `AuthService`/`authInterceptor` e as pastas `core/auth` e `features/auth` (como o
+  `AuthService`/`AuthController` do backend e o caminho `/api/v1/auth`), `Login`, `login`/`logout`, `token`, `api`,
+  `http`, `fb`, `form`, `dialog`, `ref`, `router`, `snackBar`, `data` (injeção de `MAT_DIALOG_DATA`), `req`/`res`/`err`
+  dos interceptores e `backend`/`fixture` dos testes.

@@ -1,61 +1,61 @@
 import { MatDialog } from '@angular/material/dialog';
 import { Observable, forkJoin, map, of, switchMap } from 'rxjs';
-import { todayIso } from '../../comum/ui/datas';
-import { FieldDef, openForm } from '../../comum/ui/formulario-dialog';
-import { StructureService } from '../estrutura/estrutura.service';
-import { LancamentoDetalhe, LancamentoRequest, FinanceApi } from './financeiro-api';
+import { hojeIso } from '../../comum/ui/datas';
+import { DefinicaoCampo, abrirFormulario } from '../../comum/ui/formulario-dialog';
+import { EstruturaService } from '../estrutura/estrutura.service';
+import { LancamentoDetalhe, LancamentoRequest, FinanceiroApi } from './financeiro-api';
 
 /**
  * Abre o formulário de receita/despesa (novo ou edição) com as opções carregadas da API.
  * Para novos lançamentos permite repetir mensalmente (parcelas/recorrência).
  */
-export function openEntryForm(dialog: MatDialog, api: FinanceApi, structure: StructureService, condominiumId: string,
-                              kind: 'INCOME' | 'EXPENSE', existing?: LancamentoDetalhe): Observable<unknown> {
-  const nature = kind;
+export function abrirFormLancamento(dialog: MatDialog, api: FinanceiroApi, estrutura: EstruturaService, idCondominio: string,
+                              tipo: 'INCOME' | 'EXPENSE', existente?: LancamentoDetalhe): Observable<unknown> {
+  const natureza = tipo;
   return forkJoin({
-    accounts: api.chartAccounts(),
-    centers: api.costCenters(condominiumId),
-    suppliers: kind === 'EXPENSE' ? api.suppliers('', 0, 100).pipe(map((p) => p.conteudo)) : of([]),
-    units: kind === 'INCOME' ? structure.units(condominiumId, { page: 0, size: 100, active: 'true' }).pipe(map((p) => p.conteudo)) : of([]),
+    contas: api.contasPlano(),
+    centros: api.centrosCusto(idCondominio),
+    fornecedores: tipo === 'EXPENSE' ? api.fornecedores('', 0, 100).pipe(map((p) => p.conteudo)) : of([]),
+    unidades: tipo === 'INCOME' ? estrutura.unidades(idCondominio, { pagina: 0, tamanho: 100, ativo: 'true' }).pipe(map((p) => p.conteudo)) : of([]),
   }).pipe(
-    switchMap(({ accounts, centers, suppliers, units }) => {
-      const s = existing?.resumo;
-      const fields: FieldDef[] = [
-        { key: 'descricao', label: 'Descrição', required: true, value: s?.descricao, maxLength: 200 },
+    switchMap(({ contas, centros, fornecedores, unidades }) => {
+      const s = existente?.resumo;
+      const campos: DefinicaoCampo[] = [
+        { chave: 'descricao', rotulo: 'Descrição', obrigatorio: true, valor: s?.descricao, tamanhoMaximo: 200 },
         {
-          key: 'idContaPlano', label: 'Conta do plano de contas', type: 'select', required: true, value: existing?.idContaPlano,
-          options: accounts.filter((a) => a.analitica && a.ativo && a.natureza === nature).map((a) => ({ value: a.id, label: `${a.codigo} — ${a.nome}` })),
+          chave: 'idContaPlano', rotulo: 'Conta do plano de contas', tipo: 'select', obrigatorio: true, valor: existente?.idContaPlano,
+          opcoes: contas.filter((a) => a.analitica && a.ativo && a.natureza === natureza).map((a) => ({ valor: a.id, rotulo: `${a.codigo} — ${a.nome}` })),
         },
-        { key: 'valor', label: 'Valor (R$)', type: 'number', required: true, value: s?.valor, span: 6, min: 0.01 },
-        { key: 'dataVencimento', label: 'Vencimento', type: 'date', required: true, value: s?.dataVencimento ?? todayIso(), span: 6 },
-        kind === 'EXPENSE'
-          ? { key: 'idFornecedor', label: 'Fornecedor', type: 'select', value: existing?.idFornecedor ?? null, span: 6,
-              options: [{ value: null, label: '—' }, ...suppliers.filter((x) => x.ativo).map((x) => ({ value: x.id, label: x.nome }))] }
-          : { key: 'idUnidade', label: 'Unidade', type: 'select', value: existing?.idUnidade ?? null, span: 6,
-              options: [{ value: null, label: '— (receita geral)' }, ...units.map((u) => ({ value: u.id, label: u.rotulo }))] },
-        { key: 'numeroDocumento', label: kind === 'EXPENSE' ? 'Nº da nota/boleto' : 'Documento', value: s?.numeroDocumento, span: 6, maxLength: 40 },
-        { key: 'idCentroCusto', label: 'Centro de custo', type: 'select', value: existing?.idCentroCusto ?? null, span: 6,
-          options: [{ value: null, label: '—' }, ...centers.filter((x) => x.ativo).map((x) => ({ value: x.id, label: x.nome }))] },
-        { key: 'competencia', label: 'Competência', type: 'date', value: s?.competencia ?? null, span: 6, hint: 'Mês de referência (padrão: vencimento)' },
-        { key: 'observacoes', label: 'Observações', type: 'textarea', value: existing?.observacoes, maxLength: 500 },
+        { chave: 'valor', rotulo: 'Valor (R$)', tipo: 'number', obrigatorio: true, valor: s?.valor, colunas: 6, min: 0.01 },
+        { chave: 'dataVencimento', rotulo: 'Vencimento', tipo: 'date', obrigatorio: true, valor: s?.dataVencimento ?? hojeIso(), colunas: 6 },
+        tipo === 'EXPENSE'
+          ? { chave: 'idFornecedor', rotulo: 'Fornecedor', tipo: 'select', valor: existente?.idFornecedor ?? null, colunas: 6,
+              opcoes: [{ valor: null, rotulo: '—' }, ...fornecedores.filter((x) => x.ativo).map((x) => ({ valor: x.id, rotulo: x.nome }))] }
+          : { chave: 'idUnidade', rotulo: 'Unidade', tipo: 'select', valor: existente?.idUnidade ?? null, colunas: 6,
+              opcoes: [{ valor: null, rotulo: '— (receita geral)' }, ...unidades.map((u) => ({ valor: u.id, rotulo: u.rotulo }))] },
+        { chave: 'numeroDocumento', rotulo: tipo === 'EXPENSE' ? 'Nº da nota/boleto' : 'Documento', valor: s?.numeroDocumento, colunas: 6, tamanhoMaximo: 40 },
+        { chave: 'idCentroCusto', rotulo: 'Centro de custo', tipo: 'select', valor: existente?.idCentroCusto ?? null, colunas: 6,
+          opcoes: [{ valor: null, rotulo: '—' }, ...centros.filter((x) => x.ativo).map((x) => ({ valor: x.id, rotulo: x.nome }))] },
+        { chave: 'competencia', rotulo: 'Competência', tipo: 'date', valor: s?.competencia ?? null, colunas: 6, dica: 'Mês de referência (padrão: vencimento)' },
+        { chave: 'observacoes', rotulo: 'Observações', tipo: 'textarea', valor: existente?.observacoes, tamanhoMaximo: 500 },
       ];
-      if (!existing) {
-        fields.push({ key: 'repeticoes', label: 'Repetir mensalmente (nº de parcelas)', type: 'number', value: 1, span: 6, min: 1,
-          hint: 'Ex.: 12 para uma despesa fixa do ano' });
+      if (!existente) {
+        campos.push({ chave: 'repeticoes', rotulo: 'Repetir mensalmente (nº de parcelas)', tipo: 'number', valor: 1, colunas: 6, min: 1,
+          dica: 'Ex.: 12 para uma despesa fixa do ano' });
       }
-      return openForm<unknown>(dialog, {
-        title: (existing ? 'Editar ' : 'Nova ') + (kind === 'EXPENSE' ? 'despesa (conta a pagar)' : 'receita (conta a receber)'),
-        fields,
-        submit: (v) => {
-          const body: LancamentoRequest = {
-            natureza: kind, descricao: String(v['descricao']), idContaPlano: String(v['idContaPlano']),
+      return abrirFormulario<unknown>(dialog, {
+        titulo: (existente ? 'Editar ' : 'Nova ') + (tipo === 'EXPENSE' ? 'despesa (conta a pagar)' : 'receita (conta a receber)'),
+        campos,
+        enviar: (v) => {
+          const corpo: LancamentoRequest = {
+            natureza: tipo, descricao: String(v['descricao']), idContaPlano: String(v['idContaPlano']),
             idCentroCusto: (v['idCentroCusto'] as string) ?? null, idFornecedor: (v['idFornecedor'] as string) ?? null,
-            idUnidade: (v['idUnidade'] as string) ?? null, idPessoa: existing?.idPessoa ?? null, valor: Number(v['valor']),
+            idUnidade: (v['idUnidade'] as string) ?? null, idPessoa: existente?.idPessoa ?? null, valor: Number(v['valor']),
             dataVencimento: String(v['dataVencimento']), competencia: (v['competencia'] as string) ?? null,
             numeroDocumento: (v['numeroDocumento'] as string) ?? null, observacoes: (v['observacoes'] as string) ?? null,
-            repeticoes: v['repeticoes'] ? Number(v['repeticoes']) : null, versao: existing?.versao,
+            repeticoes: v['repeticoes'] ? Number(v['repeticoes']) : null, versao: existente?.versao,
           };
-          return existing ? api.updateEntry(condominiumId, existing.resumo.id, body) : api.createEntry(condominiumId, body);
+          return existente ? api.atualizarLancamento(idCondominio, existente.resumo.id, corpo) : api.cadastrarLancamento(idCondominio, corpo);
         },
       }, '680px');
     }),

@@ -1,21 +1,21 @@
 import { Routes } from '@angular/router';
-import { permissionGuard } from '../../core/auth/auth.guards';
+import { permissaoGuard } from '../../core/auth/auth.guards';
 
-export const CONDOMINIUM_ROUTES: Routes = [
+export const ROTAS_CONDOMINIO: Routes = [
   {
     path: '',
     title: 'Condomínios · Tek Condomínio',
-    loadComponent: () => import('./condominio-lista').then((m) => m.CondominiumList),
+    loadComponent: () => import('./condominio-lista').then((m) => m.CondominioLista),
   },
   {
     path: 'novo',
     title: 'Novo condomínio · Tek Condomínio',
-    canActivate: [permissionGuard('CONDOMINIUM_CREATE')],
-    loadComponent: () => import('./condominio-form').then((m) => m.CondominiumForm),
+    canActivate: [permissaoGuard('CONDOMINIUM_CREATE')],
+    loadComponent: () => import('./condominio-form').then((m) => m.CondominioForm),
   },
   {
     path: ':id',
     title: 'Condomínio · Tek Condomínio',
-    loadComponent: () => import('./condominio-form').then((m) => m.CondominiumForm),
+    loadComponent: () => import('./condominio-form').then((m) => m.CondominioForm),
   },
 ];

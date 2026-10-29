@@ -9,40 +9,40 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { RouterLink } from '@angular/router';
 import { filter, switchMap } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { DocPipe } from '../../comum/formato/documento.pipe';
-import { FieldError } from '../../comum/formularios/erro-campo';
-import { ConfirmDialog, ConfirmDialogData } from '../../comum/ui/confirmacao-dialog';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
-import { Administradora, OrganizationService, UsuarioAdministradora } from './administradora.service';
+import { paraProblema } from '../../core/api/api.models';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { DocumentoPipe } from '../../comum/formato/documento.pipe';
+import { MensagemErroCampo } from '../../comum/formularios/erro-campo';
+import { ConfirmacaoDialog, DadosConfirmacaoDialog } from '../../comum/ui/confirmacao-dialog';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
+import { Administradora, AdministradoraService, UsuarioAdministradora } from './administradora.service';
 
 /**
  * Ficha da administradora para o administrador da plataforma: usuários, convite de administradores e situação.
  * A gestão completa de usuários (papéis por condomínio) é feita pelos administradores da própria administradora.
  */
 @Component({
-  selector: 'tc-organization-detail',
-  imports: [DatePipe, DocPipe, ReactiveFormsModule, RouterLink, MatButtonModule, MatFormFieldModule, MatInputModule,
-    MatIconModule, MatProgressBarModule, FieldError, PageHeader, EmptyState],
+  selector: 'tc-administradora-detalhe',
+  imports: [DatePipe, DocumentoPipe, ReactiveFormsModule, RouterLink, MatButtonModule, MatFormFieldModule, MatInputModule,
+    MatIconModule, MatProgressBarModule, MensagemErroCampo, CabecalhoPagina, EstadoVazio],
   template: `
     <div class="tc-page narrow">
       <a mat-button routerLink="/organizacoes" class="back"><mat-icon>arrow_back</mat-icon> Administradoras</a>
-      @if (error(); as message) {
-        <section class="tc-card"><tc-empty-state icon="error" title="Não foi possível abrir" [description]="message" /></section>
-      } @else if (org(); as o) {
-        <tc-page-header eyebrow="Administradora" [title]="o.nome" [subtitle]="'CNPJ ' + (o.cnpj | doc: 'cnpj')">
+      @if (erro(); as mensagem) {
+        <section class="tc-card"><tc-estado-vazio icone="error" titulo="Não foi possível abrir" [descricao]="mensagem" /></section>
+      } @else if (administradora(); as o) {
+        <tc-cabecalho-pagina sobretitulo="Administradora" [titulo]="o.nome" [subtitulo]="'CNPJ ' + (o.cnpj | documento: 'cnpj')">
           <span class="tc-status big" [class.is-active]="o.ativo" [class.is-inactive]="!o.ativo">{{ o.ativo ? 'Ativa' : 'Inativa' }}</span>
-          <button mat-stroked-button (click)="toggleActive(o)" [class.danger-text]="o.ativo">
+          <button mat-stroked-button (click)="alternarAtivo(o)" [class.danger-text]="o.ativo">
             <mat-icon>{{ o.ativo ? 'block' : 'check_circle' }}</mat-icon>{{ o.ativo ? 'Inativar' : 'Reativar' }}
           </button>
-        </tc-page-header>
+        </tc-cabecalho-pagina>
 
         <div class="layout">
           <section class="tc-table-card">
-            <h2 class="tc-section-title tc-card-head is-divided">Usuários ({{ users().length }})</h2>
-            @for (u of users(); track u.id) {
+            <h2 class="tc-section-title tc-card-head is-divided">Usuários ({{ usuarios().length }})</h2>
+            @for (u of usuarios(); track u.id) {
               <div class="row">
                 <div class="who">
                   <strong>{{ u.nome }}</strong>
@@ -59,7 +59,7 @@ import { Administradora, OrganizationService, UsuarioAdministradora } from './ad
                 </div>
               </div>
             } @empty {
-              <tc-empty-state icon="group" title="Nenhum usuário" />
+              <tc-estado-vazio icone="group" titulo="Nenhum usuário" />
             }
           </section>
 
@@ -67,19 +67,19 @@ import { Administradora, OrganizationService, UsuarioAdministradora } from './ad
             <h2 class="tc-section-title">Convidar administrador</h2>
             <p class="tc-muted small">A pessoa recebe um e-mail para definir a própria senha e passa a gerenciar condomínios,
               usuários e papéis desta administradora (menu <strong>Usuários</strong>).</p>
-            <form [formGroup]="form" (ngSubmit)="invite(o)" novalidate>
+            <form [formGroup]="form" (ngSubmit)="convidar(o)" novalidate>
               <mat-form-field class="full">
                 <mat-label>Nome</mat-label>
-                <input matInput formControlName="name" required />
-                <mat-error><tc-field-error [control]="form.controls.name" /></mat-error>
+                <input matInput formControlName="nome" required />
+                <mat-error><tc-erro-campo [controle]="form.controls.nome" /></mat-error>
               </mat-form-field>
               <mat-form-field class="full">
                 <mat-label>E-mail</mat-label>
                 <input matInput type="email" formControlName="email" required autocomplete="off" />
-                <mat-error><tc-field-error [control]="form.controls.email" /></mat-error>
+                <mat-error><tc-erro-campo [controle]="form.controls.email" /></mat-error>
               </mat-form-field>
               <div class="tc-actions">
-                <button mat-flat-button type="submit" [disabled]="busy()"><mat-icon>send</mat-icon> Enviar convite</button>
+                <button mat-flat-button type="submit" [disabled]="ocupado()"><mat-icon>send</mat-icon> Enviar convite</button>
               </div>
             </form>
           </section>
@@ -106,72 +106,72 @@ import { Administradora, OrganizationService, UsuarioAdministradora } from './ad
     .danger-text { --mat-button-outlined-label-text-color: var(--tc-danger); }
   `,
 })
-export class OrganizationDetail implements OnInit {
-  private readonly service = inject(OrganizationService);
+export class AdministradoraDetalhe implements OnInit {
+  private readonly service = inject(AdministradoraService);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
+  private readonly notificacao = inject(NotificacaoService);
 
   readonly id = input.required<string>();
-  protected readonly org = signal<Administradora | null>(null);
-  protected readonly users = signal<UsuarioAdministradora[]>([]);
-  protected readonly error = signal<string | null>(null);
-  protected readonly busy = signal(false);
+  protected readonly administradora = signal<Administradora | null>(null);
+  protected readonly usuarios = signal<UsuarioAdministradora[]>([]);
+  protected readonly erro = signal<string | null>(null);
+  protected readonly ocupado = signal(false);
 
   protected readonly form = inject(FormBuilder).nonNullable.group({
-    name: ['', [Validators.required, Validators.maxLength(150)]],
+    nome: ['', [Validators.required, Validators.maxLength(150)]],
     email: ['', [Validators.required, Validators.email]],
   });
 
   ngOnInit(): void {
-    this.service.get(this.id()).subscribe({
-      next: (o) => this.org.set(o),
-      error: (err: unknown) => this.error.set(toProblem(err).detail),
+    this.service.obter(this.id()).subscribe({
+      next: (o) => this.administradora.set(o),
+      error: (err: unknown) => this.erro.set(paraProblema(err).detail),
     });
-    this.loadUsers();
+    this.carregarUsuarios();
   }
 
-  invite(o: Administradora): void {
+  convidar(o: Administradora): void {
     this.form.markAllAsTouched();
-    if (this.form.invalid || this.busy()) return;
-    this.busy.set(true);
-    const { name, email } = this.form.getRawValue();
-    this.service.inviteAdmin(o.id, name, email).subscribe({
+    if (this.form.invalid || this.ocupado()) return;
+    this.ocupado.set(true);
+    const { nome, email } = this.form.getRawValue();
+    this.service.convidarAdministrador(o.id, nome, email).subscribe({
       next: (u) => {
-        this.busy.set(false);
+        this.ocupado.set(false);
         this.form.reset();
-        this.notify.success(`Convite enviado para ${u.email}.`);
-        this.loadUsers();
+        this.notificacao.sucesso(`Convite enviado para ${u.email}.`);
+        this.carregarUsuarios();
       },
       error: (err: unknown) => {
-        this.busy.set(false);
-        const p = toProblem(err);
+        this.ocupado.set(false);
+        const p = paraProblema(err);
         if (p.codigo === 'USER_EMAIL_TAKEN') this.form.controls.email.setErrors({ server: p.detail });
-        else this.notify.error(p.detail);
+        else this.notificacao.erro(p.detail);
       },
     });
   }
 
-  toggleActive(o: Administradora): void {
-    const data: ConfirmDialogData = o.ativo
-      ? { title: 'Inativar administradora', message: `Todos os usuários de "${o.nome}" perderão o acesso imediatamente. Os dados são preservados.`, confirmLabel: 'Inativar', danger: true }
-      : { title: 'Reativar administradora', message: `Reativar o acesso de "${o.nome}"?`, confirmLabel: 'Reativar' };
+  alternarAtivo(o: Administradora): void {
+    const data: DadosConfirmacaoDialog = o.ativo
+      ? { titulo: 'Inativar administradora', mensagem: `Todos os usuários de "${o.nome}" perderão o acesso imediatamente. Os dados são preservados.`, rotuloConfirmar: 'Inativar', perigo: true }
+      : { titulo: 'Reativar administradora', mensagem: `Reativar o acesso de "${o.nome}"?`, rotuloConfirmar: 'Reativar' };
     this.dialog
-      .open<ConfirmDialog, ConfirmDialogData, string | true>(ConfirmDialog, { data, width: '440px' })
+      .open<ConfirmacaoDialog, DadosConfirmacaoDialog, string | true>(ConfirmacaoDialog, { data, width: '440px' })
       .afterClosed()
       .pipe(
         filter((r) => r === true),
-        switchMap(() => this.service.setActive(o.id, !o.ativo)),
+        switchMap(() => this.service.alterarAtivo(o.id, !o.ativo)),
       )
       .subscribe({
-        next: (updated) => {
-          this.org.set(updated);
-          this.notify.success(updated.ativo ? 'Administradora reativada.' : 'Administradora inativada.');
+        next: (atualizado) => {
+          this.administradora.set(atualizado);
+          this.notificacao.sucesso(atualizado.ativo ? 'Administradora reativada.' : 'Administradora inativada.');
         },
-        error: (err: unknown) => this.notify.error(toProblem(err).detail),
+        error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail),
       });
   }
 
-  private loadUsers(): void {
-    this.service.users(this.id()).subscribe({ next: (u) => this.users.set(u) });
+  private carregarUsuarios(): void {
+    this.service.usuarios(this.id()).subscribe({ next: (u) => this.usuarios.set(u) });
   }
 }

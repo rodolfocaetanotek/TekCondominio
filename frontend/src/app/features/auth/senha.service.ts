@@ -11,22 +11,22 @@ export interface TokenSenhaInfo {
 const BASE = '/api/v1/auth/senha';
 
 @Injectable({ providedIn: 'root' })
-export class PasswordService {
+export class SenhaService {
   private readonly http = inject(HttpClient);
 
-  forgot(email: string): Observable<void> {
+  esqueciSenha(email: string): Observable<void> {
     return this.http.post<void>(`${BASE}/esqueci`, { email });
   }
 
-  describe(token: string): Observable<TokenSenhaInfo> {
+  consultarToken(token: string): Observable<TokenSenhaInfo> {
     return this.http.post<TokenSenhaInfo>(`${BASE}/token`, { token });
   }
 
-  reset(token: string, novaSenha: string): Observable<void> {
+  redefinir(token: string, novaSenha: string): Observable<void> {
     return this.http.post<void>(`${BASE}/redefinir`, { token, novaSenha });
   }
 
-  change(senhaAtual: string, novaSenha: string): Observable<void> {
+  alterar(senhaAtual: string, novaSenha: string): Observable<void> {
     return this.http.post<void>(`${BASE}/alterar`, { senhaAtual, novaSenha }, { withCredentials: true });
   }
 }

@@ -46,9 +46,9 @@ export interface AtribuicaoRequest {
   idCondominio: string | null;
 }
 
-export interface UserQuery {
-  search?: string;
-  active?: '' | 'true' | 'false';
-  page: number;
-  size: number;
+export interface ConsultaUsuario {
+  busca?: string;
+  ativo?: '' | 'true' | 'false';
+  pagina: number;
+  tamanho: number;
 }

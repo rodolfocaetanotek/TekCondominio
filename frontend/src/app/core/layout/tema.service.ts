@@ -1,40 +1,40 @@
 import { DOCUMENT } from '@angular/common';
 import { Injectable, inject, signal } from '@angular/core';
 
-export type ThemeMode = 'system' | 'light' | 'dark';
+export type ModoTema = 'system' | 'light' | 'dark';
 
-const KEY = 'tc-theme';
+const CHAVE = 'tc-theme';
 
 /** Tema claro/escuro: segue o sistema operacional, salvo escolha do usuário (guardada só neste navegador). */
 @Injectable({ providedIn: 'root' })
-export class ThemeService {
-  private readonly root = inject(DOCUMENT).documentElement;
-  readonly mode = signal<ThemeMode>(read());
+export class TemaService {
+  private readonly raiz = inject(DOCUMENT).documentElement;
+  readonly modo = signal<ModoTema>(ler());
 
   constructor() {
-    this.apply(this.mode());
+    this.aplicar(this.modo());
   }
 
-  set(mode: ThemeMode): void {
-    this.mode.set(mode);
-    this.apply(mode);
+  definir(modo: ModoTema): void {
+    this.modo.set(modo);
+    this.aplicar(modo);
     try {
-      if (mode === 'system') localStorage.removeItem(KEY);
-      else localStorage.setItem(KEY, mode);
+      if (modo === 'system') localStorage.removeItem(CHAVE);
+      else localStorage.setItem(CHAVE, modo);
     } catch {
       // armazenamento indisponível (janela privada): a escolha vale só nesta sessão
     }
   }
 
-  private apply(mode: ThemeMode): void {
-    if (mode === 'system') this.root.removeAttribute('data-theme');
-    else this.root.setAttribute('data-theme', mode);
+  private aplicar(modo: ModoTema): void {
+    if (modo === 'system') this.raiz.removeAttribute('data-theme');
+    else this.raiz.setAttribute('data-theme', modo);
   }
 }
 
-function read(): ThemeMode {
+function ler(): ModoTema {
   try {
-    const v = localStorage.getItem(KEY);
+    const v = localStorage.getItem(CHAVE);
     return v === 'light' || v === 'dark' ? v : 'system';
   } catch {
     return 'system';

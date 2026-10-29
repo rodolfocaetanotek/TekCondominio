@@ -6,13 +6,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Router, RouterLink } from '@angular/router';
-import { toProblem } from '../../core/api/api.models';
+import { paraProblema } from '../../core/api/api.models';
 import { AuthService } from '../../core/auth/auth.service';
-import { FieldError } from '../../comum/formularios/erro-campo';
+import { MensagemErroCampo } from '../../comum/formularios/erro-campo';
 
 @Component({
   selector: 'tc-login',
-  imports: [ReactiveFormsModule, RouterLink, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, MatProgressBarModule, FieldError],
+  imports: [ReactiveFormsModule, RouterLink, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, MatProgressBarModule, MensagemErroCampo],
   templateUrl: './login.html',
   styleUrl: './login.scss',
 })
@@ -24,32 +24,32 @@ export class Login {
   readonly retorno = input<string>();
   readonly expirada = input<string>();
 
-  protected readonly loading = signal(false);
-  protected readonly error = signal<string | null>(null);
-  protected readonly showPassword = signal(false);
+  protected readonly carregando = signal(false);
+  protected readonly erro = signal<string | null>(null);
+  protected readonly mostrarSenha = signal(false);
 
   protected readonly form = inject(FormBuilder).nonNullable.group({
     email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
-    password: ['', [Validators.required, Validators.maxLength(200)]],
+    senha: ['', [Validators.required, Validators.maxLength(200)]],
   });
 
-  submit(): void {
+  enviar(): void {
     this.form.markAllAsTouched();
-    if (this.form.invalid || this.loading()) {
+    if (this.form.invalid || this.carregando()) {
       return;
     }
-    this.loading.set(true);
-    this.error.set(null);
-    const { email, password } = this.form.getRawValue();
-    this.auth.login(email, password).subscribe({
+    this.carregando.set(true);
+    this.erro.set(null);
+    const { email, senha } = this.form.getRawValue();
+    this.auth.login(email, senha).subscribe({
       next: () => {
-        const target = this.retorno();
+        const alvo = this.retorno();
         // Apenas caminhos internos: evita redirecionamento aberto.
-        void this.router.navigateByUrl(target && target.startsWith('/') && !target.startsWith('//') ? target : '/');
+        void this.router.navigateByUrl(alvo && alvo.startsWith('/') && !alvo.startsWith('//') ? alvo : '/');
       },
       error: (err: unknown) => {
-        this.loading.set(false);
-        this.error.set(toProblem(err).detail);
+        this.carregando.set(false);
+        this.erro.set(paraProblema(err).detail);
       },
     });
   }

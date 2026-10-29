@@ -7,41 +7,41 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { RouterLink } from '@angular/router';
 import { Observable, catchError, combineLatest, filter, of, switchMap } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { LabelPipe } from '../../comum/rotulo.pipe';
-import { options } from '../../comum/rotulos';
-import { askReason } from '../../comum/ui/confirmacao-dialog';
-import { todayIso } from '../../comum/ui/datas';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { openForm } from '../../comum/ui/formulario-dialog';
-import { IsoDatePipe } from '../../comum/ui/data-iso.pipe';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
-import { Attachments } from '../operacao/anexos';
-import { StructureService } from '../estrutura/estrutura.service';
-import { openEntryForm } from './lancamento-form';
-import { LancamentoDetalhe, FinanceApi, Baixa } from './financeiro-api';
+import { paraProblema } from '../../core/api/api.models';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { RotuloPipe } from '../../comum/rotulo.pipe';
+import { opcoes } from '../../comum/rotulos';
+import { pedirMotivo } from '../../comum/ui/confirmacao-dialog';
+import { hojeIso } from '../../comum/ui/datas';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { abrirFormulario } from '../../comum/ui/formulario-dialog';
+import { DataIsoPipe } from '../../comum/ui/data-iso.pipe';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
+import { Anexos } from '../operacao/anexos';
+import { EstruturaService } from '../estrutura/estrutura.service';
+import { abrirFormLancamento } from './lancamento-form';
+import { LancamentoDetalhe, FinanceiroApi, Baixa } from './financeiro-api';
 
 @Component({
-  selector: 'tc-entry-detail',
-  imports: [CurrencyPipe, RouterLink, MatButtonModule, MatIconModule, MatProgressBarModule, PageHeader, EmptyState, IsoDatePipe,
-    LabelPipe, Attachments],
+  selector: 'tc-lancamento-detalhe',
+  imports: [CurrencyPipe, RouterLink, MatButtonModule, MatIconModule, MatProgressBarModule, CabecalhoPagina, EstadoVazio, DataIsoPipe,
+    RotuloPipe, Anexos],
   template: `
     <div class="tc-page narrow">
       <a mat-button routerLink="/financeiro" class="back"><mat-icon>arrow_back</mat-icon> Financeiro</a>
-      @if (error(); as message) {
-        <section class="tc-card"><tc-empty-state icon="error" title="Não foi possível abrir o lançamento" [description]="message" /></section>
-      } @else if (entry(); as e) {
-        <tc-page-header [eyebrow]="(e.resumo.natureza | label: 'entryKind') + (e.resumo.rotuloParcela ? ' · parcela ' + e.resumo.rotuloParcela : '')"
-          [title]="e.resumo.descricao" [subtitle]="e.resumo.codigoConta + ' ' + e.resumo.nomeConta">
+      @if (erro(); as mensagem) {
+        <section class="tc-card"><tc-estado-vazio icone="error" titulo="Não foi possível abrir o lançamento" [descricao]="mensagem" /></section>
+      } @else if (lancamento(); as e) {
+        <tc-cabecalho-pagina [sobretitulo]="(e.resumo.natureza | rotulo: 'entryKind') + (e.resumo.rotuloParcela ? ' · parcela ' + e.resumo.rotuloParcela : '')"
+          [titulo]="e.resumo.descricao" [subtitulo]="e.resumo.codigoConta + ' ' + e.resumo.nomeConta">
           <span class="tc-status big" [class.is-active]="e.resumo.situacao === 'PAID'"
             [class.is-pending]="e.resumo.aprovacao === 'PENDING' || (!e.resumo.vencido && (e.resumo.situacao === 'OPEN' || e.resumo.situacao === 'PARTIAL'))"
             [class.is-danger]="e.resumo.aprovacao !== 'PENDING' && e.resumo.vencido"
             [class.is-inactive]="e.resumo.situacao === 'CANCELLED' || e.resumo.situacao === 'RENEGOTIATED'">
-            {{ e.resumo.aprovacao === 'PENDING' ? 'Aguardando aprovação' : (e.resumo.situacao | label: 'entryStatus') }}
+            {{ e.resumo.aprovacao === 'PENDING' ? 'Aguardando aprovação' : (e.resumo.situacao | rotulo: 'entryStatus') }}
           </span>
-        </tc-page-header>
+        </tc-cabecalho-pagina>
 
         <section class="tc-kpis" aria-label="Valores do lançamento">
           <div class="tc-kpi tc-card">
@@ -59,7 +59,7 @@ import { LancamentoDetalhe, FinanceApi, Baixa } from './financeiro-api';
         </section>
 
         <section class="facts tc-dl cols tc-card">
-          <div><span class="k">Vencimento</span><strong [class.late]="e.resumo.vencido">{{ e.resumo.dataVencimento | isoDate }}</strong></div>
+          <div><span class="k">Vencimento</span><strong [class.late]="e.resumo.vencido">{{ e.resumo.dataVencimento | dataIso }}</strong></div>
           <div><span class="k">Competência</span><strong>{{ e.resumo.competencia.slice(5, 7) }}/{{ e.resumo.competencia.slice(0, 4) }}</strong></div>
           @if (e.resumo.nomeFornecedor) { <div><span class="k">Fornecedor</span><strong>{{ e.resumo.nomeFornecedor }}</strong></div> }
           @if (e.resumo.rotuloUnidade) { <div><span class="k">Unidade</span><strong>{{ e.resumo.rotuloUnidade }}</strong></div> }
@@ -73,18 +73,18 @@ import { LancamentoDetalhe, FinanceApi, Baixa } from './financeiro-api';
         </section>
 
         <div class="tc-actions actions">
-          @if (e.resumo.aprovacao === 'PENDING' && context.can('FINANCE_APPROVE')) {
-            <button mat-stroked-button (click)="decide(e, false)">Reprovar</button>
-            <button mat-flat-button (click)="decide(e, true)"><mat-icon>verified</mat-icon> Aprovar pagamento</button>
+          @if (e.resumo.aprovacao === 'PENDING' && contexto.pode('FINANCE_APPROVE')) {
+            <button mat-stroked-button (click)="decidir(e, false)">Reprovar</button>
+            <button mat-flat-button (click)="decidir(e, true)"><mat-icon>verified</mat-icon> Aprovar pagamento</button>
           }
-          @if (open(e) && context.can('FINANCE_EDIT') && e.resumo.aprovacao !== 'PENDING' && e.resumo.aprovacao !== 'REJECTED') {
-            <button mat-flat-button (click)="pay(e)"><mat-icon>payments</mat-icon> Registrar {{ e.resumo.natureza === 'INCOME' ? 'recebimento' : 'pagamento' }}</button>
+          @if (abrir(e) && contexto.pode('FINANCE_EDIT') && e.resumo.aprovacao !== 'PENDING' && e.resumo.aprovacao !== 'REJECTED') {
+            <button mat-flat-button (click)="baixar(e)"><mat-icon>payments</mat-icon> Registrar {{ e.resumo.natureza === 'INCOME' ? 'recebimento' : 'pagamento' }}</button>
           }
-          @if (open(e) && e.resumo.valorPago === 0 && context.can('FINANCE_EDIT')) {
-            <button mat-stroked-button (click)="edit(e)"><mat-icon>edit</mat-icon> Editar</button>
+          @if (abrir(e) && e.resumo.valorPago === 0 && contexto.pode('FINANCE_EDIT')) {
+            <button mat-stroked-button (click)="editar(e)"><mat-icon>edit</mat-icon> Editar</button>
           }
-          @if (open(e) && e.resumo.valorPago === 0 && context.can('FINANCE_CANCEL')) {
-            <button mat-button class="danger-text" (click)="cancel(e)">Cancelar lançamento</button>
+          @if (abrir(e) && e.resumo.valorPago === 0 && contexto.pode('FINANCE_CANCEL')) {
+            <button mat-button class="danger-text" (click)="cancelar(e)">Cancelar lançamento</button>
           }
         </div>
 
@@ -95,23 +95,23 @@ import { LancamentoDetalhe, FinanceApi, Baixa } from './financeiro-api';
               <div class="pay" [class.reversed]="p.estornada">
                 <div class="who">
                   <strong>{{ p.total | currency: 'BRL' }}</strong>
-                  <span class="tc-muted">{{ p.dataPagamento | isoDate }} · {{ p.formaPagamento | label: 'paymentMethod' }} · {{ p.nomeContaBancaria }}
+                  <span class="tc-muted">{{ p.dataPagamento | dataIso }} · {{ p.formaPagamento | rotulo: 'paymentMethod' }} · {{ p.nomeContaBancaria }}
                     @if (p.multa + p.juros > 0) { · encargos {{ p.multa + p.juros | currency: 'BRL' }} }
                     @if (p.desconto > 0) { · desconto {{ p.desconto | currency: 'BRL' }} }
                   </span>
                   @if (p.estornada) { <span class="tc-muted">Estornada: {{ p.motivoEstorno }}</span> }
                 </div>
                 @if (p.conciliada) { <span class="tc-chip-soft">Conciliada</span> }
-                @if (!p.estornada && context.can('FINANCE_CANCEL')) {
-                  <button mat-button (click)="reverse(p)">Estornar</button>
+                @if (!p.estornada && contexto.pode('FINANCE_CANCEL')) {
+                  <button mat-button (click)="estornar(p)">Estornar</button>
                 }
               </div>
             } @empty {
-              <tc-empty-state icon="payments" title="Nenhuma baixa registrada" />
+              <tc-estado-vazio icone="payments" titulo="Nenhuma baixa registrada" />
             }
           </section>
-          <tc-attachments [condominiumId]="context.id()!" entityType="FinancialEntry" [entityId]="e.resumo.id"
-            [category]="e.resumo.natureza === 'EXPENSE' ? 'INVOICE' : 'RECEIPT'" [canEdit]="context.can('FINANCE_EDIT')" />
+          <tc-anexos [idCondominio]="contexto.id()!" tipoEntidade="FinancialEntry" [idEntidade]="e.resumo.id"
+            [categoria]="e.resumo.natureza === 'EXPENSE' ? 'INVOICE' : 'RECEIPT'" [podeEditar]="contexto.pode('FINANCE_EDIT')" />
         </div>
       } @else {
         <mat-progress-bar mode="indeterminate" />
@@ -133,86 +133,86 @@ import { LancamentoDetalhe, FinanceApi, Baixa } from './financeiro-api';
     .danger-text { --mat-button-text-label-text-color: var(--tc-danger); }
   `,
 })
-export class EntryDetailPage {
-  protected readonly context = inject(CondominiumContext);
-  private readonly api = inject(FinanceApi);
-  private readonly structure = inject(StructureService);
+export class LancamentoDetalhePage {
+  protected readonly contexto = inject(CondominioContexto);
+  private readonly api = inject(FinanceiroApi);
+  private readonly estrutura = inject(EstruturaService);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
+  private readonly notificacao = inject(NotificacaoService);
   readonly id = input.required<string>();
-  private readonly tick = signal(0);
-  protected readonly error = signal<string | null>(null);
+  private readonly recarga = signal(0);
+  protected readonly erro = signal<string | null>(null);
 
-  protected readonly entry = toSignal(
-    combineLatest([toObservable(this.context.id), toObservable(this.id), toObservable(this.tick)]).pipe(
+  protected readonly lancamento = toSignal(
+    combineLatest([toObservable(this.contexto.id), toObservable(this.id), toObservable(this.recarga)]).pipe(
       filter(([c]) => !!c),
-      switchMap(([c, id]) => this.api.entry(c!, id).pipe(catchError((err: unknown) => { this.error.set(toProblem(err).detail); return of(null); }))),
+      switchMap(([c, id]) => this.api.lancamento(c!, id).pipe(catchError((err: unknown) => { this.erro.set(paraProblema(err).detail); return of(null); }))),
     ),
   );
-  protected readonly c = computed(() => this.context.id()!);
+  protected readonly c = computed(() => this.contexto.id()!);
 
-  open(e: LancamentoDetalhe): boolean {
+  abrir(e: LancamentoDetalhe): boolean {
     return e.resumo.situacao === 'OPEN' || e.resumo.situacao === 'PARTIAL';
   }
 
-  decide(e: LancamentoDetalhe, approve: boolean): void {
-    openForm(this.dialog, {
-      title: approve ? 'Aprovar pagamento' : 'Reprovar pagamento',
-      intro: `${e.resumo.descricao} — R$ ${e.resumo.valor.toFixed(2).replace('.', ',')}`,
-      fields: [{ key: 'observacao', label: approve ? 'Parecer (opcional)' : 'Motivo da reprovação', type: 'textarea', required: !approve, maxLength: 255 }],
-      submitLabel: approve ? 'Aprovar' : 'Reprovar',
-      submit: (v) => this.api.approve(this.c(), e.resumo.id, approve, (v['observacao'] as string) ?? null),
-    }, '460px').pipe(filter((r) => !!r)).subscribe(() => this.done(approve ? 'Pagamento aprovado.' : 'Pagamento reprovado.'));
+  decidir(e: LancamentoDetalhe, aprovar: boolean): void {
+    abrirFormulario(this.dialog, {
+      titulo: aprovar ? 'Aprovar pagamento' : 'Reprovar pagamento',
+      introducao: `${e.resumo.descricao} — R$ ${e.resumo.valor.toFixed(2).replace('.', ',')}`,
+      campos: [{ chave: 'observacao', rotulo: aprovar ? 'Parecer (opcional)' : 'Motivo da reprovação', tipo: 'textarea', obrigatorio: !aprovar, tamanhoMaximo: 255 }],
+      rotuloEnviar: aprovar ? 'Aprovar' : 'Reprovar',
+      enviar: (v) => this.api.aprovar(this.c(), e.resumo.id, aprovar, (v['observacao'] as string) ?? null),
+    }, '460px').pipe(filter((r) => !!r)).subscribe(() => this.concluir(aprovar ? 'Pagamento aprovado.' : 'Pagamento reprovado.'));
   }
 
-  pay(e: LancamentoDetalhe): void {
-    const today = todayIso();
-    this.api.bankAccounts(this.c()).pipe(
-      switchMap((accounts) => this.api.quote(this.c(), e.resumo.id, today).pipe(switchMap((q) => {
-        const income = e.resumo.natureza === 'INCOME';
-        return openForm(this.dialog, {
-          title: income ? 'Registrar recebimento' : 'Registrar pagamento',
-          intro: q.diasAtraso > 0
+  baixar(e: LancamentoDetalhe): void {
+    const hoje = hojeIso();
+    this.api.contasBancarias(this.c()).pipe(
+      switchMap((contas) => this.api.calcularEncargos(this.c(), e.resumo.id, hoje).pipe(switchMap((q) => {
+        const receita = e.resumo.natureza === 'INCOME';
+        return abrirFormulario(this.dialog, {
+          titulo: receita ? 'Registrar recebimento' : 'Registrar pagamento',
+          introducao: q.diasAtraso > 0
             ? `Em atraso há ${q.diasAtraso} dia(s). Encargos calculados para hoje: multa R$ ${q.multa.toFixed(2)} e juros R$ ${q.juros.toFixed(2)} (ajuste se a data for outra).`
             : 'Baixa parcial é permitida: informe o valor principal pago.',
-          fields: [
-            { key: 'idContaBancaria', label: 'Conta', type: 'select', required: true, span: 6, value: accounts.find((a) => a.ativo)?.id,
-              options: accounts.filter((a) => a.ativo).map((a) => ({ value: a.id, label: a.nome })) },
-            { key: 'dataPagamento', label: 'Data', type: 'date', required: true, value: today, span: 6 },
-            { key: 'principal', label: 'Valor principal (R$)', type: 'number', required: true, value: e.resumo.valorAberto, span: 6, min: 0.01 },
-            { key: 'formaPagamento', label: 'Forma', type: 'select', required: true, value: 'PIX', span: 6, options: options('paymentMethod') },
-            { key: 'multa', label: 'Multa (R$)', type: 'number', value: income ? q.multa : 0, span: 4, min: 0 },
-            { key: 'juros', label: 'Juros (R$)', type: 'number', value: income ? q.juros : 0, span: 4, min: 0 },
-            { key: 'desconto', label: 'Desconto (R$)', type: 'number', value: 0, span: 4, min: 0 },
-            { key: 'observacoes', label: 'Observação', maxLength: 255 },
+          campos: [
+            { chave: 'idContaBancaria', rotulo: 'Conta', tipo: 'select', obrigatorio: true, colunas: 6, valor: contas.find((a) => a.ativo)?.id,
+              opcoes: contas.filter((a) => a.ativo).map((a) => ({ valor: a.id, rotulo: a.nome })) },
+            { chave: 'dataPagamento', rotulo: 'Data', tipo: 'date', obrigatorio: true, valor: hoje, colunas: 6 },
+            { chave: 'principal', rotulo: 'Valor principal (R$)', tipo: 'number', obrigatorio: true, valor: e.resumo.valorAberto, colunas: 6, min: 0.01 },
+            { chave: 'formaPagamento', rotulo: 'Forma', tipo: 'select', obrigatorio: true, valor: 'PIX', colunas: 6, opcoes: opcoes('paymentMethod') },
+            { chave: 'multa', rotulo: 'Multa (R$)', tipo: 'number', valor: receita ? q.multa : 0, colunas: 4, min: 0 },
+            { chave: 'juros', rotulo: 'Juros (R$)', tipo: 'number', valor: receita ? q.juros : 0, colunas: 4, min: 0 },
+            { chave: 'desconto', rotulo: 'Desconto (R$)', tipo: 'number', valor: 0, colunas: 4, min: 0 },
+            { chave: 'observacoes', rotulo: 'Observação', tamanhoMaximo: 255 },
           ],
-          submitLabel: 'Registrar baixa',
-          submit: (v) => this.api.pay(this.c(), e.resumo.id, v),
+          rotuloEnviar: 'Registrar baixa',
+          enviar: (v) => this.api.baixar(this.c(), e.resumo.id, v),
         }, '620px') as Observable<unknown>;
       }))),
       filter((r) => !!r),
-    ).subscribe({ next: () => this.done('Baixa registrada.'), error: (err: unknown) => this.notify.error(toProblem(err).detail) });
+    ).subscribe({ next: () => this.concluir('Baixa registrada.'), error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail) });
   }
 
-  edit(e: LancamentoDetalhe): void {
-    openEntryForm(this.dialog, this.api, this.structure, this.c(), e.resumo.natureza, e).pipe(filter((r) => !!r))
-      .subscribe(() => this.done('Lançamento atualizado.'));
+  editar(e: LancamentoDetalhe): void {
+    abrirFormLancamento(this.dialog, this.api, this.estrutura, this.c(), e.resumo.natureza, e).pipe(filter((r) => !!r))
+      .subscribe(() => this.concluir('Lançamento atualizado.'));
   }
 
-  cancel(e: LancamentoDetalhe): void {
-    askReason(this.dialog, 'Cancelar lançamento', `"${e.resumo.descricao}" será cancelado. O registro é mantido no histórico.`, 'Cancelar lançamento')
-      .pipe(switchMap((reason) => this.api.cancelEntry(this.c(), e.resumo.id, reason)))
-      .subscribe({ next: () => this.done('Lançamento cancelado.'), error: (err: unknown) => this.notify.error(toProblem(err).detail) });
+  cancelar(e: LancamentoDetalhe): void {
+    pedirMotivo(this.dialog, 'Cancelar lançamento', `"${e.resumo.descricao}" será cancelado. O registro é mantido no histórico.`, 'Cancelar lançamento')
+      .pipe(switchMap((motivo) => this.api.cancelarLancamento(this.c(), e.resumo.id, motivo)))
+      .subscribe({ next: () => this.concluir('Lançamento cancelado.'), error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail) });
   }
 
-  reverse(p: Baixa): void {
-    askReason(this.dialog, 'Estornar baixa', `Estornar a baixa de R$ ${p.total.toFixed(2).replace('.', ',')} em ${p.dataPagamento}?`, 'Estornar')
-      .pipe(switchMap((reason) => this.api.reversePayment(this.c(), p.id, reason)))
-      .subscribe({ next: () => this.done('Baixa estornada.'), error: (err: unknown) => this.notify.error(toProblem(err).detail) });
+  estornar(p: Baixa): void {
+    pedirMotivo(this.dialog, 'Estornar baixa', `Estornar a baixa de R$ ${p.total.toFixed(2).replace('.', ',')} em ${p.dataPagamento}?`, 'Estornar')
+      .pipe(switchMap((motivo) => this.api.estornarBaixa(this.c(), p.id, motivo)))
+      .subscribe({ next: () => this.concluir('Baixa estornada.'), error: (err: unknown) => this.notificacao.erro(paraProblema(err).detail) });
   }
 
-  private done(message: string): void {
-    this.notify.success(message);
-    this.tick.update((t) => t + 1);
+  private concluir(mensagem: string): void {
+    this.notificacao.sucesso(mensagem);
+    this.recarga.update((t) => t + 1);
   }
 }

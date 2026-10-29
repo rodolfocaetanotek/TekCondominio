@@ -16,29 +16,29 @@ export interface HorarioOcupado { idArea: string; data: string; horaInicio: stri
 
 /** Reservas de áreas comuns: administração (/condominios) e portal do morador (/portal). */
 @Injectable({ providedIn: 'root' })
-export class ReservationApi {
+export class ReservaApi {
   private readonly http = inject(HttpClient);
   private b(c: string): string {
     return `/api/v1/condominios/${c}`;
   }
 
   areas(c: string): Observable<AreaComum[]> { return this.http.get<AreaComum[]>(`${this.b(c)}/areas-comuns`); }
-  saveArea(c: string, body: Record<string, unknown>, id?: string): Observable<AreaComum> {
-    return id ? this.http.put<AreaComum>(`${this.b(c)}/areas-comuns/${id}`, body) : this.http.post<AreaComum>(`${this.b(c)}/areas-comuns`, body);
+  salvarArea(c: string, corpo: Record<string, unknown>, id?: string): Observable<AreaComum> {
+    return id ? this.http.put<AreaComum>(`${this.b(c)}/areas-comuns/${id}`, corpo) : this.http.post<AreaComum>(`${this.b(c)}/areas-comuns`, corpo);
   }
-  list(c: string, de: string, ate: string, idArea?: string): Observable<Reserva[]> {
+  listar(c: string, de: string, ate: string, idArea?: string): Observable<Reserva[]> {
     return this.http.get<Reserva[]>(`${this.b(c)}/reservas`, { params: { de, ate, ...(idArea ? { idArea } : {}) } });
   }
-  create(c: string, body: Record<string, unknown>): Observable<Reserva> { return this.http.post<Reserva>(`${this.b(c)}/reservas`, body); }
-  approve(c: string, id: string, observacao: string | null): Observable<Reserva> { return this.http.post<Reserva>(`${this.b(c)}/reservas/${id}/aprovar`, { observacao }); }
-  reject(c: string, id: string, observacao: string): Observable<Reserva> { return this.http.post<Reserva>(`${this.b(c)}/reservas/${id}/recusar`, { observacao }); }
-  cancel(c: string, id: string, motivo: string): Observable<Reserva> { return this.http.post<Reserva>(`${this.b(c)}/reservas/${id}/cancelar`, { motivo }); }
+  cadastrar(c: string, corpo: Record<string, unknown>): Observable<Reserva> { return this.http.post<Reserva>(`${this.b(c)}/reservas`, corpo); }
+  aprovar(c: string, id: string, observacao: string | null): Observable<Reserva> { return this.http.post<Reserva>(`${this.b(c)}/reservas/${id}/aprovar`, { observacao }); }
+  reprovar(c: string, id: string, observacao: string): Observable<Reserva> { return this.http.post<Reserva>(`${this.b(c)}/reservas/${id}/recusar`, { observacao }); }
+  cancelar(c: string, id: string, motivo: string): Observable<Reserva> { return this.http.post<Reserva>(`${this.b(c)}/reservas/${id}/cancelar`, { motivo }); }
 
   portalAreas(c: string): Observable<AreaComum[]> { return this.http.get<AreaComum[]>(`/api/v1/portal/${c}/areas-comuns`); }
-  portalOccupancy(c: string, idArea: string, de: string, ate: string): Observable<HorarioOcupado[]> {
+  portalOcupacao(c: string, idArea: string, de: string, ate: string): Observable<HorarioOcupado[]> {
     return this.http.get<HorarioOcupado[]>(`/api/v1/portal/${c}/areas-comuns/${idArea}/ocupacao`, { params: { de, ate } });
   }
-  portalMine(c: string): Observable<Reserva[]> { return this.http.get<Reserva[]>(`/api/v1/portal/${c}/reservas`); }
-  portalBook(c: string, body: Record<string, unknown>): Observable<Reserva> { return this.http.post<Reserva>(`/api/v1/portal/${c}/reservas`, body); }
-  portalCancel(c: string, id: string, motivo: string): Observable<Reserva> { return this.http.post<Reserva>(`/api/v1/portal/${c}/reservas/${id}/cancelar`, { motivo }); }
+  portalMinhas(c: string): Observable<Reserva[]> { return this.http.get<Reserva[]>(`/api/v1/portal/${c}/reservas`); }
+  portalReservar(c: string, corpo: Record<string, unknown>): Observable<Reserva> { return this.http.post<Reserva>(`/api/v1/portal/${c}/reservas`, corpo); }
+  portalCancelar(c: string, id: string, motivo: string): Observable<Reserva> { return this.http.post<Reserva>(`/api/v1/portal/${c}/reservas/${id}/cancelar`, { motivo }); }
 }

@@ -5,8 +5,8 @@ import { MatIconModule } from '@angular/material/icon';
 
 /** Botão "×" da faixa de título dos diálogos (equivale a Cancelar). */
 @Component({
-  selector: 'tc-dialog-close',
+  selector: 'tc-fechar-dialog',
   imports: [MatButtonModule, MatDialogModule, MatIconModule],
   template: `<button mat-icon-button type="button" class="tc-dialog-close" mat-dialog-close aria-label="Fechar"><mat-icon>close</mat-icon></button>`,
 })
-export class DialogClose {}
+export class FecharDialog {}

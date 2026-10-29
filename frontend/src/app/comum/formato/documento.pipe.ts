@@ -1,10 +1,10 @@
 import { Pipe, PipeTransform } from '@angular/core';
-import { FORMATTERS, MaskKind } from './formato-br';
+import { FORMATADORES, TipoMascara } from './formato-br';
 
-/** Exibe CNPJ, CEP ou telefone formatados: {{ c.cnpj | doc: 'cnpj' }} */
-@Pipe({ name: 'doc' })
-export class DocPipe implements PipeTransform {
-  transform(value: string | null | undefined, kind: MaskKind): string {
-    return value ? FORMATTERS[kind](value) : '—';
+/** Exibe CNPJ, CEP ou telefone formatados: {{ c.cnpj | documento: 'cnpj' }} */
+@Pipe({ name: 'documento' })
+export class DocumentoPipe implements PipeTransform {
+  transform(valor: string | null | undefined, tipo: TipoMascara): string {
+    return valor ? FORMATADORES[tipo](valor) : '—';
   }
 }

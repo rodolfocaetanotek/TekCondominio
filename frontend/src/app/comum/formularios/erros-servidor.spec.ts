@@ -1,14 +1,14 @@
 import { FormControl, FormGroup } from '@angular/forms';
-import { applyServerErrors, errorMessage } from './erros-servidor';
+import { aplicarErrosServidor, mensagemErro } from './erros-servidor';
 
-describe('applyServerErrors', () => {
+describe('aplicarErrosServidor', () => {
   it('associa erros da API aos campos, inclusive aninhados', () => {
     const form = new FormGroup({
       cnpj: new FormControl(''),
       address: new FormGroup({ zipCode: new FormControl('') }),
     });
 
-    const rest = applyServerErrors(form, {
+    const restante = aplicarErrosServidor(form, {
       status: 400,
       codigo: 'VALIDATION_ERROR',
       detail: 'Há campos inválidos.',
@@ -19,9 +19,9 @@ describe('applyServerErrors', () => {
       ],
     });
 
-    expect(errorMessage(form.get('cnpj'))).toBe('CNPJ inválido.');
-    expect(errorMessage(form.get('address.zipCode'))).toBe('CEP inválido.');
+    expect(mensagemErro(form.get('cnpj'))).toBe('CNPJ inválido.');
+    expect(mensagemErro(form.get('address.zipCode'))).toBe('CEP inválido.');
     expect(form.get('cnpj')?.touched).toBe(true);
-    expect(rest).toEqual(['Erro geral.']);
+    expect(restante).toEqual(['Erro geral.']);
   });
 });

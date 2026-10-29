@@ -1,25 +1,25 @@
 import { Directive, ElementRef, inject, input } from '@angular/core';
 import { NgControl } from '@angular/forms';
-import { FORMATTERS, MaskKind } from './formato-br';
+import { FORMATADORES, TipoMascara } from './formato-br';
 
-/** Aplica máscara brasileira enquanto o usuário digita. Uso: <input tcMask="cnpj" formControlName="cnpj"> */
+/** Aplica máscara brasileira enquanto o usuário digita. Uso: <input tcMascara="cnpj" formControlName="cnpj"> */
 @Directive({
-  selector: 'input[tcMask]',
-  host: { '(input)': 'onInput()', '(blur)': 'onInput()' },
+  selector: 'input[tcMascara]',
+  host: { '(input)': 'aoDigitar()', '(blur)': 'aoDigitar()' },
 })
-export class MaskDirective {
-  readonly tcMask = input.required<MaskKind>();
-  private readonly control = inject(NgControl, { self: true });
-  private readonly el = inject<ElementRef<HTMLInputElement>>(ElementRef);
+export class MascaraDirective {
+  readonly tcMascara = input.required<TipoMascara>();
+  private readonly controle = inject(NgControl, { self: true });
+  private readonly elemento = inject<ElementRef<HTMLInputElement>>(ElementRef);
 
-  onInput(): void {
-    const input = this.el.nativeElement;
-    const formatted = FORMATTERS[this.tcMask()](input.value);
-    if (formatted !== input.value) {
-      input.value = formatted;
+  aoDigitar(): void {
+    const campo = this.elemento.nativeElement;
+    const formatado = FORMATADORES[this.tcMascara()](campo.value);
+    if (formatado !== campo.value) {
+      campo.value = formatado;
     }
-    if (this.control.value !== formatted) {
-      this.control.control?.setValue(formatted);
+    if (this.controle.value !== formatado) {
+      this.controle.control?.setValue(formatado);
     }
   }
 }

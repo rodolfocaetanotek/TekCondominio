@@ -1,27 +1,27 @@
 <div class="tc-page narrow">
   <a mat-button routerLink="/usuarios" class="back"><mat-icon>arrow_back</mat-icon> Usuários</a>
 
-  @if (loadError(); as message) {
+  @if (erroCarga(); as mensagem) {
     <section class="tc-card">
-      <tc-empty-state icon="error" title="Não foi possível abrir o usuário" [description]="message">
+      <tc-estado-vazio icone="error" titulo="Não foi possível abrir o usuário" [descricao]="mensagem">
         <a mat-stroked-button routerLink="/usuarios">Voltar à lista</a>
-      </tc-empty-state>
+      </tc-estado-vazio>
     </section>
-  } @else if (loading()) {
+  } @else if (carregando()) {
     <mat-progress-bar mode="indeterminate" aria-label="Carregando" />
-  } @else if (user(); as u) {
-    <tc-page-header eyebrow="Usuário" [title]="u.nome" [subtitle]="u.email">
+  } @else if (usuario(); as u) {
+    <tc-cabecalho-pagina sobretitulo="Usuário" [titulo]="u.nome" [subtitulo]="u.email">
       @if (u.convitePendente && u.ativo) {
         <span class="tc-status is-pending big">Convite pendente</span>
       }
       <span class="tc-status big" [class.is-active]="u.ativo" [class.is-inactive]="!u.ativo">{{ u.ativo ? 'Ativo' : 'Inativo' }}</span>
-    </tc-page-header>
+    </tc-cabecalho-pagina>
 
-    @if (busy()) {
+    @if (ocupado()) {
       <mat-progress-bar mode="indeterminate" class="bar" />
     }
-    @if (actionError(); as message) {
-      <div class="tc-banner is-danger" role="alert"><mat-icon>error</mat-icon><span>{{ message }}</span></div>
+    @if (erroAcao(); as mensagem) {
+      <div class="tc-banner is-danger" role="alert"><mat-icon>error</mat-icon><span>{{ mensagem }}</span></div>
     }
 
     <div class="layout">
@@ -38,8 +38,8 @@
                   <strong>{{ a.nomePapel }}</strong>
                   <span class="tc-muted">{{ a.escopo === 'ORGANIZATION' ? 'Toda a administradora' : a.nomeCondominio }}</span>
                 </div>
-                @if (canManage()) {
-                  <button mat-icon-button (click)="removeAssignment(a)" [disabled]="busy()"
+                @if (podeGerenciar()) {
+                  <button mat-icon-button (click)="removerAtribuicao(a)" [disabled]="ocupado()"
                     [attr.aria-label]="'Remover ' + a.nomePapel" matTooltip="Remover papel">
                     <mat-icon>delete</mat-icon>
                   </button>
@@ -49,11 +49,11 @@
           </ul>
         }
 
-        @if (canManage()) {
+        @if (podeGerenciar()) {
           <h3 class="tc-section-label add-title">Atribuir papel</h3>
-          <tc-role-fields [roleCode]="roleCode" [condominiumId]="condominiumId" />
+          <tc-campos-papel [codigoPapel]="codigoPapel" [idCondominio]="idCondominio" />
           <div class="tc-actions">
-            <button mat-stroked-button (click)="addAssignment()" [disabled]="busy()"><mat-icon>add</mat-icon> Atribuir</button>
+            <button mat-stroked-button (click)="adicionarAtribuicao()" [disabled]="ocupado()"><mat-icon>add</mat-icon> Atribuir</button>
           </div>
         }
       </section>
@@ -63,12 +63,12 @@
           <h2 class="tc-section-title">Dados</h2>
           <mat-form-field class="full">
             <mat-label>Nome</mat-label>
-            <input matInput [formControl]="name" maxlength="150" />
-            <mat-error><tc-field-error [control]="name" /></mat-error>
+            <input matInput [formControl]="nome" maxlength="150" />
+            <mat-error><tc-erro-campo [controle]="nome" /></mat-error>
           </mat-form-field>
-          @if (canManage()) {
+          @if (podeGerenciar()) {
             <div class="tc-actions">
-              <button mat-stroked-button (click)="saveName()" [disabled]="busy() || name.pristine">Salvar nome</button>
+              <button mat-stroked-button (click)="salvarNome()" [disabled]="ocupado() || nome.pristine">Salvar nome</button>
             </div>
           }
           <dl class="tc-dl cols">
@@ -83,15 +83,15 @@
           </dl>
         </section>
 
-        @if (canManage()) {
+        @if (podeGerenciar()) {
           <section class="tc-card">
             <h2 class="tc-section-title">Acesso</h2>
             <div class="stack">
               @if (u.convitePendente && u.ativo) {
-                <button mat-stroked-button (click)="resendInvite()" [disabled]="busy()"><mat-icon>forward_to_inbox</mat-icon> Reenviar convite</button>
+                <button mat-stroked-button (click)="reenviarConvite()" [disabled]="ocupado()"><mat-icon>forward_to_inbox</mat-icon> Reenviar convite</button>
               }
-              @if (!isSelf()) {
-                <button mat-button (click)="toggleActive()" [disabled]="busy()" [class.danger-text]="u.ativo">
+              @if (!ehProprio()) {
+                <button mat-button (click)="alternarAtivo()" [disabled]="ocupado()" [class.danger-text]="u.ativo">
                   <mat-icon>{{ u.ativo ? 'person_off' : 'person_check' }}</mat-icon>
                   {{ u.ativo ? 'Desativar usuário' : 'Reativar usuário' }}
                 </button>

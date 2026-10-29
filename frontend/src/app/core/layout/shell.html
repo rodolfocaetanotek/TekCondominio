@@ -2,12 +2,12 @@
 
 <mat-sidenav-container class="container" autosize>
   <mat-sidenav
-    #drawer
+    #gaveta
     class="sidenav"
     [class.mini]="mini()"
-    [mode]="isHandset() ? 'over' : 'side'"
-    [opened]="!isHandset()"
-    [attr.role]="isHandset() ? 'dialog' : 'navigation'"
+    [mode]="ehCelular() ? 'over' : 'side'"
+    [opened]="!ehCelular()"
+    [attr.role]="ehCelular() ? 'dialog' : 'navigation'"
     aria-label="Menu principal"
   >
     <div class="brand">
@@ -18,38 +18,38 @@
           <span>Gestão de condomínios</span>
         </div>
       }
-      @if (isHandset()) {
-        <button mat-icon-button class="close-drawer" (click)="drawer.close()" aria-label="Fechar menu">
+      @if (ehCelular()) {
+        <button mat-icon-button class="close-drawer" (click)="gaveta.close()" aria-label="Fechar menu">
           <mat-icon>close</mat-icon>
         </button>
       }
     </div>
 
     <nav class="nav" aria-label="Seções do sistema">
-      @for (group of nav(); track group.title) {
-        @if (!group.title || mini()) {
-          @if (mini() && group.title) {
+      @for (grupo of menu(); track grupo.titulo) {
+        @if (!grupo.titulo || mini()) {
+          @if (mini() && grupo.titulo) {
             <hr class="mini-divider" />
           }
           <ul class="items top">
-            @for (item of group.items; track item.link) {
+            @for (item of grupo.itens; track item.link) {
               <li>
                 <a
                   class="item"
                   [routerLink]="item.link"
                   routerLinkActive="is-active"
-                  [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
-                  #rla="routerLinkActive"
-                  [attr.aria-current]="rla.isActive ? 'page' : null"
-                  [matTooltip]="mini() ? item.label : ''"
+                  [routerLinkActiveOptions]="{ exact: item.exato ?? false }"
+                  #linkAtivo="routerLinkActive"
+                  [attr.aria-current]="linkAtivo.isActive ? 'page' : null"
+                  [matTooltip]="mini() ? item.rotulo : ''"
                   matTooltipPosition="right"
-                  (click)="isHandset() && drawer.close()"
+                  (click)="ehCelular() && gaveta.close()"
                 >
-                  <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+                  <mat-icon aria-hidden="true">{{ item.icone }}</mat-icon>
                   @if (!mini()) {
-                    <span>{{ item.label }}</span>
+                    <span>{{ item.rotulo }}</span>
                   } @else {
-                    <span class="sr-only">{{ item.label }}</span>
+                    <span class="sr-only">{{ item.rotulo }}</span>
                   }
                 </a>
               </li>
@@ -59,29 +59,29 @@
           <button
             type="button"
             class="group"
-            [class.has-active]="activeGroup() === group.title"
-            [attr.aria-expanded]="isOpen(group.title)"
+            [class.has-active]="grupoAtivo() === grupo.titulo"
+            [attr.aria-expanded]="estaAberto(grupo.titulo)"
             [attr.aria-controls]="'nav-' + $index"
-            (click)="toggleGroup(group.title)"
+            (click)="alternarGrupo(grupo.titulo)"
           >
-            <mat-icon aria-hidden="true">{{ group.icon }}</mat-icon>
-            <span>{{ group.title }}</span>
+            <mat-icon aria-hidden="true">{{ grupo.icone }}</mat-icon>
+            <span>{{ grupo.titulo }}</span>
             <mat-icon class="chevron" aria-hidden="true">expand_more</mat-icon>
           </button>
-          @if (isOpen(group.title)) {
+          @if (estaAberto(grupo.titulo)) {
             <ul class="items" [id]="'nav-' + $index">
-              @for (item of group.items; track item.link) {
+              @for (item of grupo.itens; track item.link) {
                 <li>
                   <a
                     class="item sub"
                     [routerLink]="item.link"
                     routerLinkActive="is-active"
-                    [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
-                    #rla="routerLinkActive"
-                    [attr.aria-current]="rla.isActive ? 'page' : null"
-                    (click)="isHandset() && drawer.close()"
+                    [routerLinkActiveOptions]="{ exact: item.exato ?? false }"
+                    #linkAtivo="routerLinkActive"
+                    [attr.aria-current]="linkAtivo.isActive ? 'page' : null"
+                    (click)="ehCelular() && gaveta.close()"
                   >
-                    <span>{{ item.label }}</span>
+                    <span>{{ item.rotulo }}</span>
                   </a>
                 </li>
               }
@@ -94,18 +94,18 @@
     <div class="side-footer">
       @if (!mini()) {
         <div class="who">
-          <span class="avatar small" aria-hidden="true">{{ initials() }}</span>
+          <span class="avatar small" aria-hidden="true">{{ iniciais() }}</span>
           <span class="who-text">
-            <strong>{{ auth.user()?.nome }}</strong>
-            <small>{{ auth.user()?.nomeAdministradora ?? (auth.user()?.administradorPlataforma ? 'Administração da plataforma' : '') }}</small>
+            <strong>{{ auth.usuario()?.nome }}</strong>
+            <small>{{ auth.usuario()?.nomeAdministradora ?? (auth.usuario()?.administradorPlataforma ? 'Administração da plataforma' : '') }}</small>
           </span>
         </div>
       }
-      @if (!isHandset()) {
+      @if (!ehCelular()) {
         <button
           mat-icon-button
           class="collapse"
-          (click)="toggleCollapsed()"
+          (click)="alternarRecolhido()"
           [attr.aria-label]="mini() ? 'Expandir menu' : 'Recolher menu'"
           [matTooltip]="mini() ? 'Expandir menu' : 'Recolher menu'"
           matTooltipPosition="right"
@@ -118,65 +118,65 @@
 
   <mat-sidenav-content>
     <mat-toolbar class="topbar">
-      @if (isHandset()) {
-        <button mat-icon-button (click)="drawer.toggle()" aria-label="Abrir menu">
+      @if (ehCelular()) {
+        <button mat-icon-button (click)="gaveta.toggle()" aria-label="Abrir menu">
           <mat-icon>menu</mat-icon>
         </button>
       }
       <div class="context">
-        @if (showSelector()) {
+        @if (mostrarSeletor()) {
           <mat-form-field class="condo-select" subscriptSizing="dynamic">
             <mat-icon matPrefix aria-hidden="true">apartment</mat-icon>
             <mat-select
-              [value]="context.id()"
-              (valueChange)="context.select($event)"
+              [value]="contexto.id()"
+              (valueChange)="contexto.selecionar($event)"
               aria-label="Condomínio selecionado"
               panelWidth="auto"
             >
-              @for (o of context.options(); track o.id) {
+              @for (o of contexto.opcoes(); track o.id) {
                 <mat-option [value]="o.id">{{ o.nome }}{{ o.situacao === 'INACTIVE' ? ' (inativo)' : '' }}</mat-option>
               }
             </mat-select>
           </mat-form-field>
         }
-        @if (auth.user()?.nomeAdministradora; as org) {
-          <span class="org" [class.compact]="showSelector()"><mat-icon aria-hidden="true">domain</mat-icon>{{ org }}</span>
-        } @else if (auth.user()?.administradorPlataforma) {
+        @if (auth.usuario()?.nomeAdministradora; as administradora) {
+          <span class="org" [class.compact]="mostrarSeletor()"><mat-icon aria-hidden="true">domain</mat-icon>{{ administradora }}</span>
+        } @else if (auth.usuario()?.administradorPlataforma) {
           <span class="org"><mat-icon aria-hidden="true">shield_person</mat-icon>Administração da plataforma</span>
         }
       </div>
       <span class="tc-spacer"></span>
-      <button mat-icon-button [matMenuTriggerFor]="themeMenu" aria-label="Aparência" matTooltip="Aparência">
-        <mat-icon>{{ themeIcon() }}</mat-icon>
+      <button mat-icon-button [matMenuTriggerFor]="menuTema" aria-label="Aparência" matTooltip="Aparência">
+        <mat-icon>{{ iconeTema() }}</mat-icon>
       </button>
-      <mat-menu #themeMenu="matMenu" xPosition="before">
-        <button mat-menu-item (click)="setTheme('system')" [attr.aria-checked]="theme.mode() === 'system'" role="menuitemradio">
+      <mat-menu #menuTema="matMenu" xPosition="before">
+        <button mat-menu-item (click)="definirTema('system')" [attr.aria-checked]="tema.modo() === 'system'" role="menuitemradio">
           <mat-icon>brightness_auto</mat-icon><span>Seguir o sistema</span>
         </button>
-        <button mat-menu-item (click)="setTheme('light')" [attr.aria-checked]="theme.mode() === 'light'" role="menuitemradio">
+        <button mat-menu-item (click)="definirTema('light')" [attr.aria-checked]="tema.modo() === 'light'" role="menuitemradio">
           <mat-icon>light_mode</mat-icon><span>Claro</span>
         </button>
-        <button mat-menu-item (click)="setTheme('dark')" [attr.aria-checked]="theme.mode() === 'dark'" role="menuitemradio">
+        <button mat-menu-item (click)="definirTema('dark')" [attr.aria-checked]="tema.modo() === 'dark'" role="menuitemradio">
           <mat-icon>dark_mode</mat-icon><span>Escuro</span>
         </button>
       </mat-menu>
-      @if (auth.isOrganizationMember()) {
-        <tc-notification-bell />
+      @if (auth.membroAdministradora()) {
+        <tc-sino-notificacoes />
       }
-      <button mat-button class="user-btn" [matMenuTriggerFor]="userMenu" aria-label="Menu do usuário">
-        <span class="avatar" aria-hidden="true">{{ initials() }}</span>
-        <span class="user-name">{{ auth.user()?.nome }}</span>
+      <button mat-button class="user-btn" [matMenuTriggerFor]="menuUsuario" aria-label="Menu do usuário">
+        <span class="avatar" aria-hidden="true">{{ iniciais() }}</span>
+        <span class="user-name">{{ auth.usuario()?.nome }}</span>
         <mat-icon iconPositionEnd>expand_more</mat-icon>
       </button>
-      <mat-menu #userMenu="matMenu" xPosition="before">
+      <mat-menu #menuUsuario="matMenu" xPosition="before">
         <div class="menu-header" mat-menu-item disabled>
           <span>
-            <strong>{{ auth.user()?.nome }}</strong><br />
-            <small>{{ auth.user()?.email }}</small>
+            <strong>{{ auth.usuario()?.nome }}</strong><br />
+            <small>{{ auth.usuario()?.email }}</small>
           </span>
         </div>
         <mat-divider />
-        <button mat-menu-item (click)="changePassword()">
+        <button mat-menu-item (click)="alterarSenha()">
           <mat-icon>key</mat-icon>
           <span>Alterar senha</span>
         </button>
@@ -187,7 +187,7 @@
       </mat-menu>
     </mat-toolbar>
 
-    <main id="conteudo" tabindex="-1" tcResponsiveTables>
+    <main id="conteudo" tabindex="-1" tcTabelasResponsivas>
       <router-outlet />
     </main>
   </mat-sidenav-content>

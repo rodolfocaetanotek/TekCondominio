@@ -1,18 +1,18 @@
 export type TipoCondominio = 'RESIDENTIAL' | 'COMMERCIAL' | 'MIXED';
 export type SituacaoCondominio = 'ACTIVE' | 'INACTIVE';
 
-export const CONDOMINIUM_TYPE_LABELS: Record<TipoCondominio, string> = {
+export const ROTULOS_TIPO_CONDOMINIO: Record<TipoCondominio, string> = {
   RESIDENTIAL: 'Residencial',
   COMMERCIAL: 'Comercial',
   MIXED: 'Misto',
 };
 
-export const CONDOMINIUM_STATUS_LABELS: Record<SituacaoCondominio, string> = {
+export const ROTULOS_SITUACAO_CONDOMINIO: Record<SituacaoCondominio, string> = {
   ACTIVE: 'Ativo',
   INACTIVE: 'Inativo',
 };
 
-export const BRAZILIAN_STATES = [
+export const UFS = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA',
   'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
 ] as const;
@@ -65,10 +65,10 @@ export interface CondominioRequest {
   versao?: number;
 }
 
-export interface CondominiumQuery {
-  search?: string;
-  status?: SituacaoCondominio | '';
-  page: number;
-  size: number;
-  sort?: string;
+export interface ConsultaCondominio {
+  busca?: string;
+  situacao?: SituacaoCondominio | '';
+  pagina: number;
+  tamanho: number;
+  ordem?: string;
 }

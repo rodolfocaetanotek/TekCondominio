@@ -6,35 +6,35 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { RouterLink } from '@angular/router';
 import { catchError, combineLatest, filter, of, switchMap } from 'rxjs';
-import { toProblem } from '../../core/api/api.models';
+import { paraProblema } from '../../core/api/api.models';
 import { AuthService } from '../../core/auth/auth.service';
-import { CondominiumContext } from '../../core/contexto/condominio-contexto';
-import { NotificationService } from '../../core/notificacao/notificacao.service';
-import { DocPipe } from '../../comum/formato/documento.pipe';
-import { ConfirmDialog, ConfirmDialogData } from '../../comum/ui/confirmacao-dialog';
-import { EmptyState } from '../../comum/ui/estado-vazio';
-import { IsoDatePipe } from '../../comum/ui/data-iso.pipe';
-import { PageHeader } from '../../comum/ui/cabecalho-pagina';
-import { PersonDialog } from './pessoa-dialog';
-import { OCCUPANCY_ROLE_LABELS, PessoaDetalhe as Person, Vinculo } from './estrutura.models';
-import { StructureService } from './estrutura.service';
+import { CondominioContexto } from '../../core/contexto/condominio-contexto';
+import { NotificacaoService } from '../../core/notificacao/notificacao.service';
+import { DocumentoPipe } from '../../comum/formato/documento.pipe';
+import { ConfirmacaoDialog, DadosConfirmacaoDialog } from '../../comum/ui/confirmacao-dialog';
+import { EstadoVazio } from '../../comum/ui/estado-vazio';
+import { DataIsoPipe } from '../../comum/ui/data-iso.pipe';
+import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
+import { PessoaDialog } from './pessoa-dialog';
+import { ROTULOS_TIPO_VINCULO, PessoaDetalhe, Vinculo } from './estrutura.models';
+import { EstruturaService } from './estrutura.service';
 
 @Component({
-  selector: 'tc-person-detail',
-  imports: [RouterLink, MatButtonModule, MatIconModule, MatProgressBarModule, PageHeader, EmptyState, DocPipe, IsoDatePipe],
+  selector: 'tc-pessoa-detalhe',
+  imports: [RouterLink, MatButtonModule, MatIconModule, MatProgressBarModule, CabecalhoPagina, EstadoVazio, DocumentoPipe, DataIsoPipe],
   template: `
     <div class="tc-page narrow">
       <a mat-button routerLink="/pessoas" class="back"><mat-icon>arrow_back</mat-icon> Pessoas</a>
-      @if (error(); as message) {
-        <section class="tc-card"><tc-empty-state icon="error" title="Não foi possível abrir" [description]="message" /></section>
-      } @else if (person(); as p) {
-        <tc-page-header [eyebrow]="p.tipo === 'COMPANY' ? 'Pessoa jurídica' : 'Pessoa física'" [title]="p.nome"
-          [subtitle]="p.documento ? (p.documento | doc: 'cpfCnpj') : 'Sem documento informado'">
+      @if (erro(); as mensagem) {
+        <section class="tc-card"><tc-estado-vazio icone="error" titulo="Não foi possível abrir" [descricao]="mensagem" /></section>
+      } @else if (pessoa(); as p) {
+        <tc-cabecalho-pagina [sobretitulo]="p.tipo === 'COMPANY' ? 'Pessoa jurídica' : 'Pessoa física'" [titulo]="p.nome"
+          [subtitulo]="p.documento ? (p.documento | documento: 'cpfCnpj') : 'Sem documento informado'">
           <span class="tc-status big" [class.is-active]="p.ativo" [class.is-inactive]="!p.ativo">{{ p.ativo ? 'Ativa' : 'Inativa' }}</span>
-          @if (canEdit()) {
-            <button mat-stroked-button (click)="edit(p)"><mat-icon>edit</mat-icon> Editar</button>
+          @if (podeEditar()) {
+            <button mat-stroked-button (click)="editar(p)"><mat-icon>edit</mat-icon> Editar</button>
           }
-        </tc-page-header>
+        </tc-cabecalho-pagina>
 
         <div class="layout">
           <section class="tc-table-card">
@@ -43,19 +43,19 @@ import { StructureService } from './estrutura.service';
               <div class="occ" [class.ended]="!o.vigente">
                 <div class="who">
                   <strong>{{ o.rotuloUnidade }}</strong>
-                  <span class="tc-muted">{{ roleLabel(o) }} · {{ o.dataInicio | isoDate }}{{ o.vigente ? ' até hoje' : ' a ' + (o.dataFim | isoDate) }}</span>
+                  <span class="tc-muted">{{ rotuloPapel(o) }} · {{ o.dataInicio | dataIso }}{{ o.vigente ? ' até hoje' : ' a ' + (o.dataFim | dataIso) }}</span>
                 </div>
                 <div class="occ-end">
                   @if (o.responsavelFinanceiro) {
                     <span class="tc-chip-soft">Resp. financeiro</span>
                   }
-                  @if (o.idCondominio === context.id()) {
+                  @if (o.idCondominio === contexto.id()) {
                     <a mat-button [routerLink]="['/unidades', o.idUnidade]">Ver unidade</a>
                   }
                 </div>
               </div>
             } @empty {
-              <tc-empty-state icon="link_off" title="Sem vínculos" description="Vincule a pessoa a uma unidade pela ficha da unidade." />
+              <tc-estado-vazio icone="link_off" titulo="Sem vínculos" descricao="Vincule a pessoa a uma unidade pela ficha da unidade." />
             }
           </section>
 
@@ -64,8 +64,8 @@ import { StructureService } from './estrutura.service';
               <h2 class="tc-section-title">Contato</h2>
               <dl class="tc-dl">
                 <div><dt>E-mail</dt><dd>{{ p.email ?? '—' }}</dd></div>
-                <div><dt>Telefone</dt><dd>{{ p.telefone ? (p.telefone | doc: 'phone') : '—' }}</dd></div>
-                <div><dt>Alternativo</dt><dd>{{ p.telefoneSecundario ? (p.telefoneSecundario | doc: 'phone') : '—' }}</dd></div>
+                <div><dt>Telefone</dt><dd>{{ p.telefone ? (p.telefone | documento: 'telefone') : '—' }}</dd></div>
+                <div><dt>Alternativo</dt><dd>{{ p.telefoneSecundario ? (p.telefoneSecundario | documento: 'telefone') : '—' }}</dd></div>
               </dl>
               @if (p.observacoes) {
                 <p class="tc-muted small">{{ p.observacoes }}</p>
@@ -78,13 +78,13 @@ import { StructureService } from './estrutura.service';
               } @else {
                 <p class="tc-muted small">Permite consultar cobranças, comunicados e documentos da(s) sua(s) unidade(s).</p>
               }
-              @if (auth.can('USER_MANAGE') && p.ativo) {
-                <button mat-stroked-button (click)="grantPortal(p)" [disabled]="busy()">
+              @if (auth.pode('USER_MANAGE') && p.ativo) {
+                <button mat-stroked-button (click)="concederPortal(p)" [disabled]="ocupado()">
                   <mat-icon>forward_to_inbox</mat-icon>{{ p.usuarioPortal ? 'Atualizar acesso / reenviar convite' : 'Conceder acesso ao portal' }}
                 </button>
               }
-              @if (canEdit()) {
-                <button mat-button class="toggle" (click)="toggle(p)" [disabled]="busy()">{{ p.ativo ? 'Inativar cadastro' : 'Reativar cadastro' }}</button>
+              @if (podeEditar()) {
+                <button mat-button class="toggle" (click)="alternar(p)" [disabled]="ocupado()">{{ p.ativo ? 'Inativar cadastro' : 'Reativar cadastro' }}</button>
               }
             </section>
           </aside>
@@ -112,25 +112,25 @@ import { StructureService } from './estrutura.service';
     .tc-section-title { margin-top: 0; }
   `,
 })
-export class PersonDetail {
+export class PessoaDetalhePage {
   protected readonly auth = inject(AuthService);
-  protected readonly context = inject(CondominiumContext);
-  private readonly service = inject(StructureService);
+  protected readonly contexto = inject(CondominioContexto);
+  private readonly service = inject(EstruturaService);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
+  private readonly notificacao = inject(NotificacaoService);
 
   readonly id = input.required<string>();
-  private readonly tick = signal(0);
-  protected readonly busy = signal(false);
-  protected readonly error = signal<string | null>(null);
-  protected readonly canEdit = computed(() => this.context.canAny('PEOPLE_EDIT'));
+  private readonly recarga = signal(0);
+  protected readonly ocupado = signal(false);
+  protected readonly erro = signal<string | null>(null);
+  protected readonly podeEditar = computed(() => this.contexto.podeAlgum('PEOPLE_EDIT'));
 
-  protected readonly person = toSignal(
-    combineLatest([toObservable(this.id), toObservable(this.tick)]).pipe(
+  protected readonly pessoa = toSignal(
+    combineLatest([toObservable(this.id), toObservable(this.recarga)]).pipe(
       switchMap(([id]) =>
-        this.service.person(id).pipe(
+        this.service.pessoa(id).pipe(
           catchError((err: unknown) => {
-            this.error.set(toProblem(err).detail);
+            this.erro.set(paraProblema(err).detail);
             return of(null);
           }),
         ),
@@ -139,49 +139,49 @@ export class PersonDetail {
     { initialValue: null },
   );
 
-  roleLabel(o: Vinculo): string {
-    return OCCUPANCY_ROLE_LABELS[o.tipo];
+  rotuloPapel(o: Vinculo): string {
+    return ROTULOS_TIPO_VINCULO[o.tipo];
   }
 
-  edit(p: Person): void {
+  editar(p: PessoaDetalhe): void {
     this.dialog
-      .open(PersonDialog, { data: { person: p }, width: '680px', maxWidth: '95vw' })
+      .open(PessoaDialog, { data: { pessoa: p }, width: '680px', maxWidth: '95vw' })
       .afterClosed()
       .pipe(filter((r) => !!r))
-      .subscribe(() => this.reload('Cadastro atualizado.'));
+      .subscribe(() => this.recarregar('Cadastro atualizado.'));
   }
 
-  toggle(p: Person): void {
-    this.run(this.service.setPersonActive(p.id, !p.ativo), p.ativo ? 'Cadastro inativado.' : 'Cadastro reativado.');
+  alternar(p: PessoaDetalhe): void {
+    this.executar(this.service.alterarPessoaAtiva(p.id, !p.ativo), p.ativo ? 'Cadastro inativado.' : 'Cadastro reativado.');
   }
 
-  grantPortal(p: Person): void {
+  concederPortal(p: PessoaDetalhe): void {
     this.dialog
-      .open<ConfirmDialog, ConfirmDialogData, string | true>(ConfirmDialog, {
-        data: { title: 'Acesso ao portal', message: `Enviar convite de acesso ao portal para ${p.email ?? 'o e-mail cadastrado'}?`, confirmLabel: 'Enviar convite' },
+      .open<ConfirmacaoDialog, DadosConfirmacaoDialog, string | true>(ConfirmacaoDialog, {
+        data: { titulo: 'Acesso ao portal', mensagem: `Enviar convite de acesso ao portal para ${p.email ?? 'o e-mail cadastrado'}?`, rotuloConfirmar: 'Enviar convite' },
         width: '440px',
       })
       .afterClosed()
       .pipe(filter((r) => r === true))
-      .subscribe(() => this.run(this.service.grantPortalAccess(p.id), 'Acesso concedido. Convite enviado por e-mail.'));
+      .subscribe(() => this.executar(this.service.concederAcessoPortal(p.id), 'Acesso concedido. Convite enviado por e-mail.'));
   }
 
-  private run(call$: ReturnType<StructureService['person']>, message: string): void {
-    this.busy.set(true);
-    call$.subscribe({
+  private executar(chamada$: ReturnType<EstruturaService['pessoa']>, mensagem: string): void {
+    this.ocupado.set(true);
+    chamada$.subscribe({
       next: () => {
-        this.busy.set(false);
-        this.reload(message);
+        this.ocupado.set(false);
+        this.recarregar(mensagem);
       },
       error: (err: unknown) => {
-        this.busy.set(false);
-        this.notify.error(toProblem(err).detail);
+        this.ocupado.set(false);
+        this.notificacao.erro(paraProblema(err).detail);
       },
     });
   }
 
-  private reload(message: string): void {
-    this.notify.success(message);
-    this.tick.update((t) => t + 1);
+  private recarregar(mensagem: string): void {
+    this.notificacao.sucesso(mensagem);
+    this.recarga.update((t) => t + 1);
   }
 }

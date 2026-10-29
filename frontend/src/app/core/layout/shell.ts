@@ -13,31 +13,31 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
-import { ChangePasswordDialog } from '../../features/auth/alterar-senha-dialog';
+import { AlterarSenhaDialog } from '../../features/auth/alterar-senha-dialog';
 import { Permissao } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
-import { CondominiumContext } from '../contexto/condominio-contexto';
-import { NotificationBell } from '../notificacao/sino-notificacoes';
-import { NotificationService } from '../notificacao/notificacao.service';
-import { ResponsiveTables } from './tabelas-responsivas';
-import { ThemeMode, ThemeService } from './tema.service';
+import { CondominioContexto } from '../contexto/condominio-contexto';
+import { SinoNotificacoes } from '../notificacao/sino-notificacoes';
+import { NotificacaoService } from '../notificacao/notificacao.service';
+import { TabelasResponsivas } from './tabelas-responsivas';
+import { ModoTema, TemaService } from './tema.service';
 
-interface NavItem {
-  label: string;
-  icon: string;
+interface ItemMenu {
+  rotulo: string;
+  icone: string;
   link: string;
-  exact?: boolean;
-  visible: () => boolean;
+  exato?: boolean;
+  visivel: () => boolean;
 }
 
-interface NavGroup {
-  title: string;
-  icon: string;
-  items: NavItem[];
+interface GrupoMenu {
+  titulo: string;
+  icone: string;
+  itens: ItemMenu[];
 }
 
-const OPEN_KEY = 'tc-nav-open';
-const COLLAPSED_KEY = 'tc-nav-collapsed';
+const CHAVE_ABERTOS = 'tc-nav-open';
+const CHAVE_RECOLHIDO = 'tc-nav-collapsed';
 
 @Component({
   selector: 'tc-shell',
@@ -54,31 +54,31 @@ const COLLAPSED_KEY = 'tc-nav-collapsed';
     MatTooltipModule,
     MatSelectModule,
     MatFormFieldModule,
-    NotificationBell,
-    ResponsiveTables,
+    SinoNotificacoes,
+    TabelasResponsivas,
   ],
   templateUrl: './shell.html',
   styleUrl: './shell.scss',
 })
 export class Shell {
   protected readonly auth = inject(AuthService);
-  protected readonly context = inject(CondominiumContext);
-  protected readonly theme = inject(ThemeService);
+  protected readonly contexto = inject(CondominioContexto);
+  protected readonly tema = inject(TemaService);
   private readonly dialog = inject(MatDialog);
-  private readonly notify = inject(NotificationService);
+  private readonly notificacao = inject(NotificacaoService);
   private readonly router = inject(Router);
 
-  protected readonly isHandset = toSignal(
+  protected readonly ehCelular = toSignal(
     inject(BreakpointObserver).observe('(max-width: 959px)').pipe(map((r) => r.matches)),
     { initialValue: false },
   );
 
   /** Menu recolhido (só ícones) — opção do desktop, guardada no navegador. */
-  protected readonly collapsed = signal(readFlag(COLLAPSED_KEY));
-  protected readonly mini = computed(() => this.collapsed() && !this.isHandset());
+  protected readonly recolhido = signal(lerIndicador(CHAVE_RECOLHIDO));
+  protected readonly mini = computed(() => this.recolhido() && !this.ehCelular());
 
   /** Grupo aberto no menu (no máximo um). */
-  protected readonly open = signal<ReadonlySet<string>>(new Set(readList(OPEN_KEY)));
+  protected readonly abertos = signal<ReadonlySet<string>>(new Set(lerLista(CHAVE_ABERTOS)));
 
   private readonly url = toSignal(
     this.router.events.pipe(
@@ -89,80 +89,80 @@ export class Shell {
   );
 
   /** Permissão no condomínio selecionado. */
-  private readonly inCondo = (p: Permissao) => () => this.context.can(p);
+  private readonly noCondominio = (p: Permissao) => () => this.contexto.pode(p);
 
-  private readonly groups: NavGroup[] = [
+  private readonly grupos: GrupoMenu[] = [
     {
-      title: '',
-      icon: '',
-      items: [
-        { label: 'Início', icon: 'space_dashboard', link: '/', exact: true, visible: () => this.auth.isOrganizationMember() && !this.isResidentOnly() },
-        { label: 'Portal do morador', icon: 'home', link: '/portal', visible: () => this.context.canAny('PORTAL_ACCESS') },
+      titulo: '',
+      icone: '',
+      itens: [
+        { rotulo: 'Início', icone: 'space_dashboard', link: '/', exato: true, visivel: () => this.auth.membroAdministradora() && !this.apenasMorador() },
+        { rotulo: 'Portal do morador', icone: 'home', link: '/portal', visivel: () => this.contexto.podeAlgum('PORTAL_ACCESS') },
       ],
     },
     {
-      title: 'Cadastros',
-      icon: 'apartment',
-      items: [
-        { label: 'Condomínios', icon: 'apartment', link: '/condominios', visible: () => this.auth.canAny('CONDOMINIUM_VIEW') },
-        { label: 'Unidades', icon: 'door_front', link: '/unidades', visible: this.inCondo('STRUCTURE_VIEW') },
-        { label: 'Pessoas', icon: 'contacts', link: '/pessoas', visible: () => this.context.canAny('PEOPLE_VIEW') },
+      titulo: 'Cadastros',
+      icone: 'apartment',
+      itens: [
+        { rotulo: 'Condomínios', icone: 'apartment', link: '/condominios', visivel: () => this.auth.podeAlgum('CONDOMINIUM_VIEW') },
+        { rotulo: 'Unidades', icone: 'door_front', link: '/unidades', visivel: this.noCondominio('STRUCTURE_VIEW') },
+        { rotulo: 'Pessoas', icone: 'contacts', link: '/pessoas', visivel: () => this.contexto.podeAlgum('PEOPLE_VIEW') },
       ],
     },
     {
-      title: 'Financeiro',
-      icon: 'account_balance',
-      items: [
-        { label: 'Financeiro', icon: 'account_balance', link: '/financeiro', visible: this.inCondo('FINANCE_VIEW') },
-        { label: 'Cobrança e inadimplência', icon: 'request_quote', link: '/cobranca', visible: this.inCondo('BILLING_VIEW') },
-        { label: 'Fornecedores', icon: 'storefront', link: '/fornecedores', visible: () => this.context.canAny('SUPPLIER_VIEW') },
-        { label: 'Relatórios', icon: 'bar_chart', link: '/relatorios', visible: this.inCondo('REPORT_VIEW') },
+      titulo: 'Financeiro',
+      icone: 'account_balance',
+      itens: [
+        { rotulo: 'Financeiro', icone: 'account_balance', link: '/financeiro', visivel: this.noCondominio('FINANCE_VIEW') },
+        { rotulo: 'Cobrança e inadimplência', icone: 'request_quote', link: '/cobranca', visivel: this.noCondominio('BILLING_VIEW') },
+        { rotulo: 'Fornecedores', icone: 'storefront', link: '/fornecedores', visivel: () => this.contexto.podeAlgum('SUPPLIER_VIEW') },
+        { rotulo: 'Relatórios', icone: 'bar_chart', link: '/relatorios', visivel: this.noCondominio('REPORT_VIEW') },
       ],
     },
     {
-      title: 'Administração',
-      icon: 'home_work',
-      items: [
-        { label: 'Ocorrências', icon: 'build', link: '/ocorrencias', visible: this.inCondo('OCCURRENCE_VIEW') },
-        { label: 'Comunicados', icon: 'campaign', link: '/comunicados', visible: this.inCondo('ANNOUNCEMENT_VIEW') },
-        { label: 'Reservas', icon: 'event_available', link: '/reservas', visible: this.inCondo('RESERVATION_VIEW') },
-        { label: 'Portaria', icon: 'badge', link: '/portaria', visible: this.inCondo('ACCESS_VIEW') },
-        { label: 'Assembleias', icon: 'groups', link: '/assembleias', visible: this.inCondo('ASSEMBLY_VIEW') },
-        { label: 'Contratos', icon: 'contract', link: '/contratos', visible: this.inCondo('SUPPLIER_VIEW') },
-        { label: 'Documentos', icon: 'folder', link: '/documentos', visible: this.inCondo('DOCUMENT_VIEW') },
+      titulo: 'Administração',
+      icone: 'home_work',
+      itens: [
+        { rotulo: 'Ocorrências', icone: 'build', link: '/ocorrencias', visivel: this.noCondominio('OCCURRENCE_VIEW') },
+        { rotulo: 'Comunicados', icone: 'campaign', link: '/comunicados', visivel: this.noCondominio('ANNOUNCEMENT_VIEW') },
+        { rotulo: 'Reservas', icone: 'event_available', link: '/reservas', visivel: this.noCondominio('RESERVATION_VIEW') },
+        { rotulo: 'Portaria', icone: 'badge', link: '/portaria', visivel: this.noCondominio('ACCESS_VIEW') },
+        { rotulo: 'Assembleias', icone: 'groups', link: '/assembleias', visivel: this.noCondominio('ASSEMBLY_VIEW') },
+        { rotulo: 'Contratos', icone: 'contract', link: '/contratos', visivel: this.noCondominio('SUPPLIER_VIEW') },
+        { rotulo: 'Documentos', icone: 'folder', link: '/documentos', visivel: this.noCondominio('DOCUMENT_VIEW') },
       ],
     },
     {
-      title: 'Acesso e segurança',
-      icon: 'admin_panel_settings',
-      items: [
-        { label: 'Usuários', icon: 'group', link: '/usuarios', visible: () => this.auth.can('USER_VIEW') },
-        { label: 'Auditoria', icon: 'policy', link: '/auditoria', visible: () => this.auth.can('AUDIT_VIEW') },
-        { label: 'Administradoras', icon: 'corporate_fare', link: '/organizacoes', visible: () => !!this.auth.user()?.administradorPlataforma },
+      titulo: 'Acesso e segurança',
+      icone: 'admin_panel_settings',
+      itens: [
+        { rotulo: 'Usuários', icone: 'group', link: '/usuarios', visivel: () => this.auth.pode('USER_VIEW') },
+        { rotulo: 'Auditoria', icone: 'policy', link: '/auditoria', visivel: () => this.auth.pode('AUDIT_VIEW') },
+        { rotulo: 'Administradoras', icone: 'corporate_fare', link: '/organizacoes', visivel: () => !!this.auth.usuario()?.administradorPlataforma },
       ],
     },
   ];
 
-  protected readonly nav = computed(() => {
-    this.auth.user();
-    this.context.selected();
-    this.context.options();
-    return this.groups
-      .map((g) => ({ ...g, items: g.items.filter((i) => i.visible()) }))
-      .filter((g) => g.items.length > 0);
+  protected readonly menu = computed(() => {
+    this.auth.usuario();
+    this.contexto.selecionado();
+    this.contexto.opcoes();
+    return this.grupos
+      .map((g) => ({ ...g, itens: g.itens.filter((i) => i.visivel()) }))
+      .filter((g) => g.itens.length > 0);
   });
 
   /** Grupo da página atual: fica sempre aberto. */
-  protected readonly activeGroup = computed(() => {
-    const path = this.url().split(/[?#]/)[0];
-    return this.nav().find((g) => g.title && g.items.some((i) => (i.exact ? path === i.link : path === i.link || path.startsWith(i.link + '/'))))?.title;
+  protected readonly grupoAtivo = computed(() => {
+    const caminho = this.url().split(/[?#]/)[0];
+    return this.menu().find((g) => g.titulo && g.itens.some((i) => (i.exato ? caminho === i.link : caminho === i.link || caminho.startsWith(i.link + '/'))))?.titulo;
   });
 
-  protected readonly showSelector = computed(() => this.auth.isOrganizationMember() && this.context.options().length > 0);
+  protected readonly mostrarSeletor = computed(() => this.auth.membroAdministradora() && this.contexto.opcoes().length > 0);
 
-  protected readonly initials = computed(() => {
-    const name = this.auth.user()?.nome ?? '';
-    return name
+  protected readonly iniciais = computed(() => {
+    const nome = this.auth.usuario()?.nome ?? '';
+    return nome
       .split(/\s+/)
       .filter(Boolean)
       .slice(0, 2)
@@ -170,75 +170,75 @@ export class Shell {
       .join('');
   });
 
-  protected readonly themeIcon = computed(() => ({ system: 'brightness_auto', light: 'light_mode', dark: 'dark_mode' })[this.theme.mode()]);
+  protected readonly iconeTema = computed(() => ({ system: 'brightness_auto', light: 'light_mode', dark: 'dark_mode' })[this.tema.modo()]);
 
   constructor() {
     // Ao navegar para outra seção, abre o grupo dela (o usuário pode fechá-lo depois).
     effect(() => {
-      const group = this.activeGroup();
-      if (group && !untracked(this.open).has(group)) this.saveOpen(new Set([group]));
+      const grupo = this.grupoAtivo();
+      if (grupo && !untracked(this.abertos).has(grupo)) this.salvarAbertos(new Set([grupo]));
     });
   }
 
-  isOpen(title: string): boolean {
-    return this.open().has(title);
+  estaAberto(titulo: string): boolean {
+    return this.abertos().has(titulo);
   }
 
   /** Um grupo aberto por vez, como um acordeão. */
-  toggleGroup(title: string): void {
-    this.saveOpen(this.open().has(title) ? new Set() : new Set([title]));
+  alternarGrupo(titulo: string): void {
+    this.salvarAbertos(this.abertos().has(titulo) ? new Set() : new Set([titulo]));
   }
 
-  private saveOpen(next: Set<string>): void {
-    this.open.set(next);
-    writeValue(OPEN_KEY, JSON.stringify([...next]));
+  private salvarAbertos(proximo: Set<string>): void {
+    this.abertos.set(proximo);
+    gravarValor(CHAVE_ABERTOS, JSON.stringify([...proximo]));
   }
 
-  toggleCollapsed(): void {
-    this.collapsed.update((v) => !v);
-    writeValue(COLLAPSED_KEY, this.collapsed() ? '1' : null);
+  alternarRecolhido(): void {
+    this.recolhido.update((v) => !v);
+    gravarValor(CHAVE_RECOLHIDO, this.recolhido() ? '1' : null);
   }
 
-  setTheme(mode: ThemeMode): void {
-    this.theme.set(mode);
+  definirTema(modo: ModoTema): void {
+    this.tema.definir(modo);
   }
 
   /** Usuário cujo único acesso é o portal do morador. */
-  isResidentOnly(): boolean {
-    const me = this.auth.user();
-    if (!me || me.permissoesAdministradora.length > 0) return false;
-    return Object.values(me.permissoesCondominio).every((p) => p.length === 1 && p[0] === 'PORTAL_ACCESS');
+  apenasMorador(): boolean {
+    const perfil = this.auth.usuario();
+    if (!perfil || perfil.permissoesAdministradora.length > 0) return false;
+    return Object.values(perfil.permissoesCondominio).every((p) => p.length === 1 && p[0] === 'PORTAL_ACCESS');
   }
 
-  changePassword(): void {
+  alterarSenha(): void {
     this.dialog
-      .open<ChangePasswordDialog, void, boolean>(ChangePasswordDialog, { width: '440px' })
+      .open<AlterarSenhaDialog, void, boolean>(AlterarSenhaDialog, { width: '440px' })
       .afterClosed()
-      .subscribe((ok) => ok && this.notify.success('Senha alterada. As outras sessões foram encerradas.'));
+      .subscribe((ok) => ok && this.notificacao.sucesso('Senha alterada. As outras sessões foram encerradas.'));
   }
 }
 
-function readFlag(key: string): boolean {
+function lerIndicador(chave: string): boolean {
   try {
-    return localStorage.getItem(key) === '1';
+    return localStorage.getItem(chave) === '1';
   } catch {
     return false;
   }
 }
 
-function readList(key: string): string[] {
+function lerLista(chave: string): string[] {
   try {
-    const v = JSON.parse(localStorage.getItem(key) ?? '[]') as unknown;
+    const v = JSON.parse(localStorage.getItem(chave) ?? '[]') as unknown;
     return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
   } catch {
     return [];
   }
 }
 
-function writeValue(key: string, value: string | null): void {
+function gravarValor(chave: string, valor: string | null): void {
   try {
-    if (value === null) localStorage.removeItem(key);
-    else localStorage.setItem(key, value);
+    if (valor === null) localStorage.removeItem(chave);
+    else localStorage.setItem(chave, valor);
   } catch {
     // armazenamento indisponível: a preferência vale só nesta sessão
   }

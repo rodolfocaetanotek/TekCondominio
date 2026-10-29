@@ -1,10 +1,10 @@
 import { Pipe, PipeTransform } from '@angular/core';
-import { formatIsoDate } from './datas';
+import { formatarDataIso } from './datas';
 
 /** Exibe datas de negócio (AAAA-MM-DD) como DD/MM/AAAA, sem fuso horário. */
-@Pipe({ name: 'isoDate' })
-export class IsoDatePipe implements PipeTransform {
-  transform(value: string | null | undefined): string {
-    return formatIsoDate(value);
+@Pipe({ name: 'dataIso' })
+export class DataIsoPipe implements PipeTransform {
+  transform(valor: string | null | undefined): string {
+    return formatarDataIso(valor);
   }
 }
