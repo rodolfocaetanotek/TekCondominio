@@ -89,7 +89,7 @@ import { DetalheOcorrencia, OperacaoApi, ResumoOcorrencia } from './operacao-api
                     [class.is-pending]="!o.atrasada && (o.situacao === 'OPEN' || o.situacao === 'WAITING')" [class.is-info]="!o.atrasada && o.situacao === 'IN_PROGRESS'"
                     [class.is-inactive]="o.situacao === 'CANCELLED'">{{ o.situacao | rotulo: 'occurrenceStatus' }}</span></td></ng-container>
                 <tr mat-header-row *matHeaderRowDef="colunas"></tr>
-                <tr mat-row *matRowDef="let linha; colunas: colunas" class="is-clickable" tabindex="0" role="link"
+                <tr mat-row *matRowDef="let linha; columns: colunas" class="is-clickable" tabindex="0" role="link"
                   [attr.aria-label]="'Abrir ocorrência nº ' + linha.numero" (click)="abrir(linha)" (keydown.enter)="abrir(linha)"></tr>
               </table>
             </div>

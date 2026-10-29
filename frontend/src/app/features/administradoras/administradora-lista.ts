@@ -60,7 +60,7 @@ import { Administradora, AdministradoraService } from './administradora.service'
                   </td>
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="colunas"></tr>
-                <tr mat-row *matRowDef="let linha; colunas: colunas" class="is-clickable" tabindex="0" role="link"
+                <tr mat-row *matRowDef="let linha; columns: colunas" class="is-clickable" tabindex="0" role="link"
                   [attr.aria-label]="'Abrir ' + linha.nome" (click)="abrir(linha)" (keydown.enter)="abrir(linha)"></tr>
               </table>
             </div>

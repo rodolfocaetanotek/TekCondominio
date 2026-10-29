@@ -46,7 +46,7 @@ import { FinanceiroApi, Fornecedor } from './financeiro-api';
               <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Situação</th>
                 <td mat-cell *matCellDef="let s"><span class="tc-status" [class.is-active]="s.ativo" [class.is-inactive]="!s.ativo">{{ s.ativo ? 'Ativo' : 'Inativo' }}</span></td></ng-container>
               <tr mat-header-row *matHeaderRowDef="colunas"></tr>
-              <tr mat-row *matRowDef="let linha; colunas: colunas" [class.is-clickable]="podeEditar()" (click)="podeEditar() && editar(linha)"
+              <tr mat-row *matRowDef="let linha; columns: colunas" [class.is-clickable]="podeEditar()" (click)="podeEditar() && editar(linha)"
                 [attr.tabindex]="podeEditar() ? 0 : null" (keydown.enter)="podeEditar() && editar(linha)"></tr>
             </table>
           </div>

@@ -49,7 +49,7 @@ import { FinanceiroApi, Transferencia } from './financeiro-api';
                 @if (!t.estornada && podeCancelar()) { <button mat-button (click)="estornar(t)">Estornar</button> }
               </td></ng-container>
             <tr mat-header-row *matHeaderRowDef="colunas"></tr>
-            <tr mat-row *matRowDef="let linha; colunas: colunas"></tr>
+            <tr mat-row *matRowDef="let linha; columns: colunas"></tr>
           </table>
         </div>
       }

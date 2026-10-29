@@ -84,7 +84,7 @@ import { ConsultaAuditoria, AuditoriaService } from './auditoria.service';
                   <td mat-cell *matCellDef="let e" class="mono">{{ e.ipAddress ?? '—' }}</td>
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="colunas"></tr>
-                <tr mat-row *matRowDef="let linha; colunas: colunas"></tr>
+                <tr mat-row *matRowDef="let linha; columns: colunas"></tr>
               </table>
             </div>
             <mat-paginator [length]="pagina.totalElementos" [pageIndex]="pagina.pagina" [pageSize]="pagina.tamanho"
