@@ -6,8 +6,8 @@ describe('MonthlyChart', () => {
   it('desenha colunas ancoradas na base e escala pelo maior valor', () => {
     const fixture = TestBed.createComponent(MonthlyChart);
     fixture.componentRef.setInput('points', [
-      { month: '2026-09', income: 1000, expense: 400 },
-      { month: '2026-10', income: 0, expense: 1500 },
+      { mes: '2026-09', receitas: 1000, despesas: 400 },
+      { mes: '2026-10', receitas: 0, despesas: 1500 },
     ]);
     fixture.detectChanges();
     const paths = Array.from(fixture.nativeElement.querySelectorAll('path.bar')) as SVGPathElement[];
@@ -19,7 +19,7 @@ describe('MonthlyChart', () => {
 
   it('oferece tabela alternativa com resultado do mês', () => {
     const fixture = TestBed.createComponent(MonthlyChart);
-    fixture.componentRef.setInput('points', [{ month: '2026-10', income: 300, expense: 100 }]);
+    fixture.componentRef.setInput('points', [{ mes: '2026-10', receitas: 300, despesas: 100 }]);
     fixture.detectChanges();
     (fixture.nativeElement.querySelector('button') as HTMLButtonElement).click();
     fixture.detectChanges();

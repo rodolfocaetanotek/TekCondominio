@@ -21,7 +21,7 @@ import { openForm } from '../../shared/ui/form-dialog';
 import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
 import { PageHeader } from '../../shared/ui/page-header';
 import { Attachments } from './attachments';
-import { OccurrenceDetail, OpsApi } from './ops-api';
+import { DetalheOcorrencia, OpsApi } from './ops-api';
 
 @Component({
   selector: 'tc-occurrence-detail',
@@ -33,19 +33,19 @@ import { OccurrenceDetail, OpsApi } from './ops-api';
       @if (error(); as message) {
         <section class="tc-card"><tc-empty-state icon="error" title="Não foi possível abrir" [description]="message" /></section>
       } @else if (o(); as d) {
-        <tc-page-header [eyebrow]="'Ocorrência nº ' + d.summary.number" [title]="d.summary.title"
-          [subtitle]="(d.summary.category | label: 'occurrenceCategory') + ' · prioridade ' + (d.summary.priority | label: 'priority') + (d.summary.unitLabel ? ' · Unid. ' + d.summary.unitLabel : '')">
-          <span class="tc-status big" [class.is-success]="d.summary.status === 'RESOLVED'"
-            [class.is-pending]="d.summary.status === 'OPEN' || d.summary.status === 'WAITING'" [class.is-info]="d.summary.status === 'IN_PROGRESS'"
-            [class.is-inactive]="d.summary.status === 'CANCELLED'">{{ d.summary.status | label: 'occurrenceStatus' }}</span>
+        <tc-page-header [eyebrow]="'Ocorrência nº ' + d.resumo.numero" [title]="d.resumo.titulo"
+          [subtitle]="(d.resumo.categoria | label: 'occurrenceCategory') + ' · prioridade ' + (d.resumo.prioridade | label: 'priority') + (d.resumo.rotuloUnidade ? ' · Unid. ' + d.resumo.rotuloUnidade : '')">
+          <span class="tc-status big" [class.is-success]="d.resumo.situacao === 'RESOLVED'"
+            [class.is-pending]="d.resumo.situacao === 'OPEN' || d.resumo.situacao === 'WAITING'" [class.is-info]="d.resumo.situacao === 'IN_PROGRESS'"
+            [class.is-inactive]="d.resumo.situacao === 'CANCELLED'">{{ d.resumo.situacao | label: 'occurrenceStatus' }}</span>
         </tc-page-header>
         <div class="layout">
           <div class="main">
             <section class="tc-card">
-              <p class="desc">{{ d.description }}</p>
-              <p class="tc-muted small">Aberta por {{ d.summary.reporterName }} em {{ d.summary.createdAt | date: 'dd/MM/yyyy HH:mm' }}
-                · responsável: {{ d.summary.assigneeName ?? 'não definido' }} · prazo: {{ d.summary.dueDate ? (d.summary.dueDate | isoDate) : '—' }}</p>
-              @if (d.resolution) { <p class="resolution"><strong>Solução:</strong> {{ d.resolution }}</p> }
+              <p class="desc">{{ d.descricao }}</p>
+              <p class="tc-muted small">Aberta por {{ d.resumo.nomeSolicitante }} em {{ d.resumo.criadoEm | date: 'dd/MM/yyyy HH:mm' }}
+                · responsável: {{ d.resumo.nomeResponsavel ?? 'não definido' }} · prazo: {{ d.resumo.prazo ? (d.resumo.prazo | isoDate) : '—' }}</p>
+              @if (d.solucao) { <p class="resolution"><strong>Solução:</strong> {{ d.solucao }}</p> }
               @if (canEdit()) {
                 <div class="tc-actions status-acts">
                   <button mat-button (click)="triage(d)">Triagem</button>
@@ -57,11 +57,11 @@ import { OccurrenceDetail, OpsApi } from './ops-api';
             </section>
             <section class="tc-card">
               <h3 class="tc-section-title first">Andamento</h3>
-              @for (i of d.interactions; track i.id) {
-                <div class="msg" [class.internal]="i.internal">
-                  <strong>{{ i.authorName }}</strong> <small class="tc-muted">{{ i.createdAt | date: 'dd/MM/yy HH:mm' }}
-                    {{ i.statusChange ? ' · ' + (i.statusChange | label: 'occurrenceStatus') : '' }}{{ i.internal ? ' · interna' : '' }}</small>
-                  <p>{{ i.message }}</p>
+              @for (i of d.interacoes; track i.id) {
+                <div class="msg" [class.internal]="i.interna">
+                  <strong>{{ i.nomeAutor }}</strong> <small class="tc-muted">{{ i.criadoEm | date: 'dd/MM/yy HH:mm' }}
+                    {{ i.situacaoAlterada ? ' · ' + (i.situacaoAlterada | label: 'occurrenceStatus') : '' }}{{ i.interna ? ' · interna' : '' }}</small>
+                  <p>{{ i.mensagem }}</p>
                 </div>
               } @empty { <p class="tc-muted">Sem interações.</p> }
               @if (canEdit()) {
@@ -73,7 +73,7 @@ import { OccurrenceDetail, OpsApi } from './ops-api';
               }
             </section>
           </div>
-          <tc-attachments [condominiumId]="context.id()!" entityType="Occurrence" [entityId]="d.summary.id" category="OCCURRENCE" [canEdit]="canEdit()" />
+          <tc-attachments [condominiumId]="context.id()!" entityType="Occurrence" [entityId]="d.resumo.id" category="OCCURRENCE" [canEdit]="canEdit()" />
         </div>
       } @else {
         <mat-progress-bar mode="indeterminate" />
@@ -116,8 +116,8 @@ export class OccurrenceDetailPage {
     filter(([c]) => !!c),
     switchMap(([c, id]) => this.api.occurrence(c!, id).pipe(catchError((err: unknown) => { this.error.set(toProblem(err).detail); return of(null); })))));
 
-  nextStatuses(d: OccurrenceDetail): { value: string; label: string }[] {
-    const s = d.summary.status;
+  nextStatuses(d: DetalheOcorrencia): { value: string; label: string }[] {
+    const s = d.resumo.situacao;
     if (s === 'RESOLVED' || s === 'CANCELLED') return [{ value: 'OPEN', label: 'Reabrir' }];
     return [
       ...(s !== 'IN_PROGRESS' ? [{ value: 'IN_PROGRESS', label: 'Em atendimento' }] : []),
@@ -131,19 +131,19 @@ export class OccurrenceDetailPage {
     const needsText = status === 'RESOLVED' || status === 'CANCELLED';
     openForm(this.dialog, {
       title: status === 'RESOLVED' ? 'Resolver ocorrência' : 'Alterar situação',
-      fields: [{ key: 'message', label: status === 'RESOLVED' ? 'Solução aplicada' : 'Mensagem', type: 'textarea', required: needsText, maxLength: 2000 }],
-      submit: (v) => this.api.occurrenceStatus(this.context.id()!, this.id(), { status, message: v['message'] }),
+      fields: [{ key: 'mensagem', label: status === 'RESOLVED' ? 'Solução aplicada' : 'Mensagem', type: 'textarea', required: needsText, maxLength: 2000 }],
+      submit: (v) => this.api.occurrenceStatus(this.context.id()!, this.id(), { situacao: status, mensagem: v['mensagem'] }),
     }, '480px').pipe(filter((r) => !!r)).subscribe(() => this.done('Situação atualizada.'));
   }
 
-  triage(d: OccurrenceDetail): void {
+  triage(d: DetalheOcorrencia): void {
     openForm(this.dialog, {
       title: 'Triagem',
       fields: [
-        { key: 'category', label: 'Categoria', type: 'select', required: true, value: d.summary.category, span: 6, options: options('occurrenceCategory') },
-        { key: 'priority', label: 'Prioridade', type: 'select', required: true, value: d.summary.priority, span: 6, options: options('priority') },
-        { key: 'assigneeName', label: 'Responsável', value: d.summary.assigneeName, span: 6, maxLength: 150 },
-        { key: 'dueDate', label: 'Prazo', type: 'date', value: d.summary.dueDate, span: 6 },
+        { key: 'categoria', label: 'Categoria', type: 'select', required: true, value: d.resumo.categoria, span: 6, options: options('occurrenceCategory') },
+        { key: 'prioridade', label: 'Prioridade', type: 'select', required: true, value: d.resumo.prioridade, span: 6, options: options('priority') },
+        { key: 'nomeResponsavel', label: 'Responsável', value: d.resumo.nomeResponsavel, span: 6, maxLength: 150 },
+        { key: 'prazo', label: 'Prazo', type: 'date', value: d.resumo.prazo, span: 6 },
       ],
       submit: (v) => this.api.updateOccurrence(this.context.id()!, this.id(), v),
     }).pipe(filter((r) => !!r)).subscribe(() => this.done('Triagem salva.'));

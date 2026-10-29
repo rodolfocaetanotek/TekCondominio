@@ -2,7 +2,7 @@ import { CurrencyPipe } from '@angular/common';
 import { Component, computed, input, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 
-export interface MonthPoint { month: string; income: number; expense: number; }
+export interface MonthPoint { mes: string; receitas: number; despesas: number; }
 
 const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
@@ -28,9 +28,9 @@ const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', '
           <caption class="sr-only">Receitas e despesas por mês</caption>
           <thead><tr><th>Mês</th><th class="num">Receitas</th><th class="num">Despesas</th><th class="num">Resultado</th></tr></thead>
           <tbody>
-            @for (p of points(); track p.month) {
-              <tr><td>{{ label(p.month) }}</td><td class="num">{{ p.income | currency: 'BRL' }}</td><td class="num">{{ p.expense | currency: 'BRL' }}</td>
-                <td class="num">{{ p.income - p.expense | currency: 'BRL' }}</td></tr>
+            @for (p of points(); track p.mes) {
+              <tr><td>{{ label(p.mes) }}</td><td class="num">{{ p.receitas | currency: 'BRL' }}</td><td class="num">{{ p.despesas | currency: 'BRL' }}</td>
+                <td class="num">{{ p.receitas - p.despesas | currency: 'BRL' }}</td></tr>
             }
           </tbody>
         </table>
@@ -41,13 +41,13 @@ const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', '
               <line class="grid" [attr.x1]="PAD_L" [attr.x2]="W - 4" [attr.y1]="t.y" [attr.y2]="t.y" />
               <text class="axis" [attr.x]="PAD_L - 6" [attr.y]="t.y + 3" text-anchor="end">{{ t.label }}</text>
             }
-            @for (b of bars(); track b.month; let i = $index) {
+            @for (b of bars(); track b.mes; let i = $index) {
               <g (mouseenter)="hover.set(i)" (focus)="hover.set(i)" (blur)="hover.set(null)" tabindex="0"
-                [attr.aria-label]="label(b.month) + ': receitas ' + money(b.income) + ', despesas ' + money(b.expense)">
+                [attr.aria-label]="label(b.mes) + ': receitas ' + money(b.receitas) + ', despesas ' + money(b.despesas)">
                 <rect class="hit" [attr.x]="b.x - 4" [attr.y]="PAD_T" [attr.width]="b.w * 2 + 10" [attr.height]="plotH" />
                 <path class="bar income" [attr.d]="col(b.x, b.yIncome, b.w)" />
                 <path class="bar expense" [attr.d]="col(b.x + b.w + 2, b.yExpense, b.w)" />
-                <text class="axis" [attr.x]="b.x + b.w + 1" [attr.y]="H - 6" text-anchor="middle">{{ label(b.month).slice(0, 3) }}</text>
+                <text class="axis" [attr.x]="b.x + b.w + 1" [attr.y]="H - 6" text-anchor="middle">{{ label(b.mes).slice(0, 3) }}</text>
               </g>
             }
             <line class="base" [attr.x1]="PAD_L" [attr.x2]="W - 4" [attr.y1]="PAD_T + plotH" [attr.y2]="PAD_T + plotH" />
@@ -55,10 +55,10 @@ const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', '
           @if (hover() !== null) {
             @let p = points()[hover()!];
             <div class="tip" [style.left.%]="tipLeft()">
-              <strong>{{ label(p.month) }}</strong>
-              <span><i class="sw income"></i>Receitas {{ p.income | currency: 'BRL' }}</span>
-              <span><i class="sw expense"></i>Despesas {{ p.expense | currency: 'BRL' }}</span>
-              <span class="muted">Resultado {{ p.income - p.expense | currency: 'BRL' }}</span>
+              <strong>{{ label(p.mes) }}</strong>
+              <span><i class="sw income"></i>Receitas {{ p.receitas | currency: 'BRL' }}</span>
+              <span><i class="sw expense"></i>Despesas {{ p.despesas | currency: 'BRL' }}</span>
+              <span class="muted">Resultado {{ p.receitas - p.despesas | currency: 'BRL' }}</span>
             </div>
           }
         </div>
@@ -104,7 +104,7 @@ export class MonthlyChart {
   protected readonly showTable = signal(false);
 
   private readonly max = computed(() => {
-    const m = Math.max(1, ...this.points().flatMap((p) => [p.income, p.expense]));
+    const m = Math.max(1, ...this.points().flatMap((p) => [p.receitas, p.despesas]));
     const mag = Math.pow(10, Math.floor(Math.log10(m)));
     return Math.ceil(m / mag) * mag;
   });
@@ -122,13 +122,13 @@ export class MonthlyChart {
       ...p,
       x: this.PAD_L + i * slot + (slot - (w * 2 + 2)) / 2,
       w,
-      yIncome: this.y(p.income),
-      yExpense: this.y(p.expense),
+      yIncome: this.y(p.receitas),
+      yExpense: this.y(p.despesas),
     }));
   });
 
   protected readonly summary = computed(() => {
-    const total = this.points().reduce((s, p) => ({ i: s.i + p.income, e: s.e + p.expense }), { i: 0, e: 0 });
+    const total = this.points().reduce((s, p) => ({ i: s.i + p.receitas, e: s.e + p.despesas }), { i: 0, e: 0 });
     return `Receitas e despesas dos últimos ${this.points().length} meses: receitas ${this.money(total.i)}, despesas ${this.money(total.e)}.`;
   });
 

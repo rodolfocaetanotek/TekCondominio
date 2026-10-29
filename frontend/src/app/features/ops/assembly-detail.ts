@@ -23,7 +23,7 @@ import { PageHeader } from '../../shared/ui/page-header';
 import { StructureService } from '../structure/structure.service';
 import { openAssemblyForm } from './assembly-form';
 import { Attachments } from './attachments';
-import { AgendaItem, AssemblyDetail, OpsApi } from './ops-api';
+import { ItemPauta, DetalheAssembleia, OpsApi } from './ops-api';
 
 @Component({
   selector: 'tc-assembly-detail',
@@ -35,44 +35,44 @@ import { AgendaItem, AssemblyDetail, OpsApi } from './ops-api';
       @if (error(); as message) {
         <section class="tc-card"><tc-empty-state icon="error" title="Não foi possível abrir" [description]="message" /></section>
       } @else if (a(); as d) {
-        <tc-page-header [eyebrow]="'Assembleia ' + (d.kind | label: 'assemblyKind')" [title]="d.title"
-          [subtitle]="(d.scheduledAt | date: 'dd/MM/yyyy HH:mm') + ' · ' + d.location + ' · ' + (d.voteWeight | label: 'voteWeight')">
-          <span class="tc-status big" [class.is-success]="d.status === 'CLOSED'" [class.is-pending]="d.status === 'CALLED'" [class.is-info]="d.status === 'IN_PROGRESS'"
-            [class.is-inactive]="d.status === 'CANCELLED' || d.status === 'DRAFT'">{{ d.status | label: 'assemblyStatus' }}</span>
+        <tc-page-header [eyebrow]="'Assembleia ' + (d.tipo | label: 'assemblyKind')" [title]="d.titulo"
+          [subtitle]="(d.primeiraConvocacaoEm | date: 'dd/MM/yyyy HH:mm') + ' · ' + d.local + ' · ' + (d.criterioVoto | label: 'voteWeight')">
+          <span class="tc-status big" [class.is-success]="d.situacao === 'CLOSED'" [class.is-pending]="d.situacao === 'CALLED'" [class.is-info]="d.situacao === 'IN_PROGRESS'"
+            [class.is-inactive]="d.situacao === 'CANCELLED' || d.situacao === 'DRAFT'">{{ d.situacao | label: 'assemblyStatus' }}</span>
         </tc-page-header>
 
         @if (canEdit()) {
           <div class="tc-actions bar">
-            @switch (d.status) {
+            @switch (d.situacao) {
               @case ('DRAFT') {
                 <button mat-stroked-button (click)="edit(d)"><mat-icon>edit</mat-icon> Editar</button>
-                <button mat-flat-button (click)="act('call', 'Convocar assembleia', 'Será publicado um comunicado de convocação com a pauta para todos os condôminos (notificação e e-mail).')"><mat-icon>campaign</mat-icon> Convocar</button>
+                <button mat-flat-button (click)="act('convocar', 'Convocar assembleia', 'Será publicado um comunicado de convocação com a pauta para todos os condôminos (notificação e e-mail).')"><mat-icon>campaign</mat-icon> Convocar</button>
               }
               @case ('CALLED') {
                 <button mat-stroked-button (click)="edit(d)"><mat-icon>edit</mat-icon> Editar</button>
-                <button mat-flat-button (click)="act('start', 'Iniciar assembleia', 'Abre o registro de presença e votação.')"><mat-icon>play_arrow</mat-icon> Iniciar</button>
+                <button mat-flat-button (click)="act('iniciar', 'Iniciar assembleia', 'Abre o registro de presença e votação.')"><mat-icon>play_arrow</mat-icon> Iniciar</button>
               }
               @case ('IN_PROGRESS') {
-                <button mat-flat-button (click)="act('close', 'Encerrar assembleia', 'Após encerrada, presença e votos não podem ser alterados.')"><mat-icon>stop</mat-icon> Encerrar</button>
+                <button mat-flat-button (click)="act('encerrar', 'Encerrar assembleia', 'Após encerrada, presença e votos não podem ser alterados.')"><mat-icon>stop</mat-icon> Encerrar</button>
               }
             }
-            @if (d.status !== 'CLOSED' && d.status !== 'CANCELLED') { <button mat-button (click)="cancel()">Cancelar assembleia</button> }
+            @if (d.situacao !== 'CLOSED' && d.situacao !== 'CANCELLED') { <button mat-button (click)="cancel()">Cancelar assembleia</button> }
           </div>
         }
 
         <section class="tc-kpis" aria-label="Quórum">
           <div class="tc-kpi tc-card">
             <span class="icon"><mat-icon aria-hidden="true">door_front</mat-icon></span>
-            <span class="label">Unidades presentes</span><span class="value">{{ d.quorum.unitsPresent }} / {{ d.quorum.totalUnits }}</span>
+            <span class="label">Unidades presentes</span><span class="value">{{ d.quorum.unidadesPresentes }} / {{ d.quorum.totalUnidades }}</span>
           </div>
           <div class="tc-kpi tc-card tone-info">
             <span class="icon"><mat-icon aria-hidden="true">pie_chart</mat-icon></span>
-            <span class="label">Frações presentes</span><span class="value">{{ d.quorum.fractionPresent | number: '1.2-4' }}%</span>
+            <span class="label">Frações presentes</span><span class="value">{{ d.quorum.fracaoPresente | number: '1.2-4' }}%</span>
           </div>
-          @if (d.cancelReason) {
+          @if (d.motivoCancelamento) {
             <div class="tc-kpi tc-card tone-danger reason">
               <span class="icon"><mat-icon aria-hidden="true">event_busy</mat-icon></span>
-              <span class="label">Cancelamento</span><span class="value">{{ d.cancelReason }}</span>
+              <span class="label">Cancelamento</span><span class="value">{{ d.motivoCancelamento }}</span>
             </div>
           }
         </section>
@@ -80,32 +80,32 @@ import { AgendaItem, AssemblyDetail, OpsApi } from './ops-api';
         <div class="layout">
           <section class="tc-card">
             <h3 class="tc-section-title first">Pauta e votação</h3>
-            @for (i of d.agenda; track i.id) {
+            @for (i of d.pauta; track i.id) {
               <div class="item">
-                <strong class="item-title">{{ i.position }}. {{ i.title }}</strong>
-                @if (i.voting) {
+                <strong class="item-title">{{ i.posicao }}. {{ i.titulo }}</strong>
+                @if (i.deliberativo) {
                   <div class="tally">
-                    <span class="vote yes">Sim <b>{{ i.tally.yes | number: '1.0-4' }}</b></span><span class="vote no">Não <b>{{ i.tally.no | number: '1.0-4' }}</b></span>
-                    <span class="vote">Abst. <b>{{ i.tally.abstain | number: '1.0-4' }}</b></span><span class="tc-muted">{{ i.tally.votes }} voto(s)</span>
-                    @if (canEdit() && d.status === 'IN_PROGRESS') { <button mat-button (click)="vote(d, i)"><mat-icon>how_to_vote</mat-icon> Registrar voto</button> }
+                    <span class="vote yes">Sim <b>{{ i.apuracao.sim | number: '1.0-4' }}</b></span><span class="vote no">Não <b>{{ i.apuracao.nao | number: '1.0-4' }}</b></span>
+                    <span class="vote">Abst. <b>{{ i.apuracao.abstencao | number: '1.0-4' }}</b></span><span class="tc-muted">{{ i.apuracao.votos }} voto(s)</span>
+                    @if (canEdit() && d.situacao === 'IN_PROGRESS') { <button mat-button (click)="vote(d, i)"><mat-icon>how_to_vote</mat-icon> Registrar voto</button> }
                   </div>
                 } @else { <small class="tc-chip-soft info"> informativo</small> }
-                @if (i.deliberation) { <p class="delib">{{ i.deliberation }}{{ i.responsible ? ' — resp.: ' + i.responsible : '' }}{{ i.deadline ? ' (prazo ' + (i.deadline | isoDate) + ')' : '' }}</p> }
-                @if (canEdit() && (d.status === 'IN_PROGRESS' || d.status === 'CLOSED')) { <button mat-button (click)="deliberate(i)">Deliberação</button> }
+                @if (i.deliberacao) { <p class="delib">{{ i.deliberacao }}{{ i.responsavel ? ' — resp.: ' + i.responsavel : '' }}{{ i.prazo ? ' (prazo ' + (i.prazo | isoDate) + ')' : '' }}</p> }
+                @if (canEdit() && (d.situacao === 'IN_PROGRESS' || d.situacao === 'CLOSED')) { <button mat-button (click)="deliberate(i)">Deliberação</button> }
               </div>
             }
           </section>
           <section class="tc-card">
             <div class="head"><h3 class="tc-section-title">Lista de presença</h3>
-              @if (canEdit() && d.status === 'IN_PROGRESS') { <button mat-button (click)="attend()"><mat-icon>person_add</mat-icon> Registrar</button> }</div>
-            @for (p of d.attendance; track p.id) {
-              <div class="att"><span><strong>{{ p.unitLabel }}</strong> · {{ p.attendeeName }}{{ p.byProxy ? ' (procurador: ' + p.proxyName + ')' : '' }}</span>
-                @if (canEdit() && d.status === 'IN_PROGRESS') { <button mat-icon-button (click)="removeAttendance(p.id)" aria-label="Remover presença"><mat-icon>close</mat-icon></button> }</div>
+              @if (canEdit() && d.situacao === 'IN_PROGRESS') { <button mat-button (click)="attend()"><mat-icon>person_add</mat-icon> Registrar</button> }</div>
+            @for (p of d.presencas; track p.id) {
+              <div class="att"><span><strong>{{ p.rotuloUnidade }}</strong> · {{ p.nomePresente }}{{ p.porProcuracao ? ' (procurador: ' + p.nomeProcurador + ')' : '' }}</span>
+                @if (canEdit() && d.situacao === 'IN_PROGRESS') { <button mat-icon-button (click)="removeAttendance(p.id)" aria-label="Remover presença"><mat-icon>close</mat-icon></button> }</div>
             } @empty { <p class="tc-muted">Nenhuma presença registrada.</p> }
           </section>
         </div>
 
-        @if (d.status === 'IN_PROGRESS' || d.status === 'CLOSED') {
+        @if (d.situacao === 'IN_PROGRESS' || d.situacao === 'CLOSED') {
           <section class="tc-card minutes">
             <div class="head"><h3 class="tc-section-title">Ata</h3>
               @if (canEdit()) { <button mat-button (click)="draft()"><mat-icon>auto_awesome</mat-icon> Gerar rascunho a partir dos dados</button> }</div>
@@ -157,15 +157,15 @@ export class AssemblyDetailPage {
   protected readonly a = toSignal(combineLatest([toObservable(this.context.id), toObservable(this.id), toObservable(this.tick)]).pipe(
     filter(([c]) => !!c),
     switchMap(([c, id]) => this.api.assembly(c!, id).pipe(
-      map((d) => { if (this.minutes.pristine) this.minutes.reset(d.minutes ?? ''); return d; }),
+      map((d) => { if (this.minutes.pristine) this.minutes.reset(d.ata ?? ''); return d; }),
       catchError((err: unknown) => { this.error.set(toProblem(err).detail); return of(null); })))));
 
   private c(): string {
     return this.context.id()!;
   }
 
-  act(action: 'call' | 'start' | 'close', title: string, message: string): void {
-    askConfirm(this.dialog, title, message, title.split(' ')[0]).pipe(switchMap(() => this.api.assemblyAction(this.c(), this.id(), action)))
+  act(acao: 'convocar' | 'iniciar' | 'encerrar', title: string, message: string): void {
+    askConfirm(this.dialog, title, message, title.split(' ')[0]).pipe(switchMap(() => this.api.assemblyAction(this.c(), this.id(), acao)))
       .subscribe({ next: () => this.done('Assembleia atualizada.'), error: (err: unknown) => this.notify.error(toProblem(err).detail) });
   }
 
@@ -175,7 +175,7 @@ export class AssemblyDetailPage {
       .subscribe({ next: () => this.done('Assembleia cancelada.'), error: (err: unknown) => this.notify.error(toProblem(err).detail) });
   }
 
-  edit(d: AssemblyDetail): void {
+  edit(d: DetalheAssembleia): void {
     openAssemblyForm(this.dialog, this.api, this.c(), d).pipe(filter((r) => !!r)).subscribe(() => this.done('Assembleia atualizada.'));
   }
 
@@ -183,40 +183,40 @@ export class AssemblyDetailPage {
     this.units().subscribe((units) => openForm(this.dialog, {
       title: 'Registrar presença',
       fields: [
-        { key: 'unitId', label: 'Unidade', type: 'select', required: true, options: units },
-        { key: 'attendeeName', label: 'Nome de quem está presente', required: true, maxLength: 150 },
-        { key: 'byProxy', label: 'Representado por procuração', type: 'checkbox' },
-        { key: 'proxyName', label: 'Nome do procurador', maxLength: 150 },
+        { key: 'idUnidade', label: 'Unidade', type: 'select', required: true, options: units },
+        { key: 'nomePresente', label: 'Nome de quem está presente', required: true, maxLength: 150 },
+        { key: 'porProcuracao', label: 'Representado por procuração', type: 'checkbox' },
+        { key: 'nomeProcurador', label: 'Nome do procurador', maxLength: 150 },
       ],
       submit: (v) => this.api.attend(this.c(), this.id(), v),
     }).pipe(filter((r) => !!r)).subscribe(() => this.done('Presença registrada.')));
   }
 
-  removeAttendance(attendanceId: string): void {
-    this.api.removeAttendance(this.c(), this.id(), attendanceId)
+  removeAttendance(idPresenca: string): void {
+    this.api.removeAttendance(this.c(), this.id(), idPresenca)
       .subscribe({ next: () => this.done('Presença removida.'), error: (err: unknown) => this.notify.error(toProblem(err).detail) });
   }
 
-  vote(d: AssemblyDetail, item: AgendaItem): void {
+  vote(d: DetalheAssembleia, item: ItemPauta): void {
     openForm(this.dialog, {
-      title: `Voto — ${item.position}. ${item.title}`,
+      title: `Voto — ${item.posicao}. ${item.titulo}`,
       intro: 'Somente unidades presentes votam; cada unidade vota uma vez por item.',
       fields: [
-        { key: 'unitId', label: 'Unidade', type: 'select', required: true, options: d.attendance.map((p) => ({ value: p.unitId, label: p.unitLabel + ' · ' + p.attendeeName })) },
-        { key: 'choice', label: 'Voto', type: 'select', required: true, value: 'YES', options: [{ value: 'YES', label: 'Sim' }, { value: 'NO', label: 'Não' }, { value: 'ABSTAIN', label: 'Abstenção' }] },
+        { key: 'idUnidade', label: 'Unidade', type: 'select', required: true, options: d.presencas.map((p) => ({ value: p.idUnidade, label: p.rotuloUnidade + ' · ' + p.nomePresente })) },
+        { key: 'escolha', label: 'Voto', type: 'select', required: true, value: 'YES', options: [{ value: 'YES', label: 'Sim' }, { value: 'NO', label: 'Não' }, { value: 'ABSTAIN', label: 'Abstenção' }] },
       ],
       submitLabel: 'Registrar voto',
-      submit: (v) => this.api.vote(this.c(), this.id(), { ...v, agendaItemId: item.id }),
+      submit: (v) => this.api.vote(this.c(), this.id(), { ...v, idItemPauta: item.id }),
     }, '460px').pipe(filter((r) => !!r)).subscribe(() => this.done('Voto registrado.'));
   }
 
-  deliberate(item: AgendaItem): void {
+  deliberate(item: ItemPauta): void {
     openForm(this.dialog, {
-      title: `Deliberação — ${item.position}. ${item.title}`,
+      title: `Deliberação — ${item.posicao}. ${item.titulo}`,
       fields: [
-        { key: 'deliberation', label: 'Deliberação', type: 'textarea', value: item.deliberation, maxLength: 2000 },
-        { key: 'responsible', label: 'Responsável pela execução', value: item.responsible, span: 6, maxLength: 150 },
-        { key: 'deadline', label: 'Prazo', type: 'date', value: item.deadline, span: 6 },
+        { key: 'deliberacao', label: 'Deliberação', type: 'textarea', value: item.deliberacao, maxLength: 2000 },
+        { key: 'responsavel', label: 'Responsável pela execução', value: item.responsavel, span: 6, maxLength: 150 },
+        { key: 'prazo', label: 'Prazo', type: 'date', value: item.prazo, span: 6 },
       ],
       submit: (v) => this.api.deliberate(this.c(), this.id(), item.id, v),
     }).pipe(filter((r) => !!r)).subscribe(() => this.done('Deliberação registrada.'));
@@ -224,7 +224,7 @@ export class AssemblyDetailPage {
 
   draft(): void {
     this.api.minutesDraft(this.c(), this.id()).subscribe((r) => {
-      this.minutes.setValue(r.minutes);
+      this.minutes.setValue(r.ata);
       this.minutes.markAsDirty();
     });
   }

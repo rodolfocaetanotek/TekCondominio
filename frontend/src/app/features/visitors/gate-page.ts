@@ -19,7 +19,7 @@ import { openForm } from '../../shared/ui/form-dialog';
 import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
 import { PageHeader } from '../../shared/ui/page-header';
 import { StructureService } from '../structure/structure.service';
-import { VisitorApi, VisitorPass } from './visitor-api';
+import { AutorizacaoVisita, VisitorApi } from './visitor-api';
 
 /** Painel da portaria: entrada por código, chegadas sem aviso, quem está no condomínio e saídas. */
 @Component({
@@ -47,13 +47,13 @@ import { VisitorApi, VisitorPass } from './visitor-api';
             <h3 class="tc-section-title">{{ group.title }} ({{ group.items.length }})</h3>
             @for (v of group.items; track v.id) {
               <div class="row">
-                <div class="who"><strong>{{ v.name }}</strong> · {{ v.kind | label: 'visitorKind' }} · unid. {{ v.unitLabel }}<br />
-                  <span class="tc-muted small">{{ v.company ?? '' }}{{ v.document ? ' · doc. ' + v.document : '' }}{{ v.vehiclePlate ? ' · placa ' + v.vehiclePlate : '' }}
-                    · autorizado por {{ v.authorizedByName }}{{ v.validFrom !== v.validUntil ? ' · válido até ' + (v.validUntil | isoDate) : '' }}
-                    {{ v.enteredAt ? ' · entrada ' + (v.enteredAt | date: 'HH:mm') : '' }}{{ v.leftAt ? ' · saída ' + (v.leftAt | date: 'HH:mm') : '' }}</span></div>
+                <div class="who"><strong>{{ v.nome }}</strong> · {{ v.tipo | label: 'visitorKind' }} · unid. {{ v.rotuloUnidade }}<br />
+                  <span class="tc-muted small">{{ v.empresa ?? '' }}{{ v.documento ? ' · doc. ' + v.documento : '' }}{{ v.placaVeiculo ? ' · placa ' + v.placaVeiculo : '' }}
+                    · autorizado por {{ v.nomeAutorizadoPor }}{{ v.validaDe !== v.validaAte ? ' · válido até ' + (v.validaAte | isoDate) : '' }}
+                    {{ v.entradaEm ? ' · entrada ' + (v.entradaEm | date: 'HH:mm') : '' }}{{ v.saidaEm ? ' · saída ' + (v.saidaEm | date: 'HH:mm') : '' }}</span></div>
                 @if (canEdit()) {
-                  @if (v.status === 'EXPECTED') { <button mat-flat-button class="act" (click)="act(v, 'in')"><mat-icon>login</mat-icon> Entrada</button> }
-                  @if (v.status === 'INSIDE') { <button mat-stroked-button class="act" (click)="act(v, 'out')"><mat-icon>logout</mat-icon> Saída</button> }
+                  @if (v.situacao === 'EXPECTED') { <button mat-flat-button class="act" (click)="act(v, 'in')"><mat-icon>login</mat-icon> Entrada</button> }
+                  @if (v.situacao === 'INSIDE') { <button mat-stroked-button class="act" (click)="act(v, 'out')"><mat-icon>logout</mat-icon> Saída</button> }
                 }
               </div>
             } @empty { <p class="tc-muted none">Nenhum registro.</p> }
@@ -103,13 +103,13 @@ export class GatePage {
 
   protected readonly canEdit = computed(() => this.context.can('ACCESS_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   protected readonly list = toSignal(combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(
-    filter(([c]) => !!c), switchMap(([c]) => this.api.today(c!).pipe(catchError(() => of([] as VisitorPass[]))))));
+    filter(([c]) => !!c), switchMap(([c]) => this.api.today(c!).pipe(catchError(() => of([] as AutorizacaoVisita[]))))));
   protected readonly groups = computed(() => {
     const all = this.list() ?? [];
     return [
-      { title: 'No condomínio agora', items: all.filter((v) => v.status === 'INSIDE') },
-      { title: 'Esperados hoje', items: all.filter((v) => v.status === 'EXPECTED') },
-      { title: 'Saíram hoje', items: all.filter((v) => v.status === 'LEFT') },
+      { title: 'No condomínio agora', items: all.filter((v) => v.situacao === 'INSIDE') },
+      { title: 'Esperados hoje', items: all.filter((v) => v.situacao === 'EXPECTED') },
+      { title: 'Saíram hoje', items: all.filter((v) => v.situacao === 'LEFT') },
     ];
   });
 
@@ -117,7 +117,7 @@ export class GatePage {
     if (this.code.invalid) return;
     this.api.checkInByCode(this.context.id()!, this.code.value).subscribe({
       next: (v) => {
-        this.notify.success(`Entrada liberada: ${v.name} (unid. ${v.unitLabel}).`);
+        this.notify.success(`Entrada liberada: ${v.nome} (unid. ${v.rotuloUnidade}).`);
         this.code.reset();
         this.tick.update((t) => t + 1);
       },
@@ -125,7 +125,7 @@ export class GatePage {
     });
   }
 
-  act(v: VisitorPass, action: 'in' | 'out'): void {
+  act(v: AutorizacaoVisita, action: 'in' | 'out'): void {
     const c = this.context.id()!;
     (action === 'in' ? this.api.checkIn(c, v.id) : this.api.checkOut(c, v.id)).subscribe({
       next: () => this.tick.update((t) => t + 1),
@@ -140,12 +140,12 @@ export class GatePage {
         title: 'Registrar chegada',
         intro: 'Colete apenas os dados necessários. O documento é exibido mascarado e os registros são anonimizados após o prazo de retenção.',
         fields: [
-          { key: 'unitId', label: 'Unidade de destino', type: 'select', required: true, span: 6, options: units.map((u) => ({ value: u.id, label: u.rotulo })) },
-          { key: 'kind', label: 'Tipo', type: 'select', required: true, value: 'VISITOR', span: 6, options: options('visitorKind') },
-          { key: 'name', label: 'Nome', required: true, maxLength: 150 },
-          { key: 'document', label: 'Documento (opcional)', maxLength: 20, span: 6 },
-          { key: 'vehiclePlate', label: 'Placa (opcional)', maxLength: 8, span: 6 },
-          { key: 'company', label: 'Empresa (prestador/entrega)', maxLength: 120 },
+          { key: 'idUnidade', label: 'Unidade de destino', type: 'select', required: true, span: 6, options: units.map((u) => ({ value: u.id, label: u.rotulo })) },
+          { key: 'tipo', label: 'Tipo', type: 'select', required: true, value: 'VISITOR', span: 6, options: options('visitorKind') },
+          { key: 'nome', label: 'Nome', required: true, maxLength: 150 },
+          { key: 'documento', label: 'Documento (opcional)', maxLength: 20, span: 6 },
+          { key: 'placaVeiculo', label: 'Placa (opcional)', maxLength: 8, span: 6 },
+          { key: 'empresa', label: 'Empresa (prestador/entrega)', maxLength: 120 },
         ],
         submitLabel: 'Registrar entrada',
         submit: (v) => this.api.arrival(c, v),

@@ -14,7 +14,7 @@ import { EmptyState } from '../../shared/ui/empty-state';
 import { openForm } from '../../shared/ui/form-dialog';
 import { PageHeader } from '../../shared/ui/page-header';
 import { StructureService } from '../structure/structure.service';
-import { Announcement, OpsApi } from './ops-api';
+import { Comunicado, OpsApi } from './ops-api';
 
 @Component({
   selector: 'tc-announcement-list',
@@ -28,17 +28,17 @@ import { Announcement, OpsApi } from './ops-api';
         <tc-condominium-required />
       } @else {
         @for (a of list() ?? []; track a.id) {
-          <article class="tc-card item" [class.unread]="!a.read" (click)="markRead(a)">
+          <article class="tc-card item" [class.unread]="!a.lido" (click)="markRead(a)">
             <header class="item-head">
-              @if (a.pinned) { <mat-icon class="pin" aria-label="Fixado">push_pin</mat-icon> }
-              <h3>{{ a.title }}</h3>
-              <span class="tc-chip-soft">{{ a.audience === 'ALL' ? 'Todos' : a.audience === 'BUILDING' ? 'Bloco ' + a.buildingName : 'Unidade ' + a.unitLabel }}</span>
+              @if (a.fixado) { <mat-icon class="pin" aria-label="Fixado">push_pin</mat-icon> }
+              <h3>{{ a.titulo }}</h3>
+              <span class="tc-chip-soft">{{ a.publicoAlvo === 'ALL' ? 'Todos' : a.publicoAlvo === 'BUILDING' ? 'Bloco ' + a.nomeBloco : 'Unidade ' + a.rotuloUnidade }}</span>
             </header>
-            <p class="body">{{ a.body }}</p>
+            <p class="body">{{ a.texto }}</p>
             <footer class="item-foot">
               <span class="meta tc-muted">
-                {{ a.publishedAt | date: 'dd/MM/yyyy HH:mm' }} · {{ a.createdByName }}{{ a.sendEmail ? ' · enviado por e-mail' : '' }}
-                · {{ a.readCount }} leitura(s){{ a.expiresOn ? ' · até ' + a.expiresOn.slice(8, 10) + '/' + a.expiresOn.slice(5, 7) : '' }}
+                {{ a.publicadoEm | date: 'dd/MM/yyyy HH:mm' }} · {{ a.nomeCriadoPor }}{{ a.enviarEmail ? ' · enviado por e-mail' : '' }}
+                · {{ a.quantidadeLeituras }} leitura(s){{ a.dataExpiracao ? ' · até ' + a.dataExpiracao.slice(8, 10) + '/' + a.dataExpiracao.slice(5, 7) : '' }}
               </span>
               @if (canEdit()) { <button mat-button (click)="archive(a, $event)"><mat-icon>archive</mat-icon> Arquivar</button> }
             </footer>
@@ -71,7 +71,7 @@ export class AnnouncementList {
   private readonly tick = signal(0);
   protected readonly canEdit = computed(() => this.context.can('ANNOUNCEMENT_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   protected readonly list = toSignal(combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(
-    filter(([c]) => !!c), switchMap(([c]) => this.api.announcements(c!).pipe(catchError(() => of([] as Announcement[]))))));
+    filter(([c]) => !!c), switchMap(([c]) => this.api.announcements(c!).pipe(catchError(() => of([] as Comunicado[]))))));
 
   publish(): void {
     const c = this.context.id()!;
@@ -80,28 +80,28 @@ export class AnnouncementList {
         title: 'Novo comunicado',
         intro: 'Os moradores com acesso ao portal e a equipe recebem notificação. Com "enviar por e-mail", os moradores cadastrados também recebem e-mail.',
         fields: [
-          { key: 'title', label: 'Título', required: true, maxLength: 150 },
-          { key: 'body', label: 'Mensagem', type: 'textarea', required: true, maxLength: 8000 },
-          { key: 'audience', label: 'Público', type: 'select', value: 'ALL', span: 4,
+          { key: 'titulo', label: 'Título', required: true, maxLength: 150 },
+          { key: 'texto', label: 'Mensagem', type: 'textarea', required: true, maxLength: 8000 },
+          { key: 'publicoAlvo', label: 'Público', type: 'select', value: 'ALL', span: 4,
             options: [{ value: 'ALL', label: 'Todos' }, { value: 'BUILDING', label: 'Um bloco' }, { value: 'UNIT', label: 'Uma unidade' }] },
-          { key: 'buildingId', label: 'Bloco (se público = bloco)', type: 'select', value: null, span: 4, options: [{ value: null, label: '—' }, ...buildings.map((b) => ({ value: b.id, label: b.nome }))] },
-          { key: 'unitId', label: 'Unidade (se público = unidade)', type: 'select', value: null, span: 4, options: [{ value: null, label: '—' }, ...units.map((u) => ({ value: u.id, label: u.rotulo }))] },
-          { key: 'expiresOn', label: 'Exibir até', type: 'date', span: 6 },
-          { key: 'pinned', label: 'Fixar no topo', type: 'checkbox' },
-          { key: 'sendEmail', label: 'Enviar também por e-mail', type: 'checkbox' },
+          { key: 'idBloco', label: 'Bloco (se público = bloco)', type: 'select', value: null, span: 4, options: [{ value: null, label: '—' }, ...buildings.map((b) => ({ value: b.id, label: b.nome }))] },
+          { key: 'idUnidade', label: 'Unidade (se público = unidade)', type: 'select', value: null, span: 4, options: [{ value: null, label: '—' }, ...units.map((u) => ({ value: u.id, label: u.rotulo }))] },
+          { key: 'dataExpiracao', label: 'Exibir até', type: 'date', span: 6 },
+          { key: 'fixado', label: 'Fixar no topo', type: 'checkbox' },
+          { key: 'enviarEmail', label: 'Enviar também por e-mail', type: 'checkbox' },
         ],
         submitLabel: 'Publicar',
         submit: (v) => this.api.publish(c, v),
       }, '680px').pipe(filter((r) => !!r)).subscribe(() => { this.notify.success('Comunicado publicado.'); this.tick.update((t) => t + 1); }));
   }
 
-  markRead(a: Announcement): void {
-    if (!a.read) this.api.readAnnouncement(this.context.id()!, a.id).subscribe(() => this.tick.update((t) => t + 1));
+  markRead(a: Comunicado): void {
+    if (!a.lido) this.api.readAnnouncement(this.context.id()!, a.id).subscribe(() => this.tick.update((t) => t + 1));
   }
 
-  archive(a: Announcement, event: Event): void {
+  archive(a: Comunicado, event: Event): void {
     event.stopPropagation();
-    askConfirm(this.dialog, 'Arquivar comunicado', `Arquivar "${a.title}"? Ele deixa de ser exibido aos moradores.`, 'Arquivar')
+    askConfirm(this.dialog, 'Arquivar comunicado', `Arquivar "${a.titulo}"? Ele deixa de ser exibido aos moradores.`, 'Arquivar')
       .pipe(switchMap(() => this.api.archiveAnnouncement(this.context.id()!, a.id)))
       .subscribe({ next: () => this.tick.update((t) => t + 1), error: (err: unknown) => this.notify.error(toProblem(err).detail) });
   }

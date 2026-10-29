@@ -13,32 +13,32 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import br.com.tekcondo.announcement.Announcement;
-import br.com.tekcondo.announcement.AnnouncementRepository;
-import br.com.tekcondo.announcement.AnnouncementService;
-import br.com.tekcondo.assembly.AssemblyEntities.Assembly;
-import br.com.tekcondo.assembly.AssemblyRepository;
+import br.com.tekcondo.comunicado.Comunicado;
+import br.com.tekcondo.comunicado.ComunicadoRepository;
+import br.com.tekcondo.comunicado.ComunicadoService;
+import br.com.tekcondo.assembleia.AssembleiaEntities.Assembleia;
+import br.com.tekcondo.assembleia.AssembleiaRepository;
 import br.com.tekcondo.cobranca.dto.CobrancaDtos.LinhaDebito;
 import br.com.tekcondo.cobranca.dto.CobrancaDtos.DebitosUnidade;
 import br.com.tekcondo.cobranca.service.InadimplenciaService;
 import br.com.tekcondo.condominio.entity.Condominio;
 import br.com.tekcondo.condominio.repository.CondominioRepository;
-import br.com.tekcondo.document.entity.Document;
-import br.com.tekcondo.document.repository.DocumentRepository;
-import br.com.tekcondo.document.service.DocumentService;
+import br.com.tekcondo.documento.entity.Documento;
+import br.com.tekcondo.documento.repository.DocumentoRepository;
+import br.com.tekcondo.documento.service.DocumentoService;
 import br.com.tekcondo.acesso.autorizacao.AcessoService;
 import br.com.tekcondo.acesso.autorizacao.Permissao;
 import br.com.tekcondo.acesso.entity.Usuario;
 import br.com.tekcondo.acesso.repository.UsuarioRepository;
-import br.com.tekcondo.occurrence.Occurrence;
-import br.com.tekcondo.occurrence.OccurrenceInteraction;
-import br.com.tekcondo.occurrence.OccurrenceInteractionRepository;
-import br.com.tekcondo.occurrence.OccurrenceRepository;
-import br.com.tekcondo.occurrence.OccurrenceService;
+import br.com.tekcondo.ocorrencia.Ocorrencia;
+import br.com.tekcondo.ocorrencia.InteracaoOcorrencia;
+import br.com.tekcondo.ocorrencia.InteracaoOcorrenciaRepository;
+import br.com.tekcondo.ocorrencia.OcorrenciaRepository;
+import br.com.tekcondo.ocorrencia.OcorrenciaService;
 import br.com.tekcondo.pessoa.entity.Vinculo;
 import br.com.tekcondo.pessoa.repository.VinculoRepository;
-import br.com.tekcondo.reservation.ReservationService;
-import br.com.tekcondo.visitor.VisitorService;
+import br.com.tekcondo.reserva.ReservaService;
+import br.com.tekcondo.portaria.PortariaService;
 import br.com.tekcondo.comum.exception.ApiException;
 import br.com.tekcondo.comum.security.UsuarioAtual;
 import br.com.tekcondo.comum.security.UsuarioAtualProvider;
@@ -54,317 +54,317 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PortalService {
 
-    public record PortalUnit(UUID unitId, String label, Vinculo.Tipo role, boolean financialResponsible, boolean seesCharges) {
+    public record UnidadePortal(UUID idUnidade, String rotulo, Vinculo.Tipo tipo, boolean responsavelFinanceiro, boolean veCobrancas) {
     }
 
-    public record PortalCondominium(UUID id, String name, List<PortalUnit> units) {
+    public record CondominioPortal(UUID id, String nome, List<UnidadePortal> unidades) {
     }
 
-    public record Me(String name, String email, List<PortalCondominium> condominiums) {
+    public record PerfilPortal(String nome, String email, List<CondominioPortal> condominios) {
     }
 
-    public record UnitCharges(UUID unitId, String unitLabel, java.math.BigDecimal openTotal, List<LinhaDebito> lines) {
+    public record CobrancasUnidade(UUID idUnidade, String rotuloUnidade, java.math.BigDecimal totalAberto, List<LinhaDebito> linhas) {
     }
 
-    public record CalendarEvent(LocalDate date, String type, String title) {
+    public record EventoCalendario(LocalDate data, String tipo, String titulo) {
     }
 
-    public record AssemblyInfo(UUID id, String title, Assembly.Kind kind, Instant scheduledAt, String location,
-                               Assembly.Status status, String minutes) {
+    public record AssembleiaPortal(UUID id, String titulo, Assembleia.Tipo tipo, Instant primeiraConvocacaoEm, String local,
+                                   Assembleia.Situacao situacao, String ata) {
     }
 
-    private record Ctx(UsuarioAtual user, Usuario account, Condominio condominium, List<Vinculo> occupancies) {
+    private record Contexto(UsuarioAtual usuario, Usuario conta, Condominio condominio, List<Vinculo> vinculos) {
 
-        Set<UUID> unitIds() {
-            return occupancies.stream().map(o -> o.getUnidade().getId()).collect(Collectors.toSet());
+        Set<UUID> idsUnidades() {
+            return vinculos.stream().map(o -> o.getUnidade().getId()).collect(Collectors.toSet());
         }
     }
 
-    private final UsuarioAtualProvider currentUserProvider;
-    private final UsuarioRepository users;
-    private final AcessoService accessService;
-    private final CondominioRepository condominiums;
-    private final VinculoRepository occupancies;
-    private final InadimplenciaService collection;
-    private final AnnouncementRepository announcements;
-    private final AnnouncementService announcementService;
-    private final DocumentRepository documents;
-    private final DocumentService documentService;
-    private final OccurrenceRepository occurrences;
-    private final OccurrenceInteractionRepository interactions;
-    private final OccurrenceService occurrenceService;
-    private final AssemblyRepository assemblies;
-    private final ReservationService reservations;
-    private final VisitorService visitors;
+    private final UsuarioAtualProvider usuarioAtualProvider;
+    private final UsuarioRepository usuarios;
+    private final AcessoService acessoService;
+    private final CondominioRepository condominios;
+    private final VinculoRepository vinculos;
+    private final InadimplenciaService inadimplenciaService;
+    private final ComunicadoRepository comunicados;
+    private final ComunicadoService comunicadoService;
+    private final DocumentoRepository documentos;
+    private final DocumentoService documentoService;
+    private final OcorrenciaRepository ocorrencias;
+    private final InteracaoOcorrenciaRepository interacoes;
+    private final OcorrenciaService ocorrenciaService;
+    private final AssembleiaRepository assembleias;
+    private final ReservaService reservaService;
+    private final PortariaService portariaService;
     private final Clock clock;
 
-    public PortalService(UsuarioAtualProvider currentUserProvider, UsuarioRepository users, AcessoService accessService,
-                         CondominioRepository condominiums, VinculoRepository occupancies, InadimplenciaService collection,
-                         AnnouncementRepository announcements, AnnouncementService announcementService,
-                         DocumentRepository documents, DocumentService documentService, OccurrenceRepository occurrences,
-                         OccurrenceInteractionRepository interactions, OccurrenceService occurrenceService,
-                         AssemblyRepository assemblies, ReservationService reservations, VisitorService visitors, Clock clock) {
-        this.currentUserProvider = currentUserProvider;
-        this.users = users;
-        this.accessService = accessService;
-        this.condominiums = condominiums;
-        this.occupancies = occupancies;
-        this.collection = collection;
-        this.announcements = announcements;
-        this.announcementService = announcementService;
-        this.documents = documents;
-        this.documentService = documentService;
-        this.occurrences = occurrences;
-        this.interactions = interactions;
-        this.occurrenceService = occurrenceService;
-        this.assemblies = assemblies;
-        this.reservations = reservations;
-        this.visitors = visitors;
+    public PortalService(UsuarioAtualProvider usuarioAtualProvider, UsuarioRepository usuarios, AcessoService acessoService,
+                         CondominioRepository condominios, VinculoRepository vinculos, InadimplenciaService inadimplenciaService,
+                         ComunicadoRepository comunicados, ComunicadoService comunicadoService,
+                         DocumentoRepository documentos, DocumentoService documentoService, OcorrenciaRepository ocorrencias,
+                         InteracaoOcorrenciaRepository interacoes, OcorrenciaService ocorrenciaService,
+                         AssembleiaRepository assembleias, ReservaService reservaService, PortariaService portariaService, Clock clock) {
+        this.usuarioAtualProvider = usuarioAtualProvider;
+        this.usuarios = usuarios;
+        this.acessoService = acessoService;
+        this.condominios = condominios;
+        this.vinculos = vinculos;
+        this.inadimplenciaService = inadimplenciaService;
+        this.comunicados = comunicados;
+        this.comunicadoService = comunicadoService;
+        this.documentos = documentos;
+        this.documentoService = documentoService;
+        this.ocorrencias = ocorrencias;
+        this.interacoes = interacoes;
+        this.ocorrenciaService = ocorrenciaService;
+        this.assembleias = assembleias;
+        this.reservaService = reservaService;
+        this.portariaService = portariaService;
         this.clock = clock;
     }
 
     @Transactional(readOnly = true)
-    public Me me() {
-        UsuarioAtual user = currentUserProvider.exigirMembroAdministradora();
-        Usuario account = linkedAccount(user);
-        List<PortalCondominium> list = new ArrayList<>();
-        for (UUID condoId : accessService.concessoesAtuais().porCondominio().entrySet().stream()
+    public PerfilPortal perfil() {
+        UsuarioAtual usuario = usuarioAtualProvider.exigirMembroAdministradora();
+        Usuario conta = contaVinculada(usuario);
+        List<CondominioPortal> lista = new ArrayList<>();
+        for (UUID idCondominioAcessivel : acessoService.concessoesAtuais().porCondominio().entrySet().stream()
                 .filter(e -> e.getValue().contains(Permissao.PORTAL_ACCESS)).map(Map.Entry::getKey).toList()) {
-            condominiums.findByIdAndIdAdministradora(condoId, user.idAdministradora()).ifPresent(c -> list.add(new PortalCondominium(
-                    c.getId(), c.getNome(), occupancies.buscarVigentesDaPessoaNoCondominio(account.getIdPessoa(), c.getId()).stream()
-                    .map(this::toUnit).sorted(Comparator.comparing(PortalUnit::label)).toList())));
+            condominios.findByIdAndIdAdministradora(idCondominioAcessivel, usuario.idAdministradora()).ifPresent(c -> lista.add(new CondominioPortal(
+                    c.getId(), c.getNome(), vinculos.buscarVigentesDaPessoaNoCondominio(conta.getIdPessoa(), c.getId()).stream()
+                    .map(this::paraUnidade).sorted(Comparator.comparing(UnidadePortal::rotulo)).toList())));
         }
-        return new Me(account.getNome(), account.getEmail(), list);
+        return new PerfilPortal(conta.getNome(), conta.getEmail(), lista);
     }
 
     @Transactional(readOnly = true)
-    public List<UnitCharges> charges(UUID condominiumId) {
-        Ctx ctx = ctx(condominiumId);
-        LocalDate today = LocalDate.now(clock);
-        return ctx.occupancies().stream().filter(o -> toUnit(o).seesCharges()).map(o -> o.getUnidade()).distinct()
-                .map(unit -> {
-                    DebitosUnidade debt = collection.montarDebitosUnidade(condominiumId, unit, today);
+    public List<CobrancasUnidade> cobrancas(UUID idCondominio) {
+        Contexto contexto = contexto(idCondominio);
+        LocalDate hoje = LocalDate.now(clock);
+        return contexto.vinculos().stream().filter(o -> paraUnidade(o).veCobrancas()).map(o -> o.getUnidade()).distinct()
+                .map(unidade -> {
+                    DebitosUnidade debitos = inadimplenciaService.montarDebitosUnidade(idCondominio, unidade, hoje);
                     // Histórico dos últimos 24 meses + tudo que estiver em aberto. Notas internas de cobrança não são expostas.
-                    List<LinhaDebito> lines = debt.linhas().stream()
-                            .filter(l -> l.valorAberto().signum() > 0 || !l.dataVencimento().isBefore(today.minusMonths(24)))
+                    List<LinhaDebito> linhas = debitos.linhas().stream()
+                            .filter(l -> l.valorAberto().signum() > 0 || !l.dataVencimento().isBefore(hoje.minusMonths(24)))
                             .sorted(Comparator.comparing(LinhaDebito::dataVencimento).reversed()).toList();
-                    return new UnitCharges(unit.getId(), unit.rotulo(), debt.totalAberto(), lines);
+                    return new CobrancasUnidade(unidade.getId(), unidade.rotulo(), debitos.totalAberto(), linhas);
                 }).toList();
     }
 
     @Transactional(readOnly = true)
-    public List<AnnouncementService.Response> announcements(UUID condominiumId) {
-        Ctx ctx = ctx(condominiumId);
-        LocalDate today = LocalDate.now(clock);
-        Set<UUID> buildings = ctx.occupancies().stream().map(o -> o.getUnidade().getBloco()).filter(Objects::nonNull)
+    public List<ComunicadoService.ComunicadoResponse> comunicados(UUID idCondominio) {
+        Contexto contexto = contexto(idCondominio);
+        LocalDate hoje = LocalDate.now(clock);
+        Set<UUID> blocos = contexto.vinculos().stream().map(o -> o.getUnidade().getBloco()).filter(Objects::nonNull)
                 .map(b -> b.getId()).collect(Collectors.toSet());
-        return announcements.findByCondominium(condominiumId).stream()
-                .filter(a -> a.isVisible(today))
-                .filter(a -> a.getAudience() == Announcement.Audience.ALL
-                        || a.getAudience() == Announcement.Audience.BUILDING && buildings.contains(a.getBuildingId())
-                        || a.getAudience() == Announcement.Audience.UNIT && ctx.unitIds().contains(a.getUnitId()))
-                .map(a -> announcementService.toResponse(a, null, announcements.isRead(a.getId(), ctx.user().idUsuario())))
+        return comunicados.buscarDoCondominio(idCondominio).stream()
+                .filter(a -> a.isVisivel(hoje))
+                .filter(a -> a.getPublicoAlvo() == Comunicado.PublicoAlvo.ALL
+                        || a.getPublicoAlvo() == Comunicado.PublicoAlvo.BUILDING && blocos.contains(a.getIdBloco())
+                        || a.getPublicoAlvo() == Comunicado.PublicoAlvo.UNIT && contexto.idsUnidades().contains(a.getIdUnidade()))
+                .map(a -> comunicadoService.paraResponse(a, null, comunicados.foiLido(a.getId(), contexto.usuario().idUsuario())))
                 .toList();
     }
 
     @Transactional
-    public void markAnnouncementRead(UUID condominiumId, UUID id) {
-        Ctx ctx = ctx(condominiumId);
-        if (announcements(condominiumId).stream().noneMatch(a -> a.id().equals(id))) {
+    public void marcarComunicadoLido(UUID idCondominio, UUID id) {
+        Contexto contexto = contexto(idCondominio);
+        if (comunicados(idCondominio).stream().noneMatch(a -> a.id().equals(id))) {
             throw ApiException.naoEncontrado("Comunicado");
         }
-        announcements.markRead(id, ctx.user().idUsuario(), Instant.now(clock));
+        comunicados.marcarLido(id, contexto.usuario().idUsuario(), Instant.now(clock));
     }
 
     @Transactional(readOnly = true)
-    public List<DocumentService.DocumentResponse> documents(UUID condominiumId) {
-        Ctx ctx = ctx(condominiumId);
-        return visibleDocuments(ctx).stream().map(DocumentService.DocumentResponse::from).toList();
+    public List<DocumentoService.DocumentoResponse> documentos(UUID idCondominio) {
+        Contexto contexto = contexto(idCondominio);
+        return documentosVisiveis(contexto).stream().map(DocumentoService.DocumentoResponse::de).toList();
     }
 
     @Transactional(readOnly = true)
-    public DocumentService.FileContent download(UUID condominiumId, UUID id) {
-        Ctx ctx = ctx(condominiumId);
-        Document d = visibleDocuments(ctx).stream().filter(x -> x.getId().equals(id)).findFirst()
+    public DocumentoService.ConteudoArquivo baixarDocumento(UUID idCondominio, UUID id) {
+        Contexto contexto = contexto(idCondominio);
+        Documento d = documentosVisiveis(contexto).stream().filter(x -> x.getId().equals(id)).findFirst()
                 .orElseThrow(() -> ApiException.naoEncontrado("Documento"));
-        return documentService.read(d);
+        return documentoService.ler(d);
     }
 
     @Transactional(readOnly = true)
-    public List<OccurrenceService.Summary> occurrences(UUID condominiumId) {
-        Ctx ctx = ctx(condominiumId);
-        return mine(ctx).stream().map(occurrenceService::summary).toList();
+    public List<OcorrenciaService.Resumo> ocorrencias(UUID idCondominio) {
+        Contexto contexto = contexto(idCondominio);
+        return minhasOcorrencias(contexto).stream().map(ocorrenciaService::resumo).toList();
     }
 
     @Transactional(readOnly = true)
-    public OccurrenceService.Detail occurrence(UUID condominiumId, UUID id) {
-        Ctx ctx = ctx(condominiumId);
-        return occurrenceService.detail(mineOne(ctx, id), false);
+    public OcorrenciaService.Detalhe ocorrencia(UUID idCondominio, UUID id) {
+        Contexto contexto = contexto(idCondominio);
+        return ocorrenciaService.detalhe(minhaOcorrencia(contexto, id), false);
     }
 
     @Transactional
-    public OccurrenceService.Detail openOccurrence(UUID condominiumId, OccurrenceService.CreateRequest request) {
-        Ctx ctx = ctx(condominiumId);
-        if (request.unitId() != null && !ctx.unitIds().contains(request.unitId())) {
+    public OcorrenciaService.Detalhe abrirOcorrencia(UUID idCondominio, OcorrenciaService.CadastroRequest request) {
+        Contexto contexto = contexto(idCondominio);
+        if (request.idUnidade() != null && !contexto.idsUnidades().contains(request.idUnidade())) {
             throw new AccessDeniedException("Unidade não vinculada ao morador");
         }
         // Prioridade é definida pela administração na triagem.
-        var safe = new OccurrenceService.CreateRequest(request.title(), request.description(), request.category(),
-                Occurrence.Priority.MEDIUM, request.unitId());
-        return occurrenceService.detail(occurrenceService.createInternal(ctx.condominium(), safe, ctx.user().idUsuario(),
-                ctx.account().getNome()), false);
+        var seguro = new OcorrenciaService.CadastroRequest(request.titulo(), request.descricao(), request.categoria(),
+                Ocorrencia.Prioridade.MEDIUM, request.idUnidade());
+        return ocorrenciaService.detalhe(ocorrenciaService.cadastrarInterno(contexto.condominio(), seguro, contexto.usuario().idUsuario(),
+                contexto.conta().getNome()), false);
     }
 
     @Transactional
-    public OccurrenceService.Detail commentOccurrence(UUID condominiumId, UUID id, String message) {
-        Ctx ctx = ctx(condominiumId);
-        Occurrence o = mineOne(ctx, id);
-        if (o.getStatus() == Occurrence.Status.RESOLVED || o.getStatus() == Occurrence.Status.CANCELLED) {
+    public OcorrenciaService.Detalhe comentarOcorrencia(UUID idCondominio, UUID id, String mensagem) {
+        Contexto contexto = contexto(idCondominio);
+        Ocorrencia o = minhaOcorrencia(contexto, id);
+        if (o.getSituacao() == Ocorrencia.Situacao.RESOLVED || o.getSituacao() == Ocorrencia.Situacao.CANCELLED) {
             throw ApiException.regraNegocio("OCCURRENCE_CLOSED", "A ocorrência está encerrada. Abra uma nova, se necessário.");
         }
-        interactions.save(new OccurrenceInteraction(o.getId(), ctx.user().idUsuario(), ctx.account().getNome(), message.trim(), null, false));
-        return occurrenceService.detail(o, false);
+        interacoes.save(new InteracaoOcorrencia(o.getId(), contexto.usuario().idUsuario(), contexto.conta().getNome(), mensagem.trim(), null, false));
+        return ocorrenciaService.detalhe(o, false);
     }
 
     @Transactional(readOnly = true)
-    public List<AssemblyInfo> assemblies(UUID condominiumId) {
-        ctx(condominiumId);
-        return assemblies.findByCondominiumIdOrderByScheduledAtDesc(condominiumId).stream()
-                .filter(a -> a.getStatus() != Assembly.Status.DRAFT)
-                .map(a -> new AssemblyInfo(a.getId(), a.getTitle(), a.getKind(), a.getScheduledAt(), a.getLocation(), a.getStatus(),
-                        a.getStatus() == Assembly.Status.CLOSED ? a.getMinutes() : null))
+    public List<AssembleiaPortal> assembleias(UUID idCondominio) {
+        contexto(idCondominio);
+        return assembleias.findByIdCondominioOrderByPrimeiraConvocacaoEmDesc(idCondominio).stream()
+                .filter(a -> a.getSituacao() != Assembleia.Situacao.DRAFT)
+                .map(a -> new AssembleiaPortal(a.getId(), a.getTitulo(), a.getTipo(), a.getPrimeiraConvocacaoEm(), a.getLocal(), a.getSituacao(),
+                        a.getSituacao() == Assembleia.Situacao.CLOSED ? a.getAta() : null))
                 .toList();
     }
 
     // ------------------------------------------------------------------ reservas de áreas comuns
 
     @Transactional(readOnly = true)
-    public List<ReservationService.AreaResponse> commonAreas(UUID condominiumId) {
-        ctx(condominiumId);
-        return reservations.activeAreas(condominiumId);
+    public List<ReservaService.AreaComumResponse> areasComuns(UUID idCondominio) {
+        contexto(idCondominio);
+        return reservaService.areasAtivas(idCondominio);
     }
 
     /** Ocupação dos horários (sem identificar unidades de terceiros). */
     @Transactional(readOnly = true)
-    public List<ReservationService.Slot> areaOccupancy(UUID condominiumId, UUID areaId, LocalDate from, LocalDate to) {
-        ctx(condominiumId);
-        return reservations.occupancy(condominiumId, areaId, from, to);
+    public List<ReservaService.Horario> ocupacaoArea(UUID idCondominio, UUID idArea, LocalDate de, LocalDate ate) {
+        contexto(idCondominio);
+        return reservaService.ocupacao(idCondominio, idArea, de, ate);
     }
 
     @Transactional(readOnly = true)
-    public List<ReservationService.ReservationResponse> myReservations(UUID condominiumId) {
-        Ctx ctx = ctx(condominiumId);
-        return reservations.ofUnits(condominiumId, ctx.unitIds());
+    public List<ReservaService.ReservaResponse> minhasReservas(UUID idCondominio) {
+        Contexto contexto = contexto(idCondominio);
+        return reservaService.dasUnidades(idCondominio, contexto.idsUnidades());
     }
 
     @Transactional
-    public ReservationService.ReservationResponse reserve(UUID condominiumId, ReservationService.ReservationRequest request) {
-        Ctx ctx = ctx(condominiumId);
-        if (!ctx.unitIds().contains(request.unitId())) {
+    public ReservaService.ReservaResponse reservar(UUID idCondominio, ReservaService.ReservaRequest request) {
+        Contexto contexto = contexto(idCondominio);
+        if (!contexto.idsUnidades().contains(request.idUnidade())) {
             throw new AccessDeniedException("Unidade não vinculada ao morador");
         }
-        if (ctx.condominium().getSituacao() != br.com.tekcondo.condominio.entity.SituacaoCondominio.ACTIVE) {
+        if (contexto.condominio().getSituacao() != br.com.tekcondo.condominio.entity.SituacaoCondominio.ACTIVE) {
             throw ApiException.regraNegocio("CONDOMINIUM_INACTIVE", "O condomínio está inativo.");
         }
-        return reservations.bookAsResident(ctx.condominium(), request, ctx.user().idUsuario(), ctx.account().getNome());
+        return reservaService.reservarComoMorador(contexto.condominio(), request, contexto.usuario().idUsuario(), contexto.conta().getNome());
     }
 
     @Transactional
-    public ReservationService.ReservationResponse cancelReservation(UUID condominiumId, UUID id, String reason) {
-        Ctx ctx = ctx(condominiumId);
-        return reservations.cancelAsResident(condominiumId, id, ctx.unitIds(), reason);
+    public ReservaService.ReservaResponse cancelarReserva(UUID idCondominio, UUID id, String motivo) {
+        Contexto contexto = contexto(idCondominio);
+        return reservaService.cancelarComoMorador(idCondominio, id, contexto.idsUnidades(), motivo);
     }
 
     // ------------------------------------------------------------------ portaria (autorizações do morador)
 
     @Transactional(readOnly = true)
-    public List<VisitorService.PassResponse> visitorPasses(UUID condominiumId) {
-        Ctx ctx = ctx(condominiumId);
-        return visitors.ofUnits(condominiumId, ctx.unitIds());
+    public List<PortariaService.AutorizacaoResponse> autorizacoesVisita(UUID idCondominio) {
+        Contexto contexto = contexto(idCondominio);
+        return portariaService.dasUnidades(idCondominio, contexto.idsUnidades());
     }
 
     @Transactional
-    public VisitorService.PassResponse authorizeVisitor(UUID condominiumId, VisitorService.PassRequest request) {
-        Ctx ctx = ctx(condominiumId);
-        if (!ctx.unitIds().contains(request.unitId())) {
+    public PortariaService.AutorizacaoResponse autorizarVisita(UUID idCondominio, PortariaService.AutorizacaoRequest request) {
+        Contexto contexto = contexto(idCondominio);
+        if (!contexto.idsUnidades().contains(request.idUnidade())) {
             throw new AccessDeniedException("Unidade não vinculada ao morador");
         }
-        return visitors.authorizeAsResident(ctx.condominium(), request, ctx.user().idUsuario(), ctx.account().getNome());
+        return portariaService.autorizarComoMorador(contexto.condominio(), request, contexto.usuario().idUsuario(), contexto.conta().getNome());
     }
 
     @Transactional
-    public VisitorService.PassResponse cancelVisitor(UUID condominiumId, UUID id) {
-        Ctx ctx = ctx(condominiumId);
-        return visitors.cancelAsResident(condominiumId, id, ctx.unitIds());
+    public PortariaService.AutorizacaoResponse cancelarAutorizacaoVisita(UUID idCondominio, UUID id) {
+        Contexto contexto = contexto(idCondominio);
+        return portariaService.cancelarComoMorador(idCondominio, id, contexto.idsUnidades());
     }
 
     /** Calendário: assembleias e vencimentos das cobranças em aberto (de 30 dias atrás a 90 dias à frente). */
     @Transactional(readOnly = true)
-    public List<CalendarEvent> calendar(UUID condominiumId) {
-        LocalDate today = LocalDate.now(clock);
-        List<CalendarEvent> events = new ArrayList<>();
-        for (AssemblyInfo a : assemblies(condominiumId)) {
-            LocalDate d = a.scheduledAt().atZone(ZoneId.of("America/Sao_Paulo")).toLocalDate();
-            if (a.status() != Assembly.Status.CANCELLED && !d.isBefore(today.minusDays(30)) && !d.isAfter(today.plusDays(90))) {
-                events.add(new CalendarEvent(d, "ASSEMBLY", a.title() + " — " + a.location()));
+    public List<EventoCalendario> calendario(UUID idCondominio) {
+        LocalDate hoje = LocalDate.now(clock);
+        List<EventoCalendario> eventos = new ArrayList<>();
+        for (AssembleiaPortal a : assembleias(idCondominio)) {
+            LocalDate d = a.primeiraConvocacaoEm().atZone(ZoneId.of("America/Sao_Paulo")).toLocalDate();
+            if (a.situacao() != Assembleia.Situacao.CANCELLED && !d.isBefore(hoje.minusDays(30)) && !d.isAfter(hoje.plusDays(90))) {
+                eventos.add(new EventoCalendario(d, "ASSEMBLY", a.titulo() + " — " + a.local()));
             }
         }
-        for (UnitCharges u : charges(condominiumId)) {
-            for (LinhaDebito l : u.lines()) {
-                if (l.valorAberto().signum() > 0 && !l.dataVencimento().isBefore(today.minusDays(30)) && !l.dataVencimento().isAfter(today.plusDays(90))) {
-                    events.add(new CalendarEvent(l.dataVencimento(), "CHARGE", l.descricao() + " · " + u.unitLabel()));
+        for (CobrancasUnidade u : cobrancas(idCondominio)) {
+            for (LinhaDebito l : u.linhas()) {
+                if (l.valorAberto().signum() > 0 && !l.dataVencimento().isBefore(hoje.minusDays(30)) && !l.dataVencimento().isAfter(hoje.plusDays(90))) {
+                    eventos.add(new EventoCalendario(l.dataVencimento(), "CHARGE", l.descricao() + " · " + u.rotuloUnidade()));
                 }
             }
         }
-        events.sort(Comparator.comparing(CalendarEvent::date));
-        return events;
+        eventos.sort(Comparator.comparing(EventoCalendario::data));
+        return eventos;
     }
 
     // ------------------------------------------------------------------
 
-    private Ctx ctx(UUID condominiumId) {
-        UsuarioAtual user = currentUserProvider.exigirMembroAdministradora();
-        Usuario account = linkedAccount(user);
-        Condominio condominium = condominiums.findByIdAndIdAdministradora(condominiumId, user.idAdministradora())
+    private Contexto contexto(UUID idCondominio) {
+        UsuarioAtual usuario = usuarioAtualProvider.exigirMembroAdministradora();
+        Usuario conta = contaVinculada(usuario);
+        Condominio condominio = condominios.findByIdAndIdAdministradora(idCondominio, usuario.idAdministradora())
                 .orElseThrow(() -> ApiException.naoEncontrado("Condomínio"));
-        accessService.exigir(Permissao.PORTAL_ACCESS, condominiumId);
-        List<Vinculo> current = occupancies.buscarVigentesDaPessoaNoCondominio(account.getIdPessoa(), condominiumId);
-        if (current.isEmpty()) {
+        acessoService.exigir(Permissao.PORTAL_ACCESS, idCondominio);
+        List<Vinculo> vigentes = vinculos.buscarVigentesDaPessoaNoCondominio(conta.getIdPessoa(), idCondominio);
+        if (vigentes.isEmpty()) {
             throw new AccessDeniedException("Sem vínculo vigente com unidades deste condomínio");
         }
-        return new Ctx(user, account, condominium, current);
+        return new Contexto(usuario, conta, condominio, vigentes);
     }
 
-    private Usuario linkedAccount(UsuarioAtual user) {
-        Usuario account = users.findById(user.idUsuario()).orElseThrow(() -> ApiException.naoEncontrado("Usuário"));
-        if (account.getIdPessoa() == null) {
+    private Usuario contaVinculada(UsuarioAtual usuario) {
+        Usuario conta = usuarios.findById(usuario.idUsuario()).orElseThrow(() -> ApiException.naoEncontrado("Usuário"));
+        if (conta.getIdPessoa() == null) {
             throw new AccessDeniedException("Usuário não vinculado a cadastro de morador");
         }
-        return account;
+        return conta;
     }
 
-    private PortalUnit toUnit(Vinculo o) {
-        return new PortalUnit(o.getUnidade().getId(), o.getUnidade().rotulo(), o.getTipo(), o.isResponsavelFinanceiro(),
+    private UnidadePortal paraUnidade(Vinculo o) {
+        return new UnidadePortal(o.getUnidade().getId(), o.getUnidade().rotulo(), o.getTipo(), o.isResponsavelFinanceiro(),
                 o.getTipo() == Vinculo.Tipo.OWNER || o.isResponsavelFinanceiro());
     }
 
-    private List<Document> visibleDocuments(Ctx ctx) {
-        return documents.findAll((root, q, cb) -> cb.and(
-                cb.equal(root.get("condominiumId"), ctx.condominium().getId()),
-                cb.equal(root.get("visibility"), Document.Visibility.RESIDENTS),
-                cb.isNull(root.get("archivedAt")),
-                cb.or(cb.isNull(root.get("unitId")), root.get("unitId").in(ctx.unitIds()))),
-                Sort.by(Sort.Direction.DESC, "createdAt"));
-    }
-
-    private List<Occurrence> mine(Ctx ctx) {
-        return occurrences.findAll((root, q, cb) -> cb.and(
-                cb.equal(root.get("condominiumId"), ctx.condominium().getId()),
-                cb.or(cb.equal(root.get("reporterUserId"), ctx.user().idUsuario()), root.get("unitId").in(ctx.unitIds()))),
+    private List<Documento> documentosVisiveis(Contexto contexto) {
+        return documentos.findAll((root, q, cb) -> cb.and(
+                cb.equal(root.get("idCondominio"), contexto.condominio().getId()),
+                cb.equal(root.get("visibilidade"), Documento.Visibilidade.RESIDENTS),
+                cb.isNull(root.get("arquivadoEm")),
+                cb.or(cb.isNull(root.get("idUnidade")), root.get("idUnidade").in(contexto.idsUnidades()))),
                 Sort.by(Sort.Direction.DESC, "criadoEm"));
     }
 
-    private Occurrence mineOne(Ctx ctx, UUID id) {
-        return mine(ctx).stream().filter(o -> o.getId().equals(id)).findFirst().orElseThrow(() -> ApiException.naoEncontrado("Ocorrência"));
+    private List<Ocorrencia> minhasOcorrencias(Contexto contexto) {
+        return ocorrencias.findAll((root, q, cb) -> cb.and(
+                cb.equal(root.get("idCondominio"), contexto.condominio().getId()),
+                cb.or(cb.equal(root.get("idUsuarioSolicitante"), contexto.usuario().idUsuario()), root.get("idUnidade").in(contexto.idsUnidades()))),
+                Sort.by(Sort.Direction.DESC, "criadoEm"));
+    }
+
+    private Ocorrencia minhaOcorrencia(Contexto contexto, UUID id) {
+        return minhasOcorrencias(contexto).stream().filter(o -> o.getId().equals(id)).findFirst().orElseThrow(() -> ApiException.naoEncontrado("Ocorrência"));
     }
 }

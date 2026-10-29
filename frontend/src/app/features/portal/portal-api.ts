@@ -3,26 +3,26 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { downloadFile } from '../../shared/download';
 import { LinhaDebito } from '../finance/finance-api';
-import { Announcement, Doc, OccurrenceDetail, OccurrenceSummary } from '../ops/ops-api';
+import { Comunicado, DetalheOcorrencia, Documento, ResumoOcorrencia } from '../ops/ops-api';
 
-export interface PortalMe { name: string; email: string; condominiums: { id: string; name: string; units: { unitId: string; label: string; role: string; financialResponsible: boolean; seesCharges: boolean }[] }[]; }
-export interface UnitCharges { unitId: string; unitLabel: string; openTotal: number; lines: LinhaDebito[]; }
-export interface PortalAssembly { id: string; title: string; kind: string; scheduledAt: string; location: string; status: string; minutes?: string; }
-export interface CalendarEvent { date: string; type: string; title: string; }
+export interface PerfilPortal { nome: string; email: string; condominios: { id: string; nome: string; unidades: { idUnidade: string; rotulo: string; tipo: string; responsavelFinanceiro: boolean; veCobrancas: boolean }[] }[]; }
+export interface CobrancasUnidade { idUnidade: string; rotuloUnidade: string; totalAberto: number; linhas: LinhaDebito[]; }
+export interface AssembleiaPortal { id: string; titulo: string; tipo: string; primeiraConvocacaoEm: string; local: string; situacao: string; ata?: string; }
+export interface EventoCalendario { data: string; tipo: string; titulo: string; }
 
 @Injectable({ providedIn: 'root' })
 export class PortalApi {
   private readonly http = inject(HttpClient);
-  me(): Observable<PortalMe> { return this.http.get<PortalMe>('/api/v1/portal/me'); }
-  charges(c: string): Observable<UnitCharges[]> { return this.http.get<UnitCharges[]>(`/api/v1/portal/${c}/charges`); }
-  announcements(c: string): Observable<Announcement[]> { return this.http.get<Announcement[]>(`/api/v1/portal/${c}/announcements`); }
-  read(c: string, id: string): Observable<void> { return this.http.post<void>(`/api/v1/portal/${c}/announcements/${id}/read`, null); }
-  documents(c: string): Observable<Doc[]> { return this.http.get<Doc[]>(`/api/v1/portal/${c}/documents`); }
-  download(c: string, id: string): Observable<void> { return downloadFile(this.http, `/api/v1/portal/${c}/documents/${id}/download`); }
-  occurrences(c: string): Observable<OccurrenceSummary[]> { return this.http.get<OccurrenceSummary[]>(`/api/v1/portal/${c}/occurrences`); }
-  occurrence(c: string, id: string): Observable<OccurrenceDetail> { return this.http.get<OccurrenceDetail>(`/api/v1/portal/${c}/occurrences/${id}`); }
-  openOccurrence(c: string, body: Record<string, unknown>): Observable<OccurrenceDetail> { return this.http.post<OccurrenceDetail>(`/api/v1/portal/${c}/occurrences`, body); }
-  comment(c: string, id: string, message: string): Observable<OccurrenceDetail> { return this.http.post<OccurrenceDetail>(`/api/v1/portal/${c}/occurrences/${id}/comments`, { message, internal: false }); }
-  assemblies(c: string): Observable<PortalAssembly[]> { return this.http.get<PortalAssembly[]>(`/api/v1/portal/${c}/assemblies`); }
-  calendar(c: string): Observable<CalendarEvent[]> { return this.http.get<CalendarEvent[]>(`/api/v1/portal/${c}/calendar`); }
+  me(): Observable<PerfilPortal> { return this.http.get<PerfilPortal>('/api/v1/portal/perfil'); }
+  charges(c: string): Observable<CobrancasUnidade[]> { return this.http.get<CobrancasUnidade[]>(`/api/v1/portal/${c}/cobrancas`); }
+  announcements(c: string): Observable<Comunicado[]> { return this.http.get<Comunicado[]>(`/api/v1/portal/${c}/comunicados`); }
+  read(c: string, id: string): Observable<void> { return this.http.post<void>(`/api/v1/portal/${c}/comunicados/${id}/marcar-lido`, null); }
+  documents(c: string): Observable<Documento[]> { return this.http.get<Documento[]>(`/api/v1/portal/${c}/documentos`); }
+  download(c: string, id: string): Observable<void> { return downloadFile(this.http, `/api/v1/portal/${c}/documentos/${id}/baixar`); }
+  occurrences(c: string): Observable<ResumoOcorrencia[]> { return this.http.get<ResumoOcorrencia[]>(`/api/v1/portal/${c}/ocorrencias`); }
+  occurrence(c: string, id: string): Observable<DetalheOcorrencia> { return this.http.get<DetalheOcorrencia>(`/api/v1/portal/${c}/ocorrencias/${id}`); }
+  openOccurrence(c: string, body: Record<string, unknown>): Observable<DetalheOcorrencia> { return this.http.post<DetalheOcorrencia>(`/api/v1/portal/${c}/ocorrencias`, body); }
+  comment(c: string, id: string, mensagem: string): Observable<DetalheOcorrencia> { return this.http.post<DetalheOcorrencia>(`/api/v1/portal/${c}/ocorrencias/${id}/interacoes`, { mensagem, interna: false }); }
+  assemblies(c: string): Observable<AssembleiaPortal[]> { return this.http.get<AssembleiaPortal[]>(`/api/v1/portal/${c}/assembleias`); }
+  calendar(c: string): Observable<EventoCalendario[]> { return this.http.get<EventoCalendario[]>(`/api/v1/portal/${c}/calendario`); }
 }

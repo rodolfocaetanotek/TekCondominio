@@ -18,7 +18,7 @@ import { askConfirm } from '../../shared/ui/confirm-dialog';
 import { CondominiumRequired } from '../../shared/ui/condominium-required';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { PageHeader } from '../../shared/ui/page-header';
-import { Doc, OpsApi } from './ops-api';
+import { Documento, OpsApi } from './ops-api';
 
 @Component({
   selector: 'tc-document-list',
@@ -54,13 +54,13 @@ import { Doc, OpsApi } from './ops-api';
         <section class="tc-table-card">
           @for (d of docs(); track d.id) {
             <div class="doc">
-              <span class="tc-ico" aria-hidden="true"><mat-icon>{{ d.contentType.includes('pdf') ? 'picture_as_pdf' : d.contentType.startsWith('image') ? 'image' : 'description' }}</mat-icon></span>
-              <div class="who"><strong>{{ d.title }}</strong>
-                <span class="meta tc-muted">{{ d.category | label: 'docCategory' }} · {{ d.visibility === 'RESIDENTS' ? 'visível aos moradores' : 'interno' }}
-                  · {{ d.fileName }} · {{ d.createdAt | date: 'dd/MM/yyyy' }} · {{ d.createdByName }}{{ d.entityType ? ' · anexo' : '' }}</span></div>
+              <span class="tc-ico" aria-hidden="true"><mat-icon>{{ d.tipoConteudo.includes('pdf') ? 'picture_as_pdf' : d.tipoConteudo.startsWith('image') ? 'image' : 'description' }}</mat-icon></span>
+              <div class="who"><strong>{{ d.titulo }}</strong>
+                <span class="meta tc-muted">{{ d.categoria | label: 'docCategory' }} · {{ d.visibilidade === 'RESIDENTS' ? 'visível aos moradores' : 'interno' }}
+                  · {{ d.nomeArquivo }} · {{ d.criadoEm | date: 'dd/MM/yyyy' }} · {{ d.nomeCriadoPor }}{{ d.tipoEntidade ? ' · anexo' : '' }}</span></div>
               <div class="acts">
-              <button mat-icon-button (click)="download(d)" [attr.aria-label]="'Baixar ' + d.title"><mat-icon>download</mat-icon></button>
-              @if (canEdit() && !d.entityType) { <button mat-icon-button (click)="archive(d)" [attr.aria-label]="'Arquivar ' + d.title"><mat-icon>archive</mat-icon></button> }
+              <button mat-icon-button (click)="download(d)" [attr.aria-label]="'Baixar ' + d.titulo"><mat-icon>download</mat-icon></button>
+              @if (canEdit() && !d.tipoEntidade) { <button mat-icon-button (click)="archive(d)" [attr.aria-label]="'Arquivar ' + d.titulo"><mat-icon>archive</mat-icon></button> }
               </div>
             </div>
           } @empty { <tc-empty-state icon="folder_open" title="Nenhum documento" /> }
@@ -108,8 +108,8 @@ export class DocumentList {
   private readonly categoryValue = toSignal(this.filterCategory.valueChanges, { initialValue: '' });
   protected readonly docs = toSignal(combineLatest([toObservable(this.context.id), toObservable(this.categoryValue), toObservable(this.tick)]).pipe(
     filter(([c]) => !!c),
-    switchMap(([c, cat]) => this.api.documents(c!, cat ? { category: cat } : {}).pipe(map((p) => p.conteudo), catchError(() => of([] as Doc[]))))),
-    { initialValue: [] as Doc[] });
+    switchMap(([c, cat]) => this.api.documents(c!, cat ? { categoria: cat } : {}).pipe(map((p) => p.conteudo), catchError(() => of([] as Documento[]))))),
+    { initialValue: [] as Documento[] });
 
   pick(event: Event): void {
     const f = (event.target as HTMLInputElement).files?.[0] ?? null;
@@ -121,19 +121,19 @@ export class DocumentList {
     const f = this.file();
     if (!f) return;
     this.busy.set(true);
-    this.api.upload(this.context.id()!, f, { title: this.title.value || f.name, category: this.category.value, visibility: this.visibility.value })
+    this.api.upload(this.context.id()!, f, { titulo: this.title.value || f.name, categoria: this.category.value, visibilidade: this.visibility.value })
       .subscribe({
         next: () => { this.busy.set(false); this.file.set(null); this.title.reset(); this.notify.success('Documento enviado.'); this.tick.update((t) => t + 1); },
         error: (err: unknown) => { this.busy.set(false); this.notify.error(toProblem(err).detail); },
       });
   }
 
-  download(d: Doc): void {
+  download(d: Documento): void {
     this.api.download(this.context.id()!, d.id).subscribe({ error: (err: unknown) => this.notify.error(toProblem(err).detail) });
   }
 
-  archive(d: Doc): void {
-    askConfirm(this.dialog, 'Arquivar documento', `Arquivar "${d.title}"? Ele sai da lista, mas é preservado no histórico.`, 'Arquivar')
+  archive(d: Documento): void {
+    askConfirm(this.dialog, 'Arquivar documento', `Arquivar "${d.titulo}"? Ele sai da lista, mas é preservado no histórico.`, 'Arquivar')
       .pipe(switchMap(() => this.api.archiveDocument(this.context.id()!, d.id)))
       .subscribe({ next: () => this.tick.update((t) => t + 1), error: (err: unknown) => this.notify.error(toProblem(err).detail) });
   }

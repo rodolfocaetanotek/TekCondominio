@@ -50,8 +50,8 @@ seletores), mais as decisões tomadas para o Tek Condomínio._
 - **Planilha de importação de unidades.** O cabeçalho CSV documentado (`bloco; unidade; tipo; fracao; area;
   proprietario; documento; email; telefone`) e os apelidos da coluna `tipo` já são em português e continuam aceitos
   como estão (não quebram as planilhas dos usuários).
-- **Caminhos de outros módulos sob `/condominios/{id}`.** O recurso raiz passou a `/api/v1/condominios`; os
-  subcaminhos dos módulos ainda não padronizados (`/announcements`, `/reservations`...) mudam no lote de cada módulo.
+- **Caminhos sob `/condominios/{id}`.** Desde o lote 5 todos os subcaminhos dos módulos estão em português
+  (`/comunicados`, `/reservas`, `/portaria`...); ficou em inglês apenas `/api/v1/auth`, citado acima.
 
 ## Módulos (pacotes Java / pastas)
 
@@ -222,3 +222,62 @@ Rotas: `/condominios/{idCondominio}/cobranca/rateios` (`/simular`, `/{id}/cancel
 `/condominios/{idCondominio}/contratos` (`/{id}/encerrar`). Os critérios de rateio (`IDEAL_FRACTION`, `EQUAL`, `FIXED`,
 `CONSUMPTION`), tipos de contato, periodicidades e situações continuam como códigos gravados em inglês, assim como o
 `entityType` `Contract` dos anexos de contrato (valor gravado do módulo de documentos).
+
+## Operação, portal, relatórios e painel (lote 5)
+
+| Inglês | Português | | Inglês | Português |
+|---|---|---|---|---|
+| Occurrence (Category, Priority, Status) | Ocorrencia (Categoria, Prioridade, Situacao) | | OccurrenceInteraction / Interaction | InteracaoOcorrencia / Interacao |
+| CreateRequest / UpdateRequest / StatusRequest / CommentRequest | CadastroRequest / TriagemRequest / SituacaoRequest / ComentarioRequest | | Summary / Detail / Stats | Resumo / Detalhe / Estatisticas |
+| number / reporterName / assigneeName / dueDate | numero / nomeSolicitante / nomeResponsavel / prazo | | overdue / resolvedAt / resolution | atrasada / resolvidaEm / solucao |
+| authorName / message / statusChange / internal | nomeAutor / mensagem / situacaoAlterada / interna | | byStatus / open / averageResolutionHours | porSituacao / abertas / mediaHorasSolucao |
+| Announcement.Audience / Request / Response | Comunicado.PublicoAlvo / ComunicadoRequest / ComunicadoResponse | | body / audience / buildingId / buildingName | texto / publicoAlvo / idBloco / nomeBloco |
+| pinned / sendEmail / expiresOn / publishedAt | fixado / enviarEmail / dataExpiracao / publicadoEm | | archived / readCount / read | arquivado / quantidadeLeituras / lido |
+| Assembly (Kind, VoteWeight, Status) | Assembleia (Tipo, CriterioVoto, Situacao) | | AgendaItem / Attendance / Vote.Choice | ItemPauta / Presenca / Voto.Escolha |
+| AgendaRequest / AttendanceRequest / DeliberationRequest / MinutesRequest | ItemPautaRequest / PresencaRequest / DeliberacaoRequest / AtaRequest | | Tally (yes, no, abstain, votes) | Apuracao (sim, nao, abstencao, votos) |
+| scheduledAt / secondCallAt / location / voteWeight | primeiraConvocacaoEm / segundaConvocacaoEm / local / criterioVoto | | calledAt / closedAt / minutes / agenda | convocadaEm / encerradaEm / ata / pauta |
+| position / voting / deliberation / responsible / deadline | posicao / deliberativo / deliberacao / responsavel / prazo | | attendeeName / byProxy / proxyName / registeredAt | nomePresente / porProcuracao / nomeProcurador / registradoEm |
+| agendaItemId / attendanceId / choice | idItemPauta / idPresenca / escolha | | unitsPresent / totalUnits / fractionPresent | unidadesPresentes / totalUnidades / fracaoPresente |
+| Document (Category, Visibility) / Upload / FileContent | Documento (Categoria, Visibilidade) / EnvioDocumento / ConteudoArquivo | | fileName / contentType / sizeBytes | nomeArquivo / tipoConteudo / tamanhoBytes |
+| file (multipart) / download / archive | arquivo / baixar / arquivar | | archived (filtro) | arquivados |
+| CommonArea / AreaRequest / AreaResponse | AreaComum / AreaComumRequest / AreaComumResponse | | Reservation / ReservationRequest / ReservationResponse | Reserva / ReservaRequest / ReservaResponse |
+| fee / rules / capacity / requiresApproval / blockDelinquent | taxa / regras / capacidade / exigeAprovacao / bloqueiaInadimplente | | openTime / closeTime / maxDurationMinutes | horaAbertura / horaFechamento / duracaoMaximaMinutos |
+| minAdvanceHours / maxAdvanceDays / maxPerUnitMonth | antecedenciaMinimaHoras / antecedenciaMaximaDias / limiteMensalPorUnidade | | areaId / areaName / date / startTime / endTime / guests | idArea / nomeArea / data / horaInicio / horaFim / convidados |
+| entryId / requesterName / byResident | idLancamento / nomeSolicitante / peloMorador | | DecisionRequest (note) / CancelRequest (reason) | DecisaoRequest (observacao) / CancelamentoRequest (motivo) |
+| decisionNote / cancelReason | observacaoDecisao / motivoCancelamento | | Slot / occupancy / MinuteOfDay | Horario (`HorarioOcupado` no front) / ocupacao / MinutoDoDia |
+| VisitorPass (Kind, Status) / VisitorService | AutorizacaoVisita (Tipo, Situacao) / PortariaService | | PassRequest / CodeRequest / PassResponse | AutorizacaoRequest / CodigoRequest / AutorizacaoResponse |
+| company / vehiclePlate / validFrom / validUntil | empresa / placaVeiculo / validaDe / validaAte | | accessCode / authorizedByName / enteredAt / enteredByName / leftAt | codigoAcesso / nomeAutorizadoPor / entradaEm / nomeEntradaPor / saidaEm |
+| today / arrivals / check-in / check-out / check-in-code | hoje / chegadas / entrada / saida / entrada-por-codigo | | history | historico |
+| ReportService.Kind / Params / Exported | RelatorioService.Tipo / Parametros / ArquivoExportado | | ReportTable (Column: key, label, type; rows, totals, notes) | RelatorioTabela (Coluna: chave, rotulo, tipo; linhas, totais, observacoes) |
+| ReportExporter.Format / format / year | RelatorioExporter.Formato / formato / ano | | title / subtitle | titulo / subtitulo |
+| DashboardService.Dashboard / MonthPoint / DueItem / RecentItem | PainelService.Painel / PontoMensal / ContaAPagar / ItemRecente | | condominiums / units / residents / finance | condominios / unidades / moradores / financeiro |
+| income / expense / balance | receitas / despesas / saldo | | receivablesOpen / payablesOpen / overdueAmount | aReceberAberto / aPagarAberto / valorVencido |
+| overdueCharges / chargesIssued / delinquencyRate | cobrancasVencidas / cobrancasEmitidas / indiceInadimplencia | | series (month) / payablesDueSoon / recentOccurrences / recentAnnouncements | serie (mes) / contasAPagarProximas / ocorrenciasRecentes / comunicadosRecentes |
+| condominiumName / approval / when | nomeCondominio / aprovacao / quando | | condominiumId (filtro do painel) | idCondominio |
+| PortalService.Me / PortalCondominium / PortalUnit | PerfilPortal / CondominioPortal / UnidadePortal | | role / seesCharges (unidade do portal) | tipo / veCobrancas |
+| UnitCharges (openTotal, lines) / CalendarEvent / AssemblyInfo | CobrancasUnidade (totalAberto, linhas) / EventoCalendario / AssembleiaPortal | | DailyRemindersJob / PrivacyRetentionJob | LembretesDiariosJob / RetencaoPrivacidadeJob |
+
+Rotas: `/condominios/{idCondominio}/ocorrencias` (`/estatisticas`, `/{id}`, `/{id}/situacao`, `/{id}/interacoes`;
+filtros `situacao`, `categoria`, `prioridade`, `busca`); `/comunicados?arquivados=` (`/{id}/arquivar`, `/{id}/marcar-lido`);
+`/assembleias` (`/{id}/convocar`, `/iniciar`, `/encerrar`, `/cancelar`, `/presencas`, `/presencas/{idPresenca}`, `/votos`,
+`/pauta/{idItemPauta}/deliberacao`, `/ata`, `/rascunho-ata`); `/documentos` (multipart `arquivo`; parâmetros `categoria`,
+`titulo`, `descricao`, `visibilidade`, `tipoEntidade`, `idEntidade`, `idUnidade`; `/{id}/baixar`, `/{id}/arquivar`);
+`/areas-comuns`, `/reservas?de=&ate=&idArea=` (`/{id}/aprovar`, `/recusar`, `/cancelar`); `/portaria` (`/hoje`,
+`/historico`, `/chegadas`, `/entrada-por-codigo`, `/{id}/entrada`, `/{id}/saida`); `/relatorios/{tipo}` e
+`/relatorios/{tipo}/exportar?formato=` (`de`, `ate`, `ano`, `idContaBancaria`); `/api/v1/painel?idCondominio=&de=&ate=`.
+Portal: `/api/v1/portal/perfil`, `/{idCondominio}/cobrancas`, `/comunicados` (`/{id}/marcar-lido`), `/documentos`
+(`/{id}/baixar`), `/ocorrencias` (`/{id}/interacoes`), `/assembleias`, `/areas-comuns/{idArea}/ocupacao`, `/reservas`
+(`/{id}/cancelar`), `/visitantes` (`/{id}/cancelar`), `/calendario`.
+
+O `{tipo}` do relatório na URL passou a ser uma chave pública em português (`receitas-despesas`, `balancete`,
+`fluxo-caixa`, `inadimplencia`, `contas-pagar`, `contas-receber`, `pagamentos`, `rateios`, `orcamento`,
+`movimentacao-bancaria`, `despesas-por-fornecedor`, `ocorrencias`, `contratos`), que também dá nome ao arquivo exportado.
+
+Continuam em inglês: as constantes dos enums (situações `OPEN`/`IN_PROGRESS`/`WAITING`/`RESOLVED`, `PENDING`/`CONFIRMED`,
+`EXPECTED`/`INSIDE`/`LEFT`, públicos `ALL`/`BUILDING`/`UNIT`, votos `YES`/`NO`/`ABSTAIN`, categorias de documento,
+`RelatorioTabela.Tipo` `TEXT`/`MONEY`/`DATE`/`NUMBER`/`PERCENT`, formatos `CSV`/`XLSX`/`PDF`); as constantes de
+`RelatorioService.Tipo` (`INCOME_EXPENSE`…), gravadas como `report` nos detalhes da auditoria de exportação; os tipos
+do calendário do portal (`ASSEMBLY`, `CHARGE`); os valores de `tipoEntidade` dos anexos (`Occurrence`, `Assembly`,
+`Contract`, `FinancialEntry`), que são gravados; as chaves de `details` da auditoria destes módulos (`assignee`,
+`dueDate`, `fee`, `active`, `unit`, `report`, `format`, `rows`…); e os nomes de parâmetros SQL internos que espelham
+colunas do banco.

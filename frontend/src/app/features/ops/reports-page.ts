@@ -16,22 +16,22 @@ import { todayIso } from '../../shared/ui/dates';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { PageHeader } from '../../shared/ui/page-header';
 import { FinanceApi } from '../finance/finance-api';
-import { OpsApi, ReportTable } from './ops-api';
+import { OpsApi, RelatorioTabela } from './ops-api';
 
 const REPORTS = [
-  { kind: 'INCOME_EXPENSE', label: 'Receitas e despesas', group: 'Financeiro' },
-  { kind: 'BALANCE_SHEET', label: 'Balancete financeiro', group: 'Financeiro' },
-  { kind: 'CASH_FLOW', label: 'Fluxo de caixa', group: 'Financeiro' },
-  { kind: 'PAYMENTS', label: 'Pagamentos realizados', group: 'Financeiro' },
-  { kind: 'PAYABLES', label: 'Contas a pagar', group: 'Financeiro' },
-  { kind: 'RECEIVABLES', label: 'Contas a receber', group: 'Financeiro' },
-  { kind: 'BANK_MOVEMENT', label: 'Movimentação por conta bancária', group: 'Financeiro' },
-  { kind: 'BUDGET', label: 'Orçamento previsto × realizado', group: 'Financeiro' },
-  { kind: 'EXPENSES_BY_SUPPLIER', label: 'Despesas por fornecedor', group: 'Financeiro' },
-  { kind: 'DELINQUENCY', label: 'Inadimplência', group: 'Cobrança' },
-  { kind: 'ALLOCATIONS', label: 'Rateios', group: 'Cobrança' },
-  { kind: 'OCCURRENCES', label: 'Histórico de ocorrências', group: 'Administração' },
-  { kind: 'CONTRACTS', label: 'Contratos (vigentes, a vencer, vencidos)', group: 'Administração' },
+  { kind: 'receitas-despesas', label: 'Receitas e despesas', group: 'Financeiro' },
+  { kind: 'balancete', label: 'Balancete financeiro', group: 'Financeiro' },
+  { kind: 'fluxo-caixa', label: 'Fluxo de caixa', group: 'Financeiro' },
+  { kind: 'pagamentos', label: 'Pagamentos realizados', group: 'Financeiro' },
+  { kind: 'contas-pagar', label: 'Contas a pagar', group: 'Financeiro' },
+  { kind: 'contas-receber', label: 'Contas a receber', group: 'Financeiro' },
+  { kind: 'movimentacao-bancaria', label: 'Movimentação por conta bancária', group: 'Financeiro' },
+  { kind: 'orcamento', label: 'Orçamento previsto × realizado', group: 'Financeiro' },
+  { kind: 'despesas-por-fornecedor', label: 'Despesas por fornecedor', group: 'Financeiro' },
+  { kind: 'inadimplencia', label: 'Inadimplência', group: 'Cobrança' },
+  { kind: 'rateios', label: 'Rateios', group: 'Cobrança' },
+  { kind: 'ocorrencias', label: 'Histórico de ocorrências', group: 'Administração' },
+  { kind: 'contratos', label: 'Contratos (vigentes, a vencer, vencidos)', group: 'Administração' },
 ];
 
 @Component({
@@ -49,16 +49,16 @@ const REPORTS = [
             <mat-select [formControl]="kind">
               @for (r of reports; track r.kind) { <mat-option [value]="r.kind">{{ r.group }} · {{ r.label }}</mat-option> }
             </mat-select></mat-form-field>
-          @if (kind.value === 'BUDGET') {
+          @if (kind.value === 'orcamento') {
             <mat-form-field><mat-label>Ano</mat-label><input matInput type="number" [formControl]="year" /></mat-form-field>
           } @else {
-            <mat-form-field><mat-label>{{ kind.value === 'DELINQUENCY' ? 'Posição em' : 'De' }}</mat-label>
-              <input matInput type="date" [formControl]="kind.value === 'DELINQUENCY' ? to : from" /></mat-form-field>
-            @if (kind.value !== 'DELINQUENCY' && kind.value !== 'CONTRACTS') {
+            <mat-form-field><mat-label>{{ kind.value === 'inadimplencia' ? 'Posição em' : 'De' }}</mat-label>
+              <input matInput type="date" [formControl]="kind.value === 'inadimplencia' ? to : from" /></mat-form-field>
+            @if (kind.value !== 'inadimplencia' && kind.value !== 'contratos') {
               <mat-form-field><mat-label>Até</mat-label><input matInput type="date" [formControl]="to" /></mat-form-field>
             }
           }
-          @if (kind.value === 'BANK_MOVEMENT') {
+          @if (kind.value === 'movimentacao-bancaria') {
             <mat-form-field><mat-label>Conta</mat-label><mat-select [formControl]="bank">
               @for (b of banks(); track b.id) { <mat-option [value]="b.id">{{ b.nome }}</mat-option> }</mat-select></mat-form-field>
           }
@@ -77,23 +77,23 @@ const REPORTS = [
         } @else if (table(); as t) {
           <section class="tc-card report">
             <header class="report-head">
-              <h2 class="tc-section-title">{{ t.title }}</h2>
-              @if (t.subtitle) { <p class="tc-muted">{{ t.subtitle }}</p> }
+              <h2 class="tc-section-title">{{ t.titulo }}</h2>
+              @if (t.subtitulo) { <p class="tc-muted">{{ t.subtitulo }}</p> }
             </header>
-            <div class="table-scroll" tabindex="0" role="region" [attr.aria-label]="t.title">
+            <div class="table-scroll" tabindex="0" role="region" [attr.aria-label]="t.titulo">
               <table class="lines">
-                <thead><tr>@for (c of t.columns; track c.key) { <th [class.num]="isNum(c.type)">{{ c.label }}</th> }</tr></thead>
+                <thead><tr>@for (c of t.colunas; track c.chave) { <th [class.num]="isNum(c.tipo)">{{ c.rotulo }}</th> }</tr></thead>
                 <tbody>
-                  @for (r of t.rows; track $index) {
-                    <tr>@for (c of t.columns; track c.key; let i = $index) { <td [class.num]="isNum(c.type)">{{ fmt(r[i], c.type) }}</td> }</tr>
-                  } @empty { <tr><td [attr.colspan]="t.columns.length" class="tc-muted empty">Nenhum registro no período.</td></tr> }
+                  @for (r of t.linhas; track $index) {
+                    <tr>@for (c of t.colunas; track c.chave; let i = $index) { <td [class.num]="isNum(c.tipo)">{{ fmt(r[i], c.tipo) }}</td> }</tr>
+                  } @empty { <tr><td [attr.colspan]="t.colunas.length" class="tc-muted empty">Nenhum registro no período.</td></tr> }
                 </tbody>
-                @if (t.totals) {
-                  <tfoot><tr>@for (c of t.columns; track c.key; let i = $index) { <td [class.num]="isNum(c.type)">{{ fmt(t.totals[i], c.type) }}</td> }</tr></tfoot>
+                @if (t.totais) {
+                  <tfoot><tr>@for (c of t.colunas; track c.chave; let i = $index) { <td [class.num]="isNum(c.tipo)">{{ fmt(t.totais[i], c.tipo) }}</td> }</tr></tfoot>
                 }
               </table>
             </div>
-            @for (n of t.notes ?? []; track n) { <p class="tc-muted small">{{ n }}</p> }
+            @for (n of t.observacoes ?? []; track n) { <p class="tc-muted small">{{ n }}</p> }
           </section>
         }
       }
@@ -130,12 +130,12 @@ export class ReportsPage {
   private readonly api = inject(OpsApi);
   private readonly notify = inject(NotificationService);
   protected readonly reports = REPORTS;
-  protected readonly kind = new FormControl('INCOME_EXPENSE', { nonNullable: true });
+  protected readonly kind = new FormControl('receitas-despesas', { nonNullable: true });
   protected readonly from = new FormControl(todayIso().slice(0, 8) + '01', { nonNullable: true });
   protected readonly to = new FormControl(todayIso(), { nonNullable: true });
   protected readonly year = new FormControl(new Date().getFullYear(), { nonNullable: true });
   protected readonly bank = new FormControl('', { nonNullable: true });
-  protected readonly table = signal<ReportTable | null>(null);
+  protected readonly table = signal<RelatorioTabela | null>(null);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly canExport = computed(() => this.context.can('REPORT_EXPORT'));
@@ -145,9 +145,9 @@ export class ReportsPage {
 
   private params(): Record<string, string> {
     const k = this.kind.value;
-    if (k === 'BUDGET') return { year: String(this.year.value) };
-    const p: Record<string, string> = { from: this.from.value, to: this.to.value };
-    if (k === 'BANK_MOVEMENT' && this.bank.value) p['bankAccountId'] = this.bank.value;
+    if (k === 'orcamento') return { ano: String(this.year.value) };
+    const p: Record<string, string> = { de: this.from.value, ate: this.to.value };
+    if (k === 'movimentacao-bancaria' && this.bank.value) p['idContaBancaria'] = this.bank.value;
     return p;
   }
 
@@ -161,7 +161,7 @@ export class ReportsPage {
   }
 
   export(format: 'PDF' | 'XLSX' | 'CSV'): void {
-    this.api.exportReport(this.context.id()!, this.kind.value, { ...this.params(), format })
+    this.api.exportReport(this.context.id()!, this.kind.value, { ...this.params(), formato: format })
       .subscribe({ error: (err: unknown) => this.notify.error(toProblem(err).detail) });
   }
 

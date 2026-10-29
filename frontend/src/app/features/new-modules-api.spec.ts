@@ -57,22 +57,22 @@ describe('APIs dos novos módulos', () => {
   it('separa as rotas de reserva da administração e do portal', () => {
     const api = TestBed.inject(ReservationApi);
     api.list('c1', '2026-10-01', '2026-10-31', 'area1').subscribe();
-    const list = backend.expectOne((r) => r.url === '/api/v1/condominios/c1/reservations');
-    expect(list.request.params.get('areaId')).toBe('area1');
+    const list = backend.expectOne((r) => r.url === '/api/v1/condominios/c1/reservas');
+    expect(list.request.params.get('idArea')).toBe('area1');
     list.flush([]);
 
-    api.portalBook('c1', { areaId: 'area1', unitId: 'u1' }).subscribe();
-    backend.expectOne('/api/v1/portal/c1/reservations').flush({});
+    api.portalBook('c1', { idArea: 'area1', idUnidade: 'u1' }).subscribe();
+    backend.expectOne('/api/v1/portal/c1/reservas').flush({});
   });
 
   it('libera entrada pelo código e autoriza pelo portal', () => {
     const api = TestBed.inject(VisitorApi);
     api.checkInByCode('c1', '123456').subscribe();
-    const req = backend.expectOne('/api/v1/condominios/c1/visitors/check-in-code');
-    expect(req.request.body).toEqual({ code: '123456' });
+    const req = backend.expectOne('/api/v1/condominios/c1/portaria/entrada-por-codigo');
+    expect(req.request.body).toEqual({ codigo: '123456' });
     req.flush({});
 
-    api.portalAuthorize('c1', { unitId: 'u1', kind: 'VISITOR', name: 'Ana' }).subscribe();
-    backend.expectOne('/api/v1/portal/c1/visitors').flush({});
+    api.portalAuthorize('c1', { idUnidade: 'u1', tipo: 'VISITOR', nome: 'Ana' }).subscribe();
+    backend.expectOne('/api/v1/portal/c1/visitantes').flush({});
   });
 });

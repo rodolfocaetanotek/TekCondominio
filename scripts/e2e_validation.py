@@ -201,21 +201,21 @@ def main():
     t1 = time.time() - 1
     call('POST', f'/api/v1/pessoas/{person}/acesso-portal', admin)
     resident_token = activate(owner_email, t1)
-    area = call('POST', b + '/common-areas', admin, {'name': 'Salão de festas', 'fee': '120.00', 'requiresApproval': True, 'blockDelinquent': False,
-                                                     'openTime': '10:00', 'closeTime': '23:00', 'minAdvanceHours': 24, 'maxAdvanceDays': 90}, expect=201)
+    area = call('POST', b + '/areas-comuns', admin, {'nome': 'Salão de festas', 'taxa': '120.00', 'exigeAprovacao': True, 'bloqueiaInadimplente': False,
+                                                     'horaAbertura': '10:00', 'horaFechamento': '23:00', 'antecedenciaMinimaHoras': 24, 'antecedenciaMaximaDias': 90}, expect=201)
     day = (TODAY + dt.timedelta(days=15)).isoformat()
     p = f'/api/v1/portal/{c}'
-    r = call('POST', p + '/reservations', resident_token, {'areaId': area['id'], 'unitId': units[0], 'date': day, 'startTime': '18:00', 'endTime': '22:00'}, expect=201)
-    call('POST', b + '/reservations', admin, {'areaId': area['id'], 'unitId': units[2], 'date': day, 'startTime': '21:00', 'endTime': '23:00'}, expect=409)
-    approved = call('POST', b + f"/reservations/{r['id']}/approve", admin, {'note': 'ok'})
-    ok('reserva do portal aprovada e taxa lançada na unidade', approved['status'] == 'CONFIRMED' and approved.get('entryId'))
-    passx = call('POST', p + '/visitors', resident_token, {'unitId': units[0], 'kind': 'VISITOR', 'name': 'Visita E2E'}, expect=201)
-    inside = call('POST', b + '/visitors/check-in-code', admin, {'code': passx['accessCode']})
-    ok('visitante liberado pelo código do morador', inside['status'] == 'INSIDE')
+    r = call('POST', p + '/reservas', resident_token, {'idArea': area['id'], 'idUnidade': units[0], 'data': day, 'horaInicio': '18:00', 'horaFim': '22:00'}, expect=201)
+    call('POST', b + '/reservas', admin, {'idArea': area['id'], 'idUnidade': units[2], 'data': day, 'horaInicio': '21:00', 'horaFim': '23:00'}, expect=409)
+    approved = call('POST', b + f"/reservas/{r['id']}/aprovar", admin, {'observacao': 'ok'})
+    ok('reserva do portal aprovada e taxa lançada na unidade', approved['situacao'] == 'CONFIRMED' and approved.get('idLancamento'))
+    passx = call('POST', p + '/visitantes', resident_token, {'idUnidade': units[0], 'tipo': 'VISITOR', 'nome': 'Visita E2E'}, expect=201)
+    inside = call('POST', b + '/portaria/entrada-por-codigo', admin, {'codigo': passx['codigoAcesso']})
+    ok('visitante liberado pelo código do morador', inside['situacao'] == 'INSIDE')
 
     print('9. Portal do morador e isolamento')
-    portal_charges = call('GET', p + '/charges', resident_token)
-    ok('morador vê apenas a própria unidade (101)', [u['unitLabel'] for u in portal_charges] == ['101'])
+    portal_charges = call('GET', p + '/cobrancas', resident_token)
+    ok('morador vê apenas a própria unidade (101)', [u['rotuloUnidade'] for u in portal_charges] == ['101'])
     call('GET', b + '/financeiro/lancamentos', resident_token, expect=403)
     ok('morador não acessa a área administrativa (403)', True)
     other_email = f'outra.{STAMP}@e2e.local'
@@ -223,8 +223,8 @@ def main():
          'administrador': {'nome': 'Outra', 'email': other_email, 'senha': 'SenhaValida2026'}}, expect=201)
     foreign = login(other_email, 'SenhaValida2026')
     call('GET', b + '/financeiro/fechamento', foreign, expect=404)
-    call('GET', b + '/common-areas', foreign, expect=404)
-    call('GET', b + '/visitors/today', foreign, expect=404)
+    call('GET', b + '/areas-comuns', foreign, expect=404)
+    call('GET', b + '/portaria/hoje', foreign, expect=404)
     ok('outra administradora recebe 404 nos dados deste condomínio', True)
     insights = call('GET', b + '/indicadores/projecao-caixa', admin)
     ok('projeção de caixa calculada', len(insights['semanas']) == 13)

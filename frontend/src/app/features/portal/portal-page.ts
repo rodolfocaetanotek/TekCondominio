@@ -22,7 +22,7 @@ import { EmptyState } from '../../shared/ui/empty-state';
 import { openForm } from '../../shared/ui/form-dialog';
 import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
 import { PageHeader } from '../../shared/ui/page-header';
-import { Announcement, OccurrenceDetail } from '../ops/ops-api';
+import { Comunicado, DetalheOcorrencia } from '../ops/ops-api';
 import { PortalApi } from './portal-api';
 
 /** Portal do morador: somente dados das unidades do próprio morador (o backend aplica a restrição). */
@@ -35,33 +35,33 @@ import { PortalApi } from './portal-api';
       @if (error(); as message) {
         <section class="tc-card"><tc-empty-state icon="home" title="Portal indisponível" [description]="message" /></section>
       } @else if (me(); as m) {
-        <tc-page-header eyebrow="Portal do morador" [title]="'Olá, ' + m.name.split(' ')[0]" [subtitle]="condo()?.name">
-          @if (m.condominiums.length > 1) {
+        <tc-page-header eyebrow="Portal do morador" [title]="'Olá, ' + m.nome.split(' ')[0]" [subtitle]="condo()?.nome">
+          @if (m.condominios.length > 1) {
             <mat-form-field class="condo" subscriptSizing="dynamic"><mat-label>Condomínio</mat-label>
               <mat-select [value]="condoId()" (valueChange)="condoId.set($event)">
-                @for (c of m.condominiums; track c.id) { <mat-option [value]="c.id">{{ c.name }}</mat-option> }</mat-select></mat-form-field>
+                @for (c of m.condominios; track c.id) { <mat-option [value]="c.id">{{ c.nome }}</mat-option> }</mat-select></mat-form-field>
           }
         </tc-page-header>
         <section class="units">
-          @for (u of condo()?.units ?? []; track u.unitId) {
-            <div class="tc-card unit"><span class="tc-ico lg" aria-hidden="true"><mat-icon>home</mat-icon></span><div><strong>Unidade {{ u.label }}</strong>
-              <span class="tc-muted">{{ u.role === 'OWNER' ? 'Proprietário(a)' : u.role === 'TENANT' ? 'Inquilino(a)' : 'Morador(a)' }}{{ u.financialResponsible ? ' · responsável financeiro' : '' }}</span></div></div>
+          @for (u of condo()?.unidades ?? []; track u.idUnidade) {
+            <div class="tc-card unit"><span class="tc-ico lg" aria-hidden="true"><mat-icon>home</mat-icon></span><div><strong>Unidade {{ u.rotulo }}</strong>
+              <span class="tc-muted">{{ u.tipo === 'OWNER' ? 'Proprietário(a)' : u.tipo === 'TENANT' ? 'Inquilino(a)' : 'Morador(a)' }}{{ u.responsavelFinanceiro ? ' · responsável financeiro' : '' }}</span></div></div>
           }
         </section>
         <mat-tab-group mat-stretch-tabs="false" animationDuration="0ms">
           <mat-tab label="Agenda">
             <section class="tc-card mt">
               @for (e of calendar() ?? []; track $index) {
-                <div class="ev"><span class="date">{{ e.date | isoDate }}</span><mat-icon class="ev-ico" aria-hidden="true">{{ e.type === 'ASSEMBLY' ? 'groups' : 'receipt' }}</mat-icon><span class="ev-title">{{ e.title }}</span></div>
+                <div class="ev"><span class="date">{{ e.data | isoDate }}</span><mat-icon class="ev-ico" aria-hidden="true">{{ e.tipo === 'ASSEMBLY' ? 'groups' : 'receipt' }}</mat-icon><span class="ev-title">{{ e.titulo }}</span></div>
               } @empty { <p class="tc-muted">Nenhum evento próximo.</p> }
             </section>
           </mat-tab>
           <mat-tab label="Cobranças">
             <ng-template matTabContent>
-              @for (u of charges() ?? []; track u.unitId) {
+              @for (u of charges() ?? []; track u.idUnidade) {
                 <section class="tc-card mt">
-                  <h3 class="tc-section-title first">Unidade {{ u.unitLabel }} · em aberto <span class="money" [class.negative]="u.openTotal > 0">{{ u.openTotal | currency: 'BRL' }}</span></h3>
-                  @for (l of u.lines; track l.idLancamento) {
+                  <h3 class="tc-section-title first">Unidade {{ u.rotuloUnidade }} · em aberto <span class="money" [class.negative]="u.totalAberto > 0">{{ u.totalAberto | currency: 'BRL' }}</span></h3>
+                  @for (l of u.linhas; track l.idLancamento) {
                     <div class="charge">
                       <div class="who"><strong>{{ l.descricao }}</strong><br /><small class="tc-muted">vencimento {{ l.dataVencimento | isoDate }}{{ l.diasAtraso > 0 ? ' · ' + l.diasAtraso + ' dias em atraso' : '' }}</small></div>
                       <div class="right"><span class="money">{{ (l.valorAberto > 0 ? l.totalAtualizado : l.valor) | currency: 'BRL' }}</span>
@@ -81,9 +81,9 @@ import { PortalApi } from './portal-api';
           <mat-tab label="Comunicados">
             <ng-template matTabContent>
               @for (a of announcements() ?? []; track a.id) {
-                <article class="tc-card mt ann" [class.unread]="!a.read" (click)="read(a)">
-                  <h3 class="tc-section-title first">@if (a.pinned) { <mat-icon inline class="pin">push_pin</mat-icon> } {{ a.title }}</h3>
-                  <p class="pre">{{ a.body }}</p><small class="tc-muted">{{ a.publishedAt | date: 'dd/MM/yyyy HH:mm' }}</small>
+                <article class="tc-card mt ann" [class.unread]="!a.lido" (click)="read(a)">
+                  <h3 class="tc-section-title first">@if (a.fixado) { <mat-icon inline class="pin">push_pin</mat-icon> } {{ a.titulo }}</h3>
+                  <p class="pre">{{ a.texto }}</p><small class="tc-muted">{{ a.publicadoEm | date: 'dd/MM/yyyy HH:mm' }}</small>
                 </article>
               } @empty { <section class="tc-card mt"><tc-empty-state icon="campaign" title="Nenhum comunicado" /></section> }
             </ng-template>
@@ -92,8 +92,8 @@ import { PortalApi } from './portal-api';
             <ng-template matTabContent>
               <section class="tc-card mt">
                 @for (d of documents() ?? []; track d.id) {
-                  <div class="doc"><span class="tc-ico sm" aria-hidden="true"><mat-icon>description</mat-icon></span><span class="doc-name">{{ d.title }} <small class="tc-muted">({{ d.category | label: 'docCategory' }})</small></span>
-                    <button mat-icon-button (click)="download(d.id)" [attr.aria-label]="'Baixar ' + d.title"><mat-icon>download</mat-icon></button></div>
+                  <div class="doc"><span class="tc-ico sm" aria-hidden="true"><mat-icon>description</mat-icon></span><span class="doc-name">{{ d.titulo }} <small class="tc-muted">({{ d.categoria | label: 'docCategory' }})</small></span>
+                    <button mat-icon-button (click)="download(d.id)" [attr.aria-label]="'Baixar ' + d.titulo"><mat-icon>download</mat-icon></button></div>
                 } @empty { <p class="tc-muted">Nenhum documento disponível.</p> }
               </section>
             </ng-template>
@@ -104,16 +104,16 @@ import { PortalApi } from './portal-api';
               <mat-accordion class="tc-accordion-cards mt">
                 @for (o of occurrences() ?? []; track o.id) {
                   <mat-expansion-panel (opened)="openOccurrence(o.id)">
-                    <mat-expansion-panel-header><mat-panel-title>Nº {{ o.number }} · {{ o.title }}</mat-panel-title>
-                      <mat-panel-description><span class="tc-status" [class.is-success]="o.status === 'RESOLVED'"
-                        [class.is-pending]="o.status === 'OPEN' || o.status === 'WAITING'" [class.is-info]="o.status === 'IN_PROGRESS'"
-                        [class.is-inactive]="o.status === 'CANCELLED'">{{ o.status | label: 'occurrenceStatus' }}</span></mat-panel-description></mat-expansion-panel-header>
-                    @if (detail()?.summary?.id === o.id) {
+                    <mat-expansion-panel-header><mat-panel-title>Nº {{ o.numero }} · {{ o.titulo }}</mat-panel-title>
+                      <mat-panel-description><span class="tc-status" [class.is-success]="o.situacao === 'RESOLVED'"
+                        [class.is-pending]="o.situacao === 'OPEN' || o.situacao === 'WAITING'" [class.is-info]="o.situacao === 'IN_PROGRESS'"
+                        [class.is-inactive]="o.situacao === 'CANCELLED'">{{ o.situacao | label: 'occurrenceStatus' }}</span></mat-panel-description></mat-expansion-panel-header>
+                    @if (detail()?.resumo?.id === o.id) {
                       @let d = detail()!;
-                      <p class="pre">{{ d.description }}</p>
-                      @if (d.resolution) { <p class="resolution"><strong>Solução:</strong> {{ d.resolution }}</p> }
-                      @for (i of d.interactions; track i.id) { <p class="msg"><strong>{{ i.authorName }}</strong> <small class="tc-muted">{{ i.createdAt | date: 'dd/MM HH:mm' }}</small><br />{{ i.message }}</p> }
-                      @if (o.status !== 'RESOLVED' && o.status !== 'CANCELLED') {
+                      <p class="pre">{{ d.descricao }}</p>
+                      @if (d.solucao) { <p class="resolution"><strong>Solução:</strong> {{ d.solucao }}</p> }
+                      @for (i of d.interacoes; track i.id) { <p class="msg"><strong>{{ i.nomeAutor }}</strong> <small class="tc-muted">{{ i.criadoEm | date: 'dd/MM HH:mm' }}</small><br />{{ i.mensagem }}</p> }
+                      @if (o.situacao !== 'RESOLVED' && o.situacao !== 'CANCELLED') {
                         <mat-form-field class="full"><mat-label>Mensagem</mat-label><textarea matInput rows="2" [formControl]="message" maxlength="2000"></textarea></mat-form-field>
                         <div class="tc-actions"><button mat-flat-button class="primary" (click)="comment(o.id)" [disabled]="message.invalid">Enviar</button></div>
                       }
@@ -125,12 +125,12 @@ import { PortalApi } from './portal-api';
           </mat-tab>
           <mat-tab label="Reservas">
             <ng-template matTabContent>
-              @if (condo(); as c) { <tc-portal-reservations [condominiumId]="c.id" [units]="c.units" /> }
+              @if (condo(); as c) { <tc-portal-reservations [condominiumId]="c.id" [units]="c.unidades" /> }
             </ng-template>
           </mat-tab>
           <mat-tab label="Visitantes">
             <ng-template matTabContent>
-              @if (condo(); as c) { <tc-portal-visitors [condominiumId]="c.id" [units]="c.units" /> }
+              @if (condo(); as c) { <tc-portal-visitors [condominiumId]="c.id" [units]="c.unidades" /> }
             </ng-template>
           </mat-tab>
           <mat-tab label="Assembleias">
@@ -138,12 +138,12 @@ import { PortalApi } from './portal-api';
               <mat-accordion class="tc-accordion-cards mt">
                 @for (a of assemblies() ?? []; track a.id) {
                   <mat-expansion-panel>
-                    <mat-expansion-panel-header><mat-panel-title>{{ a.title }}</mat-panel-title>
-                      <mat-panel-description><span>{{ a.scheduledAt | date: 'dd/MM/yyyy HH:mm' }}</span><span class="tc-status" [class.is-success]="a.status === 'CLOSED'"
-                        [class.is-pending]="a.status === 'CALLED'" [class.is-info]="a.status === 'IN_PROGRESS'"
-                        [class.is-inactive]="a.status === 'CANCELLED' || a.status === 'DRAFT'">{{ a.status | label: 'assemblyStatus' }}</span></mat-panel-description></mat-expansion-panel-header>
-                    <p>Local: {{ a.location }}</p>
-                    @if (a.minutes) { <h4 class="tc-section-label">Ata</h4><p class="pre">{{ a.minutes }}</p> } @else { <p class="tc-muted">A ata será publicada após o encerramento.</p> }
+                    <mat-expansion-panel-header><mat-panel-title>{{ a.titulo }}</mat-panel-title>
+                      <mat-panel-description><span>{{ a.primeiraConvocacaoEm | date: 'dd/MM/yyyy HH:mm' }}</span><span class="tc-status" [class.is-success]="a.situacao === 'CLOSED'"
+                        [class.is-pending]="a.situacao === 'CALLED'" [class.is-info]="a.situacao === 'IN_PROGRESS'"
+                        [class.is-inactive]="a.situacao === 'CANCELLED' || a.situacao === 'DRAFT'">{{ a.situacao | label: 'assemblyStatus' }}</span></mat-panel-description></mat-expansion-panel-header>
+                    <p>Local: {{ a.local }}</p>
+                    @if (a.ata) { <h4 class="tc-section-label">Ata</h4><p class="pre">{{ a.ata }}</p> } @else { <p class="tc-muted">A ata será publicada após o encerramento.</p> }
                   </mat-expansion-panel>
                 } @empty { <section class="tc-card"><tc-empty-state icon="groups" title="Nenhuma assembleia" /></section> }
               </mat-accordion>
@@ -202,19 +202,19 @@ export class PortalPage {
   protected readonly error = signal<string | null>(null);
   protected readonly condoId = signal<string | null>(null);
   private readonly tick = signal(0);
-  protected readonly detail = signal<OccurrenceDetail | null>(null);
+  protected readonly detail = signal<DetalheOcorrencia | null>(null);
   protected readonly message = new FormControl('', { nonNullable: true, validators: [Validators.required] });
 
   protected readonly me = toSignal(this.api.me().pipe(catchError((err: unknown) => { this.error.set(toProblem(err).detail); return of(null); })));
   protected readonly condo = computed(() => {
     const m = this.me();
     if (!m) return null;
-    return m.condominiums.find((c) => c.id === this.condoId()) ?? m.condominiums[0] ?? null;
+    return m.condominios.find((c) => c.id === this.condoId()) ?? m.condominios[0] ?? null;
   });
   private readonly source = combineLatest([toObservable(this.condo), toObservable(this.tick)]).pipe(filter(([c]) => !!c));
   protected readonly calendar = toSignal(this.source.pipe(switchMap(([c]) => this.api.calendar(c!.id).pipe(catchError(() => of([]))))));
   protected readonly charges = toSignal(this.source.pipe(switchMap(([c]) => this.api.charges(c!.id).pipe(catchError(() => of([]))))));
-  protected readonly announcements = toSignal(this.source.pipe(switchMap(([c]) => this.api.announcements(c!.id).pipe(catchError(() => of([] as Announcement[]))))));
+  protected readonly announcements = toSignal(this.source.pipe(switchMap(([c]) => this.api.announcements(c!.id).pipe(catchError(() => of([] as Comunicado[]))))));
   protected readonly documents = toSignal(this.source.pipe(switchMap(([c]) => this.api.documents(c!.id).pipe(catchError(() => of([]))))));
   protected readonly occurrences = toSignal(this.source.pipe(switchMap(([c]) => this.api.occurrences(c!.id).pipe(catchError(() => of([]))))));
   protected readonly assemblies = toSignal(this.source.pipe(switchMap(([c]) => this.api.assemblies(c!.id).pipe(catchError(() => of([]))))));
@@ -223,8 +223,8 @@ export class PortalPage {
     return this.condo()!.id;
   }
 
-  read(a: Announcement): void {
-    if (!a.read) this.api.read(this.c(), a.id).subscribe(() => this.tick.update((t) => t + 1));
+  read(a: Comunicado): void {
+    if (!a.lido) this.api.read(this.c(), a.id).subscribe(() => this.tick.update((t) => t + 1));
   }
 
   download(id: string): void {
@@ -237,15 +237,15 @@ export class PortalPage {
   }
 
   newOccurrence(): void {
-    const units = this.condo()?.units ?? [];
+    const units = this.condo()?.unidades ?? [];
     openForm(this.dialog, {
       title: 'Abrir solicitação ou ocorrência',
       fields: [
-        { key: 'title', label: 'Assunto', required: true, maxLength: 150 },
-        { key: 'description', label: 'Descreva', type: 'textarea', required: true, maxLength: 4000 },
-        { key: 'category', label: 'Categoria', type: 'select', required: true, value: 'REQUEST', span: 6, options: options('occurrenceCategory') },
-        { key: 'unitId', label: 'Relacionada à unidade', type: 'select', value: units[0]?.unitId ?? null, span: 6,
-          options: [{ value: null, label: 'Área comum' }, ...units.map((u) => ({ value: u.unitId, label: u.label }))] },
+        { key: 'titulo', label: 'Assunto', required: true, maxLength: 150 },
+        { key: 'descricao', label: 'Descreva', type: 'textarea', required: true, maxLength: 4000 },
+        { key: 'categoria', label: 'Categoria', type: 'select', required: true, value: 'REQUEST', span: 6, options: options('occurrenceCategory') },
+        { key: 'idUnidade', label: 'Relacionada à unidade', type: 'select', value: units[0]?.idUnidade ?? null, span: 6,
+          options: [{ value: null, label: 'Área comum' }, ...units.map((u) => ({ value: u.idUnidade, label: u.rotulo }))] },
       ],
       submitLabel: 'Enviar',
       submit: (v) => this.api.openOccurrence(this.c(), v),

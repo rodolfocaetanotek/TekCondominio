@@ -21,7 +21,7 @@ import { EmptyState } from '../../shared/ui/empty-state';
 import { openForm } from '../../shared/ui/form-dialog';
 import { PageHeader } from '../../shared/ui/page-header';
 import { StructureService } from '../structure/structure.service';
-import { OccurrenceDetail, OccurrenceSummary, OpsApi } from './ops-api';
+import { DetalheOcorrencia, OpsApi, ResumoOcorrencia } from './ops-api';
 
 @Component({
   selector: 'tc-occurrence-list',
@@ -39,20 +39,20 @@ import { OccurrenceDetail, OccurrenceSummary, OpsApi } from './ops-api';
           <section class="tc-kpis" aria-label="Indicadores de ocorrências">
             <div class="tc-kpi tc-card tone-warning">
               <span class="icon"><mat-icon aria-hidden="true">pending_actions</mat-icon></span>
-              <span class="label">Pendentes</span><span class="value">{{ s.open }}</span>
+              <span class="label">Pendentes</span><span class="value">{{ s.abertas }}</span>
             </div>
-            <div class="tc-kpi tc-card" [class.tone-danger]="s.overdue > 0" [class.tone-success]="s.overdue === 0">
-              <span class="icon"><mat-icon aria-hidden="true">{{ s.overdue > 0 ? 'alarm' : 'verified' }}</mat-icon></span>
-              <span class="label">Fora do prazo</span><span class="value">{{ s.overdue }}</span>
+            <div class="tc-kpi tc-card" [class.tone-danger]="s.atrasadas > 0" [class.tone-success]="s.atrasadas === 0">
+              <span class="icon"><mat-icon aria-hidden="true">{{ s.atrasadas > 0 ? 'alarm' : 'verified' }}</mat-icon></span>
+              <span class="label">Fora do prazo</span><span class="value">{{ s.atrasadas }}</span>
             </div>
             <div class="tc-kpi tc-card tone-success">
               <span class="icon"><mat-icon aria-hidden="true">task_alt</mat-icon></span>
-              <span class="label">Resolvidas</span><span class="value">{{ s.byStatus['RESOLVED'] ?? 0 }}</span>
+              <span class="label">Resolvidas</span><span class="value">{{ s.porSituacao['RESOLVED'] ?? 0 }}</span>
             </div>
             <div class="tc-kpi tc-card tone-info">
               <span class="icon"><mat-icon aria-hidden="true">timer</mat-icon></span>
               <span class="label">Tempo médio de solução</span>
-              <span class="value">{{ s.averageResolutionHours !== null && s.averageResolutionHours !== undefined ? (s.averageResolutionHours | number: '1.0-1') + ' h' : '—' }}</span>
+              <span class="value">{{ s.mediaHorasSolucao !== null && s.mediaHorasSolucao !== undefined ? (s.mediaHorasSolucao | number: '1.0-1') + ' h' : '—' }}</span>
             </div>
           </section>
         }
@@ -75,22 +75,22 @@ import { OccurrenceDetail, OccurrenceSummary, OpsApi } from './ops-api';
           } @else {
             <div class="table-scroll">
               <table mat-table [dataSource]="page()?.conteudo ?? []">
-                <ng-container matColumnDef="number"><th mat-header-cell *matHeaderCellDef>Nº</th><td mat-cell *matCellDef="let o" class="mono">{{ o.number }}</td></ng-container>
+                <ng-container matColumnDef="number"><th mat-header-cell *matHeaderCellDef>Nº</th><td mat-cell *matCellDef="let o" class="mono">{{ o.numero }}</td></ng-container>
                 <ng-container matColumnDef="title"><th mat-header-cell *matHeaderCellDef>Ocorrência</th>
-                  <td mat-cell *matCellDef="let o"><span class="title-cell"><strong>{{ o.title }}</strong>
-                    <span class="tc-muted sub">{{ o.category | label: 'occurrenceCategory' }}{{ o.unitLabel ? ' · Unid. ' + o.unitLabel : '' }} · {{ o.reporterName }} · {{ o.createdAt | date: 'dd/MM/yy HH:mm' }}</span></span></td></ng-container>
+                  <td mat-cell *matCellDef="let o"><span class="title-cell"><strong>{{ o.titulo }}</strong>
+                    <span class="tc-muted sub">{{ o.categoria | label: 'occurrenceCategory' }}{{ o.rotuloUnidade ? ' · Unid. ' + o.rotuloUnidade : '' }} · {{ o.nomeSolicitante }} · {{ o.criadoEm | date: 'dd/MM/yy HH:mm' }}</span></span></td></ng-container>
                 <ng-container matColumnDef="priority"><th mat-header-cell *matHeaderCellDef>Prioridade</th>
-                  <td mat-cell *matCellDef="let o"><span [class.urgent]="o.priority === 'URGENT' || o.priority === 'HIGH'">{{ o.priority | label: 'priority' }}</span></td></ng-container>
+                  <td mat-cell *matCellDef="let o"><span [class.urgent]="o.prioridade === 'URGENT' || o.prioridade === 'HIGH'">{{ o.prioridade | label: 'priority' }}</span></td></ng-container>
                 <ng-container matColumnDef="assignee"><th mat-header-cell *matHeaderCellDef>Responsável / prazo</th>
-                  <td mat-cell *matCellDef="let o"><span class="two-line">{{ o.assigneeName ?? '—' }}<span class="sub" [class.negative]="o.overdue">{{ o.dueDate ? 'até ' + o.dueDate.slice(8, 10) + '/' + o.dueDate.slice(5, 7) : '' }}</span></span></td></ng-container>
+                  <td mat-cell *matCellDef="let o"><span class="two-line">{{ o.nomeResponsavel ?? '—' }}<span class="sub" [class.negative]="o.atrasada">{{ o.prazo ? 'até ' + o.prazo.slice(8, 10) + '/' + o.prazo.slice(5, 7) : '' }}</span></span></td></ng-container>
                 <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Situação</th>
-                  <td mat-cell *matCellDef="let o"><span class="tc-status" [class.is-success]="o.status === 'RESOLVED'"
-                    [class.is-danger]="o.overdue && o.status !== 'RESOLVED' && o.status !== 'CANCELLED'"
-                    [class.is-pending]="!o.overdue && (o.status === 'OPEN' || o.status === 'WAITING')" [class.is-info]="!o.overdue && o.status === 'IN_PROGRESS'"
-                    [class.is-inactive]="o.status === 'CANCELLED'">{{ o.status | label: 'occurrenceStatus' }}</span></td></ng-container>
+                  <td mat-cell *matCellDef="let o"><span class="tc-status" [class.is-success]="o.situacao === 'RESOLVED'"
+                    [class.is-danger]="o.atrasada && o.situacao !== 'RESOLVED' && o.situacao !== 'CANCELLED'"
+                    [class.is-pending]="!o.atrasada && (o.situacao === 'OPEN' || o.situacao === 'WAITING')" [class.is-info]="!o.atrasada && o.situacao === 'IN_PROGRESS'"
+                    [class.is-inactive]="o.situacao === 'CANCELLED'">{{ o.situacao | label: 'occurrenceStatus' }}</span></td></ng-container>
                 <tr mat-header-row *matHeaderRowDef="columns"></tr>
                 <tr mat-row *matRowDef="let row; columns: columns" class="is-clickable" tabindex="0" role="link"
-                  [attr.aria-label]="'Abrir ocorrência nº ' + row.number" (click)="open(row)" (keydown.enter)="open(row)"></tr>
+                  [attr.aria-label]="'Abrir ocorrência nº ' + row.numero" (click)="open(row)" (keydown.enter)="open(row)"></tr>
               </table>
             </div>
           }
@@ -123,7 +123,7 @@ export class OccurrenceList {
   private readonly source = combineLatest([toObservable(this.context.id), toObservable(this.params)]).pipe(filter(([c]) => !!c));
 
   protected readonly page = toSignal(this.source.pipe(switchMap(([c, p]) => this.api.occurrences(c!, {
-    search: p.search, tamanho: '100', ...(p.status === 'pending' ? { status: ['OPEN', 'IN_PROGRESS', 'WAITING'] } : p.status ? { status: p.status } : {}),
+    busca: p.search, tamanho: '100', ...(p.status === 'pending' ? { situacao: ['OPEN', 'IN_PROGRESS', 'WAITING'] } : p.status ? { situacao: p.status } : {}),
   }).pipe(catchError(() => of(null))))));
   protected readonly stats = toSignal(this.source.pipe(switchMap(([c]) => this.api.occurrenceStats(c!).pipe(catchError(() => of(null))))));
 
@@ -132,27 +132,27 @@ export class OccurrenceList {
     this.status.valueChanges.pipe(takeUntilDestroyed()).subscribe((status) => this.params.update((p) => ({ ...p, status })));
   }
 
-  open(o: OccurrenceSummary): void {
+  open(o: ResumoOcorrencia): void {
     void this.router.navigate(['/ocorrencias', o.id]);
   }
 
   create(): void {
     const c = this.context.id()!;
     this.structure.units(c, { page: 0, size: 100, active: 'true' }).pipe(map((p) => p.conteudo)).subscribe((units) =>
-      openForm<OccurrenceDetail>(this.dialog, {
+      openForm<DetalheOcorrencia>(this.dialog, {
         title: 'Registrar ocorrência',
         fields: [
-          { key: 'title', label: 'Título', required: true, maxLength: 150 },
-          { key: 'description', label: 'Descrição', type: 'textarea', required: true, maxLength: 4000 },
-          { key: 'category', label: 'Categoria', type: 'select', required: true, value: 'MAINTENANCE', span: 6, options: options('occurrenceCategory') },
-          { key: 'priority', label: 'Prioridade', type: 'select', value: 'MEDIUM', span: 6, options: options('priority') },
-          { key: 'unitId', label: 'Unidade relacionada', type: 'select', value: null,
+          { key: 'titulo', label: 'Título', required: true, maxLength: 150 },
+          { key: 'descricao', label: 'Descrição', type: 'textarea', required: true, maxLength: 4000 },
+          { key: 'categoria', label: 'Categoria', type: 'select', required: true, value: 'MAINTENANCE', span: 6, options: options('occurrenceCategory') },
+          { key: 'prioridade', label: 'Prioridade', type: 'select', value: 'MEDIUM', span: 6, options: options('priority') },
+          { key: 'idUnidade', label: 'Unidade relacionada', type: 'select', value: null,
             options: [{ value: null, label: '— (área comum)' }, ...units.map((u) => ({ value: u.id, label: u.rotulo }))] },
         ],
         submit: (v) => this.api.createOccurrence(c, v),
-      }).pipe(filter((r): r is OccurrenceDetail => !!r)).subscribe((r) => {
-        this.notify.success(`Ocorrência nº ${r.summary.number} registrada.`);
-        void this.router.navigate(['/ocorrencias', r.summary.id]);
+      }).pipe(filter((r): r is DetalheOcorrencia => !!r)).subscribe((r) => {
+        this.notify.success(`Ocorrência nº ${r.resumo.numero} registrada.`);
+        void this.router.navigate(['/ocorrencias', r.resumo.id]);
       }));
   }
 }

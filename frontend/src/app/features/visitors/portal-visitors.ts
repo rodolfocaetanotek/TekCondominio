@@ -11,7 +11,7 @@ import { options } from '../../shared/labels';
 import { todayIso } from '../../shared/ui/dates';
 import { openForm } from '../../shared/ui/form-dialog';
 import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
-import { VisitorApi, VisitorPass } from './visitor-api';
+import { AutorizacaoVisita, VisitorApi } from './visitor-api';
 
 /** Autorizações de visitantes/prestadores/entregas no portal do morador. */
 @Component({
@@ -26,13 +26,13 @@ import { VisitorApi, VisitorPass } from './visitor-api';
       </div>
       @for (v of list() ?? []; track v.id) {
         <div class="row">
-          <div class="who"><strong>{{ v.name }}</strong> · {{ v.kind | label: 'visitorKind' }} · unid. {{ v.unitLabel }}<br />
-            <span class="tc-muted small">{{ v.validFrom | isoDate }}{{ v.validUntil !== v.validFrom ? ' a ' + (v.validUntil | isoDate) : '' }}</span>
-            <span class="tc-status" [class.is-pending]="v.status === 'EXPECTED'" [class.is-success]="v.status === 'INSIDE'"
-              [class.is-inactive]="v.status === 'LEFT' || v.status === 'CANCELLED'">{{ v.status | label: 'visitorStatus' }}</span></div>
+          <div class="who"><strong>{{ v.nome }}</strong> · {{ v.tipo | label: 'visitorKind' }} · unid. {{ v.rotuloUnidade }}<br />
+            <span class="tc-muted small">{{ v.validaDe | isoDate }}{{ v.validaAte !== v.validaDe ? ' a ' + (v.validaAte | isoDate) : '' }}</span>
+            <span class="tc-status" [class.is-pending]="v.situacao === 'EXPECTED'" [class.is-success]="v.situacao === 'INSIDE'"
+              [class.is-inactive]="v.situacao === 'LEFT' || v.situacao === 'CANCELLED'">{{ v.situacao | label: 'visitorStatus' }}</span></div>
           <div class="right">
-            @if (v.accessCode) { <span class="code" aria-label="Código de acesso">{{ v.accessCode }}</span> }
-            @if (v.status === 'EXPECTED') { <button mat-stroked-button (click)="cancel(v)">Cancelar</button> }
+            @if (v.codigoAcesso) { <span class="code" aria-label="Código de acesso">{{ v.codigoAcesso }}</span> }
+            @if (v.situacao === 'EXPECTED') { <button mat-stroked-button (click)="cancel(v)">Cancelar</button> }
           </div>
         </div>
       } @empty { <p class="tc-muted">Nenhuma autorização.</p> }
@@ -58,37 +58,37 @@ import { VisitorApi, VisitorPass } from './visitor-api';
 })
 export class PortalVisitors {
   readonly condominiumId = input.required<string>();
-  readonly units = input.required<{ unitId: string; label: string }[]>();
+  readonly units = input.required<{ idUnidade: string; rotulo: string }[]>();
   private readonly api = inject(VisitorApi);
   private readonly dialog = inject(MatDialog);
   private readonly notify = inject(NotificationService);
   private readonly tick = signal(0);
 
   protected readonly list = toSignal(combineLatest([toObservable(this.condominiumId), toObservable(this.tick)]).pipe(
-    switchMap(([c]) => this.api.portalList(c).pipe(catchError(() => of([] as VisitorPass[]))))));
+    switchMap(([c]) => this.api.portalList(c).pipe(catchError(() => of([] as AutorizacaoVisita[]))))));
 
   authorize(): void {
     openForm(this.dialog, {
       title: 'Autorizar entrada',
       fields: [
-        { key: 'unitId', label: 'Unidade', type: 'select', required: true, value: this.units()[0]?.unitId, span: 6,
-          options: this.units().map((u) => ({ value: u.unitId, label: u.label })) },
-        { key: 'kind', label: 'Tipo', type: 'select', required: true, value: 'VISITOR', span: 6, options: options('visitorKind') },
-        { key: 'name', label: 'Nome do visitante', required: true, maxLength: 150 },
-        { key: 'validFrom', label: 'De', type: 'date', required: true, value: todayIso(), span: 6 },
-        { key: 'validUntil', label: 'Até', type: 'date', required: true, value: todayIso(), span: 6 },
-        { key: 'company', label: 'Empresa (prestador/entrega)', maxLength: 120 },
-        { key: 'notes', label: 'Observações para a portaria', maxLength: 500 },
+        { key: 'idUnidade', label: 'Unidade', type: 'select', required: true, value: this.units()[0]?.idUnidade, span: 6,
+          options: this.units().map((u) => ({ value: u.idUnidade, label: u.rotulo })) },
+        { key: 'tipo', label: 'Tipo', type: 'select', required: true, value: 'VISITOR', span: 6, options: options('visitorKind') },
+        { key: 'nome', label: 'Nome do visitante', required: true, maxLength: 150 },
+        { key: 'validaDe', label: 'De', type: 'date', required: true, value: todayIso(), span: 6 },
+        { key: 'validaAte', label: 'Até', type: 'date', required: true, value: todayIso(), span: 6 },
+        { key: 'empresa', label: 'Empresa (prestador/entrega)', maxLength: 120 },
+        { key: 'observacoes', label: 'Observações para a portaria', maxLength: 500 },
       ],
       submitLabel: 'Gerar código',
       submit: (v) => this.api.portalAuthorize(this.condominiumId(), v),
-    }).pipe(filter((r): r is VisitorPass => !!r)).subscribe((r) => {
-      this.notify.success(`Autorização criada. Código: ${r.accessCode}`);
+    }).pipe(filter((r): r is AutorizacaoVisita => !!r)).subscribe((r) => {
+      this.notify.success(`Autorização criada. Código: ${r.codigoAcesso}`);
       this.tick.update((t) => t + 1);
     });
   }
 
-  cancel(v: VisitorPass): void {
+  cancel(v: AutorizacaoVisita): void {
     this.api.portalCancel(this.condominiumId(), v.id).subscribe({
       next: () => this.tick.update((t) => t + 1),
       error: (err: unknown) => this.notify.error(toProblem(err).detail),

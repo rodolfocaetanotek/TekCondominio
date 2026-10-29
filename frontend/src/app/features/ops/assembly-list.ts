@@ -13,7 +13,7 @@ import { CondominiumRequired } from '../../shared/ui/condominium-required';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { PageHeader } from '../../shared/ui/page-header';
 import { openAssemblyForm } from './assembly-form';
-import { AssemblySummary, OpsApi } from './ops-api';
+import { ResumoAssembleia, OpsApi } from './ops-api';
 
 @Component({
   selector: 'tc-assembly-list',
@@ -30,10 +30,10 @@ import { AssemblySummary, OpsApi } from './ops-api';
           @for (a of list() ?? []; track a.id) {
             <a class="row" [routerLink]="['/assembleias', a.id]">
               <span class="tc-ico" aria-hidden="true"><mat-icon>event</mat-icon></span>
-              <div class="who"><strong>{{ a.title }}</strong>
-                <span class="tc-muted">{{ a.kind | label: 'assemblyKind' }} · {{ a.scheduledAt | date: 'dd/MM/yyyy HH:mm' }} · {{ a.location }}</span></div>
-              <span class="tc-status" [class.is-success]="a.status === 'CLOSED'" [class.is-pending]="a.status === 'CALLED'" [class.is-info]="a.status === 'IN_PROGRESS'"
-                [class.is-inactive]="a.status === 'CANCELLED' || a.status === 'DRAFT'">{{ a.status | label: 'assemblyStatus' }}</span>
+              <div class="who"><strong>{{ a.titulo }}</strong>
+                <span class="tc-muted">{{ a.tipo | label: 'assemblyKind' }} · {{ a.primeiraConvocacaoEm | date: 'dd/MM/yyyy HH:mm' }} · {{ a.local }}</span></div>
+              <span class="tc-status" [class.is-success]="a.situacao === 'CLOSED'" [class.is-pending]="a.situacao === 'CALLED'" [class.is-info]="a.situacao === 'IN_PROGRESS'"
+                [class.is-inactive]="a.situacao === 'CANCELLED' || a.situacao === 'DRAFT'">{{ a.situacao | label: 'assemblyStatus' }}</span>
               <mat-icon class="chev" aria-hidden="true">chevron_right</mat-icon>
             </a>
           } @empty { <tc-empty-state icon="groups" title="Nenhuma assembleia" /> }
@@ -68,7 +68,7 @@ export class AssemblyList {
   private readonly tick = signal(0);
   protected readonly canEdit = computed(() => this.context.can('ASSEMBLY_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   protected readonly list = toSignal(combineLatest([toObservable(this.context.id), toObservable(this.tick)]).pipe(
-    filter(([c]) => !!c), switchMap(([c]) => this.api.assemblies(c!).pipe(catchError(() => of([] as AssemblySummary[]))))));
+    filter(([c]) => !!c), switchMap(([c]) => this.api.assemblies(c!).pipe(catchError(() => of([] as ResumoAssembleia[]))))));
 
   create(): void {
     openAssemblyForm(this.dialog, this.api, this.context.id()!).pipe(filter((r) => !!r)).subscribe((a) => {

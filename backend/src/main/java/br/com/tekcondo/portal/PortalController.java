@@ -1,25 +1,25 @@
 package br.com.tekcondo.portal;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-import br.com.tekcondo.announcement.AnnouncementService;
-import br.com.tekcondo.document.controller.DocumentController;
-import br.com.tekcondo.document.service.DocumentService;
-import br.com.tekcondo.occurrence.OccurrenceService;
-import br.com.tekcondo.reservation.ReservationService;
-import br.com.tekcondo.visitor.VisitorService;
-import java.time.LocalDate;
-import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.RequestParam;
+import br.com.tekcondo.comunicado.ComunicadoService;
+import br.com.tekcondo.documento.controller.DocumentoController;
+import br.com.tekcondo.documento.service.DocumentoService;
+import br.com.tekcondo.ocorrencia.OcorrenciaService;
+import br.com.tekcondo.portaria.PortariaService;
+import br.com.tekcondo.reserva.ReservaService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -33,110 +33,111 @@ public class PortalController {
         this.service = service;
     }
 
-    @GetMapping("/me")
-    public PortalService.Me me() {
-        return service.me();
+    @GetMapping("/perfil")
+    public PortalService.PerfilPortal perfil() {
+        return service.perfil();
     }
 
-    @GetMapping("/{c}/charges")
-    public List<PortalService.UnitCharges> charges(@PathVariable UUID c) {
-        return service.charges(c);
+    @GetMapping("/{idCondominio}/cobrancas")
+    public List<PortalService.CobrancasUnidade> cobrancas(@PathVariable UUID idCondominio) {
+        return service.cobrancas(idCondominio);
     }
 
-    @GetMapping("/{c}/announcements")
-    public List<AnnouncementService.Response> announcements(@PathVariable UUID c) {
-        return service.announcements(c);
+    @GetMapping("/{idCondominio}/comunicados")
+    public List<ComunicadoService.ComunicadoResponse> comunicados(@PathVariable UUID idCondominio) {
+        return service.comunicados(idCondominio);
     }
 
-    @PostMapping("/{c}/announcements/{id}/read")
-    public ResponseEntity<Void> read(@PathVariable UUID c, @PathVariable UUID id) {
-        service.markAnnouncementRead(c, id);
+    @PostMapping("/{idCondominio}/comunicados/{id}/marcar-lido")
+    public ResponseEntity<Void> marcarComunicadoLido(@PathVariable UUID idCondominio, @PathVariable UUID id) {
+        service.marcarComunicadoLido(idCondominio, id);
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{c}/documents")
-    public List<DocumentService.DocumentResponse> documents(@PathVariable UUID c) {
-        return service.documents(c);
+    @GetMapping("/{idCondominio}/documentos")
+    public List<DocumentoService.DocumentoResponse> documentos(@PathVariable UUID idCondominio) {
+        return service.documentos(idCondominio);
     }
 
-    @GetMapping("/{c}/documents/{id}/download")
-    public ResponseEntity<byte[]> download(@PathVariable UUID c, @PathVariable UUID id) {
-        return DocumentController.asAttachment(service.download(c, id));
+    @GetMapping("/{idCondominio}/documentos/{id}/baixar")
+    public ResponseEntity<byte[]> baixarDocumento(@PathVariable UUID idCondominio, @PathVariable UUID id) {
+        return DocumentoController.comoAnexo(service.baixarDocumento(idCondominio, id));
     }
 
-    @GetMapping("/{c}/occurrences")
-    public List<OccurrenceService.Summary> occurrences(@PathVariable UUID c) {
-        return service.occurrences(c);
+    @GetMapping("/{idCondominio}/ocorrencias")
+    public List<OcorrenciaService.Resumo> ocorrencias(@PathVariable UUID idCondominio) {
+        return service.ocorrencias(idCondominio);
     }
 
-    @GetMapping("/{c}/occurrences/{id}")
-    public OccurrenceService.Detail occurrence(@PathVariable UUID c, @PathVariable UUID id) {
-        return service.occurrence(c, id);
+    @GetMapping("/{idCondominio}/ocorrencias/{id}")
+    public OcorrenciaService.Detalhe ocorrencia(@PathVariable UUID idCondominio, @PathVariable UUID id) {
+        return service.ocorrencia(idCondominio, id);
     }
 
-    @PostMapping("/{c}/occurrences")
-    public ResponseEntity<OccurrenceService.Detail> open(@PathVariable UUID c, @Valid @RequestBody OccurrenceService.CreateRequest request) {
-        return ResponseEntity.status(201).body(service.openOccurrence(c, request));
+    @PostMapping("/{idCondominio}/ocorrencias")
+    public ResponseEntity<OcorrenciaService.Detalhe> abrirOcorrencia(@PathVariable UUID idCondominio,
+                                                                     @Valid @RequestBody OcorrenciaService.CadastroRequest request) {
+        return ResponseEntity.status(201).body(service.abrirOcorrencia(idCondominio, request));
     }
 
-    @PostMapping("/{c}/occurrences/{id}/comments")
-    public OccurrenceService.Detail comment(@PathVariable UUID c, @PathVariable UUID id,
-                                            @Valid @RequestBody OccurrenceService.CommentRequest request) {
-        return service.commentOccurrence(c, id, request.message());
+    @PostMapping("/{idCondominio}/ocorrencias/{id}/interacoes")
+    public OcorrenciaService.Detalhe comentarOcorrencia(@PathVariable UUID idCondominio, @PathVariable UUID id,
+                                                        @Valid @RequestBody OcorrenciaService.ComentarioRequest request) {
+        return service.comentarOcorrencia(idCondominio, id, request.mensagem());
     }
 
-    @GetMapping("/{c}/assemblies")
-    public List<PortalService.AssemblyInfo> assemblies(@PathVariable UUID c) {
-        return service.assemblies(c);
+    @GetMapping("/{idCondominio}/assembleias")
+    public List<PortalService.AssembleiaPortal> assembleias(@PathVariable UUID idCondominio) {
+        return service.assembleias(idCondominio);
     }
 
-    @GetMapping("/{c}/common-areas")
-    public List<ReservationService.AreaResponse> commonAreas(@PathVariable UUID c) {
-        return service.commonAreas(c);
+    @GetMapping("/{idCondominio}/areas-comuns")
+    public List<ReservaService.AreaComumResponse> areasComuns(@PathVariable UUID idCondominio) {
+        return service.areasComuns(idCondominio);
     }
 
-    @GetMapping("/{c}/common-areas/{areaId}/occupancy")
-    public List<ReservationService.Slot> occupancy(@PathVariable UUID c, @PathVariable UUID areaId,
-                                                   @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-                                                   @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return service.areaOccupancy(c, areaId, from, to);
+    @GetMapping("/{idCondominio}/areas-comuns/{idArea}/ocupacao")
+    public List<ReservaService.Horario> ocupacaoArea(@PathVariable UUID idCondominio, @PathVariable UUID idArea,
+                                                     @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate de,
+                                                     @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ate) {
+        return service.ocupacaoArea(idCondominio, idArea, de, ate);
     }
 
-    @GetMapping("/{c}/reservations")
-    public List<ReservationService.ReservationResponse> reservations(@PathVariable UUID c) {
-        return service.myReservations(c);
+    @GetMapping("/{idCondominio}/reservas")
+    public List<ReservaService.ReservaResponse> minhasReservas(@PathVariable UUID idCondominio) {
+        return service.minhasReservas(idCondominio);
     }
 
-    @PostMapping("/{c}/reservations")
-    public ResponseEntity<ReservationService.ReservationResponse> reserve(@PathVariable UUID c,
-                                                                          @Valid @RequestBody ReservationService.ReservationRequest request) {
-        return ResponseEntity.status(201).body(service.reserve(c, request));
+    @PostMapping("/{idCondominio}/reservas")
+    public ResponseEntity<ReservaService.ReservaResponse> reservar(@PathVariable UUID idCondominio,
+                                                                   @Valid @RequestBody ReservaService.ReservaRequest request) {
+        return ResponseEntity.status(201).body(service.reservar(idCondominio, request));
     }
 
-    @PostMapping("/{c}/reservations/{id}/cancel")
-    public ReservationService.ReservationResponse cancelReservation(@PathVariable UUID c, @PathVariable UUID id,
-                                                                    @Valid @RequestBody ReservationService.CancelRequest request) {
-        return service.cancelReservation(c, id, request.reason());
+    @PostMapping("/{idCondominio}/reservas/{id}/cancelar")
+    public ReservaService.ReservaResponse cancelarReserva(@PathVariable UUID idCondominio, @PathVariable UUID id,
+                                                          @Valid @RequestBody ReservaService.CancelamentoRequest request) {
+        return service.cancelarReserva(idCondominio, id, request.motivo());
     }
 
-    @GetMapping("/{c}/visitors")
-    public List<VisitorService.PassResponse> visitors(@PathVariable UUID c) {
-        return service.visitorPasses(c);
+    @GetMapping("/{idCondominio}/visitantes")
+    public List<PortariaService.AutorizacaoResponse> autorizacoesVisita(@PathVariable UUID idCondominio) {
+        return service.autorizacoesVisita(idCondominio);
     }
 
-    @PostMapping("/{c}/visitors")
-    public ResponseEntity<VisitorService.PassResponse> authorizeVisitor(@PathVariable UUID c,
-                                                                        @Valid @RequestBody VisitorService.PassRequest request) {
-        return ResponseEntity.status(201).body(service.authorizeVisitor(c, request));
+    @PostMapping("/{idCondominio}/visitantes")
+    public ResponseEntity<PortariaService.AutorizacaoResponse> autorizarVisita(@PathVariable UUID idCondominio,
+                                                                               @Valid @RequestBody PortariaService.AutorizacaoRequest request) {
+        return ResponseEntity.status(201).body(service.autorizarVisita(idCondominio, request));
     }
 
-    @PostMapping("/{c}/visitors/{id}/cancel")
-    public VisitorService.PassResponse cancelVisitor(@PathVariable UUID c, @PathVariable UUID id) {
-        return service.cancelVisitor(c, id);
+    @PostMapping("/{idCondominio}/visitantes/{id}/cancelar")
+    public PortariaService.AutorizacaoResponse cancelarAutorizacaoVisita(@PathVariable UUID idCondominio, @PathVariable UUID id) {
+        return service.cancelarAutorizacaoVisita(idCondominio, id);
     }
 
-    @GetMapping("/{c}/calendar")
-    public List<PortalService.CalendarEvent> calendar(@PathVariable UUID c) {
-        return service.calendar(c);
+    @GetMapping("/{idCondominio}/calendario")
+    public List<PortalService.EventoCalendario> calendario(@PathVariable UUID idCondominio) {
+        return service.calendario(idCondominio);
     }
 }

@@ -45,7 +45,7 @@ export class Home {
       toObservable(this.context.options),
     ]).pipe(
       debounceTime(150),
-      switchMap(([condominiumId, from, to]) => this.api.dashboard({ ...(condominiumId ? { condominiumId } : {}), from, to })
+      switchMap(([idCondominio, de, ate]) => this.api.dashboard({ ...(idCondominio ? { idCondominio } : {}), de, ate })
         .pipe(catchError(() => of(null)))),
     ),
     { initialValue: undefined },
@@ -53,6 +53,6 @@ export class Home {
 
   protected readonly result = computed(() => {
     const d = this.data();
-    return d ? d.income - d.expense : 0;
+    return d ? d.receitas - d.despesas : 0;
   });
 }

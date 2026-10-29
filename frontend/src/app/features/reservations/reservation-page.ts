@@ -24,7 +24,7 @@ import { FieldDef, openForm } from '../../shared/ui/form-dialog';
 import { IsoDatePipe } from '../../shared/ui/iso-date.pipe';
 import { PageHeader } from '../../shared/ui/page-header';
 import { StructureService } from '../structure/structure.service';
-import { CommonArea, Reservation, ReservationApi } from './reservation-api';
+import { AreaComum, Reserva, ReservationApi } from './reservation-api';
 
 /** Administração das áreas comuns e das reservas (aprovação, cancelamento, reserva em nome da unidade). */
 @Component({
@@ -49,7 +49,7 @@ import { CommonArea, Reservation, ReservationApi } from './reservation-api';
               <mat-form-field><mat-label>Até</mat-label><input matInput type="date" [formControl]="to" /></mat-form-field>
               <mat-form-field class="scope"><mat-label>Área</mat-label>
                 <mat-select [formControl]="area"><mat-option [value]="''">Todas</mat-option>
-                  @for (a of areas() ?? []; track a.id) { <mat-option [value]="a.id">{{ a.name }}</mat-option> }
+                  @for (a of areas() ?? []; track a.id) { <mat-option [value]="a.id">{{ a.nome }}</mat-option> }
                 </mat-select></mat-form-field>
             </div>
             <section class="tc-table-card">
@@ -59,24 +59,24 @@ import { CommonArea, Reservation, ReservationApi } from './reservation-api';
                 <tbody>
                   @for (r of reservations() ?? []; track r.id) {
                     <tr>
-                      <td>{{ r.date | isoDate }}</td><td>{{ r.startTime.slice(0, 5) }}–{{ r.endTime.slice(0, 5) }}</td>
-                      <td>{{ r.areaName }}</td><td>{{ r.unitLabel }}</td>
-                      <td>{{ r.requesterName }}{{ r.byResident ? ' (portal)' : '' }}</td>
-                      <td class="money">{{ r.fee | currency: 'BRL' }}</td>
-                      <td><span class="status-cell"><span class="tc-status" [class.is-success]="r.status === 'CONFIRMED'" [class.is-pending]="r.status === 'PENDING'"
-                        [class.is-danger]="r.status === 'REJECTED'" [class.is-inactive]="r.status === 'CANCELLED'">{{ r.status | label: 'reservationStatus' }}</span>
-                        @if (r.cancelReason || r.decisionNote) { <span class="tc-muted small">{{ r.cancelReason ?? r.decisionNote }}</span> }</span></td>
+                      <td>{{ r.data | isoDate }}</td><td>{{ r.horaInicio.slice(0, 5) }}–{{ r.horaFim.slice(0, 5) }}</td>
+                      <td>{{ r.nomeArea }}</td><td>{{ r.rotuloUnidade }}</td>
+                      <td>{{ r.nomeSolicitante }}{{ r.peloMorador ? ' (portal)' : '' }}</td>
+                      <td class="money">{{ r.taxa | currency: 'BRL' }}</td>
+                      <td><span class="status-cell"><span class="tc-status" [class.is-success]="r.situacao === 'CONFIRMED'" [class.is-pending]="r.situacao === 'PENDING'"
+                        [class.is-danger]="r.situacao === 'REJECTED'" [class.is-inactive]="r.situacao === 'CANCELLED'">{{ r.situacao | label: 'reservationStatus' }}</span>
+                        @if (r.motivoCancelamento || r.observacaoDecisao) { <span class="tc-muted small">{{ r.motivoCancelamento ?? r.observacaoDecisao }}</span> }</span></td>
                       <td class="acts">
                         @if (canEdit()) {
-                          @if (r.status === 'PENDING') {
+                          @if (r.situacao === 'PENDING') {
                             <button mat-icon-button class="approve" (click)="approve(r)" matTooltip="Aprovar" aria-label="Aprovar"><mat-icon>check_circle</mat-icon></button>
-                            <button mat-icon-button [matMenuTriggerFor]="more" matTooltip="Mais ações" [attr.aria-label]="'Mais ações da reserva de ' + r.areaName + ', unidade ' + r.unitLabel">
+                            <button mat-icon-button [matMenuTriggerFor]="more" matTooltip="Mais ações" [attr.aria-label]="'Mais ações da reserva de ' + r.nomeArea + ', unidade ' + r.rotuloUnidade">
                               <mat-icon>more_vert</mat-icon></button>
                             <mat-menu #more="matMenu" xPosition="before">
                               <button mat-menu-item (click)="reject(r)"><mat-icon>do_not_disturb_on</mat-icon><span>Recusar</span></button>
                               <button mat-menu-item (click)="cancel(r)"><mat-icon>event_busy</mat-icon><span>Cancelar</span></button>
                             </mat-menu>
-                          } @else if (r.status === 'CONFIRMED') {
+                          } @else if (r.situacao === 'CONFIRMED') {
                             <button mat-icon-button (click)="cancel(r)" matTooltip="Cancelar" aria-label="Cancelar"><mat-icon>event_busy</mat-icon></button>
                           }
                         }
@@ -93,14 +93,14 @@ import { CommonArea, Reservation, ReservationApi } from './reservation-api';
           <mat-tab label="Áreas comuns">
             <div class="areas">
               @for (a of areas() ?? []; track a.id) {
-                <section class="tc-card area" [class.inactive]="!a.active">
-                  <div class="head"><strong class="name">{{ a.name }}</strong>
+                <section class="tc-card area" [class.inactive]="!a.ativa">
+                  <div class="head"><strong class="name">{{ a.nome }}</strong>
                     @if (canEdit()) { <button mat-icon-button (click)="editArea(a)" aria-label="Editar área"><mat-icon>edit</mat-icon></button> }</div>
-                  <span class="tc-muted meta">{{ a.openTime.slice(0, 5) }}–{{ a.closeTime.slice(0, 5) }} · até {{ a.maxDurationMinutes / 60 }} h
-                    · taxa {{ a.fee | currency: 'BRL' }}{{ a.capacity ? ' · ' + a.capacity + ' pessoas' : '' }}</span>
-                  <span class="small">{{ a.requiresApproval ? 'Exige aprovação' : 'Confirmação automática' }} · antecedência mín. {{ a.minAdvanceHours }} h
-                    {{ a.maxPerUnitMonth ? ' · ' + a.maxPerUnitMonth + '/mês por unidade' : '' }}{{ a.blockDelinquent ? ' · bloqueia inadimplentes' : '' }}</span>
-                  @if (!a.active) { <span class="tc-status is-inactive">Inativa</span> }
+                  <span class="tc-muted meta">{{ a.horaAbertura.slice(0, 5) }}–{{ a.horaFechamento.slice(0, 5) }} · até {{ a.duracaoMaximaMinutos / 60 }} h
+                    · taxa {{ a.taxa | currency: 'BRL' }}{{ a.capacidade ? ' · ' + a.capacidade + ' pessoas' : '' }}</span>
+                  <span class="small">{{ a.exigeAprovacao ? 'Exige aprovação' : 'Confirmação automática' }} · antecedência mín. {{ a.antecedenciaMinimaHoras }} h
+                    {{ a.limiteMensalPorUnidade ? ' · ' + a.limiteMensalPorUnidade + '/mês por unidade' : '' }}{{ a.bloqueiaInadimplente ? ' · bloqueia inadimplentes' : '' }}</span>
+                  @if (!a.ativa) { <span class="tc-status is-inactive">Inativa</span> }
                 </section>
               } @empty {
                 <section class="tc-card empty">
@@ -153,26 +153,26 @@ export class ReservationPage {
 
   protected readonly canEdit = computed(() => this.context.can('RESERVATION_EDIT') && this.context.selected()?.situacao === 'ACTIVE');
   private readonly source = combineLatest([toObservable(this.context.id), toObservable(this.tick), toObservable(this.filters)]).pipe(filter(([c]) => !!c));
-  protected readonly areas = toSignal(this.source.pipe(switchMap(([c]) => this.api.areas(c!).pipe(catchError(() => of([] as CommonArea[]))))));
+  protected readonly areas = toSignal(this.source.pipe(switchMap(([c]) => this.api.areas(c!).pipe(catchError(() => of([] as AreaComum[]))))));
   protected readonly reservations = toSignal(this.source.pipe(switchMap(([c]) =>
-    this.api.list(c!, this.from.value, this.to.value, this.area.value || undefined).pipe(catchError(() => of([] as Reservation[]))))));
+    this.api.list(c!, this.from.value, this.to.value, this.area.value || undefined).pipe(catchError(() => of([] as Reserva[]))))));
 
-  editArea(a?: CommonArea): void {
+  editArea(a?: AreaComum): void {
     const fields: FieldDef[] = [
-      { key: 'name', label: 'Nome', required: true, maxLength: 80, value: a?.name, span: 8 },
-      { key: 'capacity', label: 'Capacidade (pessoas)', type: 'number', value: a?.capacity ?? null, span: 4 },
-      { key: 'openTime', label: 'Abre às', type: 'time', required: true, value: a?.openTime.slice(0, 5) ?? '08:00', span: 4 },
-      { key: 'closeTime', label: 'Fecha às', type: 'time', required: true, value: a?.closeTime.slice(0, 5) ?? '22:00', span: 4 },
-      { key: 'maxDurationMinutes', label: 'Duração máx. (min)', type: 'number', value: a?.maxDurationMinutes ?? 720, span: 4 },
-      { key: 'fee', label: 'Taxa de uso (R$)', type: 'number', value: a?.fee ?? 0, span: 4, hint: 'Gera cobrança na unidade ao confirmar' },
-      { key: 'minAdvanceHours', label: 'Antecedência mínima (h)', type: 'number', value: a?.minAdvanceHours ?? 24, span: 4 },
-      { key: 'maxAdvanceDays', label: 'Antecedência máxima (dias)', type: 'number', value: a?.maxAdvanceDays ?? 90, span: 4 },
-      { key: 'maxPerUnitMonth', label: 'Limite por unidade/mês', type: 'number', value: a?.maxPerUnitMonth ?? null, span: 6 },
-      { key: 'requiresApproval', label: 'Reservas do portal exigem aprovação', type: 'checkbox', value: a?.requiresApproval ?? false },
-      { key: 'blockDelinquent', label: 'Bloquear unidades com cobranças vencidas', type: 'checkbox', value: a?.blockDelinquent ?? false },
-      { key: 'rules', label: 'Regras de uso (exibidas ao morador)', type: 'textarea', maxLength: 2000, value: a?.rules ?? null },
+      { key: 'nome', label: 'Nome', required: true, maxLength: 80, value: a?.nome, span: 8 },
+      { key: 'capacidade', label: 'Capacidade (pessoas)', type: 'number', value: a?.capacidade ?? null, span: 4 },
+      { key: 'horaAbertura', label: 'Abre às', type: 'time', required: true, value: a?.horaAbertura.slice(0, 5) ?? '08:00', span: 4 },
+      { key: 'horaFechamento', label: 'Fecha às', type: 'time', required: true, value: a?.horaFechamento.slice(0, 5) ?? '22:00', span: 4 },
+      { key: 'duracaoMaximaMinutos', label: 'Duração máx. (min)', type: 'number', value: a?.duracaoMaximaMinutos ?? 720, span: 4 },
+      { key: 'taxa', label: 'Taxa de uso (R$)', type: 'number', value: a?.taxa ?? 0, span: 4, hint: 'Gera cobrança na unidade ao confirmar' },
+      { key: 'antecedenciaMinimaHoras', label: 'Antecedência mínima (h)', type: 'number', value: a?.antecedenciaMinimaHoras ?? 24, span: 4 },
+      { key: 'antecedenciaMaximaDias', label: 'Antecedência máxima (dias)', type: 'number', value: a?.antecedenciaMaximaDias ?? 90, span: 4 },
+      { key: 'limiteMensalPorUnidade', label: 'Limite por unidade/mês', type: 'number', value: a?.limiteMensalPorUnidade ?? null, span: 6 },
+      { key: 'exigeAprovacao', label: 'Reservas do portal exigem aprovação', type: 'checkbox', value: a?.exigeAprovacao ?? false },
+      { key: 'bloqueiaInadimplente', label: 'Bloquear unidades com cobranças vencidas', type: 'checkbox', value: a?.bloqueiaInadimplente ?? false },
+      { key: 'regras', label: 'Regras de uso (exibidas ao morador)', type: 'textarea', maxLength: 2000, value: a?.regras ?? null },
     ];
-    if (a) fields.push({ key: 'active', label: 'Área ativa', type: 'checkbox', value: a.active });
+    if (a) fields.push({ key: 'ativa', label: 'Área ativa', type: 'checkbox', value: a.ativa });
     openForm(this.dialog, {
       title: a ? 'Editar área comum' : 'Nova área comum',
       fields,
@@ -190,14 +190,14 @@ export class ReservationPage {
         title: 'Nova reserva',
         intro: 'Reservas lançadas pela administração são confirmadas na hora (a antecedência mínima não se aplica).',
         fields: [
-          { key: 'areaId', label: 'Área', type: 'select', required: true, span: 6,
-            options: (this.areas() ?? []).filter((a) => a.active).map((a) => ({ value: a.id, label: a.name })) },
-          { key: 'unitId', label: 'Unidade', type: 'select', required: true, span: 6, options: units.map((u) => ({ value: u.id, label: u.rotulo })) },
-          { key: 'date', label: 'Data', type: 'date', required: true, value: todayIso(), span: 4 },
-          { key: 'startTime', label: 'Início', type: 'time', required: true, span: 4 },
-          { key: 'endTime', label: 'Fim', type: 'time', required: true, span: 4 },
-          { key: 'guests', label: 'Convidados', type: 'number', span: 4 },
-          { key: 'notes', label: 'Observações', maxLength: 500, span: 8 },
+          { key: 'idArea', label: 'Área', type: 'select', required: true, span: 6,
+            options: (this.areas() ?? []).filter((a) => a.ativa).map((a) => ({ value: a.id, label: a.nome })) },
+          { key: 'idUnidade', label: 'Unidade', type: 'select', required: true, span: 6, options: units.map((u) => ({ value: u.id, label: u.rotulo })) },
+          { key: 'data', label: 'Data', type: 'date', required: true, value: todayIso(), span: 4 },
+          { key: 'horaInicio', label: 'Início', type: 'time', required: true, span: 4 },
+          { key: 'horaFim', label: 'Fim', type: 'time', required: true, span: 4 },
+          { key: 'convidados', label: 'Convidados', type: 'number', span: 4 },
+          { key: 'observacoes', label: 'Observações', maxLength: 500, span: 8 },
         ],
         submit: (v) => this.api.create(c, v),
       }).pipe(filter((r) => !!r)).subscribe(() => {
@@ -206,16 +206,16 @@ export class ReservationPage {
       }));
   }
 
-  approve(r: Reservation): void {
+  approve(r: Reserva): void {
     this.run(this.api.approve(this.context.id()!, r.id, null), 'Reserva aprovada.');
   }
 
-  reject(r: Reservation): void {
-    askReason(this.dialog, 'Recusar reserva', `${r.areaName} · unidade ${r.unitLabel}. O morador será notificado.`, 'Recusar')
+  reject(r: Reserva): void {
+    askReason(this.dialog, 'Recusar reserva', `${r.nomeArea} · unidade ${r.rotuloUnidade}. O morador será notificado.`, 'Recusar')
       .subscribe((reason) => this.run(this.api.reject(this.context.id()!, r.id, reason), 'Reserva recusada.'));
   }
 
-  cancel(r: Reservation): void {
+  cancel(r: Reserva): void {
     askReason(this.dialog, 'Cancelar reserva', 'A taxa de uso ainda não paga também será cancelada.', 'Cancelar reserva')
       .subscribe((reason) => this.run(this.api.cancel(this.context.id()!, r.id, reason), 'Reserva cancelada.'));
   }
