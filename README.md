@@ -15,6 +15,7 @@ Plataforma SaaS multiempresa para administradoras de condomínios.
 | [docs/INTEGRACOES.md](docs/INTEGRACOES.md) | OFX, CNAB 240, boleto/PIX e demais dependências externas |
 | [docs/RELATORIO-FINAL.md](docs/RELATORIO-FINAL.md) | O que foi implementado nesta etapa, testes, limitações e próximos passos |
 | [docs/UI-PADRAO.md](docs/UI-PADRAO.md) | Padrão visual (cores, tipografia, menu, componentes, celular, acessibilidade) |
+| [docs/GLOSSARIO.md](docs/GLOSSARIO.md) | Padrão de nomes em português (código, API, frontend), mapa de nomes e o que continua em inglês |
 | Swagger UI | `http://localhost:8080/swagger-ui.html` (com a API rodando) |
 
 ## Estrutura

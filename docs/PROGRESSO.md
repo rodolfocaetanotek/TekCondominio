@@ -18,44 +18,46 @@ _Atualizado em 28/10/2026._ Legenda: ✅ concluído e testado · 🟡 parcial ·
 
 | Módulo | Backend | Frontend | Testes de integração |
 |---|---|---|---|
-| Autenticação (JWT + refresh rotativo, bloqueio, convite, esqueci/troca de senha) | ✅ | ✅ | `AuthIT`, `PasswordIT` |
-| Administradoras (plataforma) + convite de administradores + ativar/inativar | ✅ | ✅ | `OrganizationIT` |
-| Usuários e papéis por organização/condomínio | ✅ | ✅ | `UserManagementIT`, `PermissionIT` |
-| Condomínios + parâmetros financeiros | ✅ | ✅ | `CondominioIT`, `FinanceIT` |
+| Autenticação (JWT + refresh rotativo, bloqueio, convite, esqueci/troca de senha) | ✅ | ✅ | `AuthIT`, `SenhaIT` |
+| Administradoras (plataforma) + convite de administradores + ativar/inativar | ✅ | ✅ | `AdministradoraIT` |
+| Usuários e papéis por organização/condomínio | ✅ | ✅ | `UsuarioIT`, `PermissionIT` |
+| Condomínios + parâmetros financeiros | ✅ | ✅ | `CondominioIT`, `FinanceiroIT` |
 | Blocos, unidades, fração ideal, importação CSV | ✅ | ✅ | `EstruturaPessoaIT` |
 | Pessoas (CPF/CNPJ único), ocupações com histórico, responsável financeiro | ✅ | ✅ | `EstruturaPessoaIT` |
-| Plano de contas (padrão + próprio), centros de custo, contas bancárias com saldo | ✅ | ✅ | `FinanceIT` |
-| Contas a pagar/receber, recorrência, aprovação, baixas parciais, estorno, cancelamento, anexos | ✅ | ✅ | `FinanceIT` |
-| Transferências, extrato, conciliação bancária | ✅ | ✅ | `FinanceIT` |
-| Orçamento anual (previsto × realizado) | ✅ | ✅ | `FinanceIT` |
+| Plano de contas (padrão + próprio), centros de custo, contas bancárias com saldo | ✅ | ✅ | `FinanceiroIT` |
+| Contas a pagar/receber, recorrência, aprovação, baixas parciais, estorno, cancelamento, anexos | ✅ | ✅ | `FinanceiroIT` |
+| Transferências, extrato, conciliação bancária | ✅ | ✅ | `FinanceiroIT` |
+| Orçamento anual (previsto × realizado) | ✅ | ✅ | `FinanceiroIT` |
 | Rateio (fração ideal, igualitário, fixo, consumo) e geração de cobranças | ✅ | ✅ | `CobrancaIT`, `RateioCalculatorTest` |
-| Multa e juros configuráveis (fotografados na emissão) | ✅ | ✅ | `LateFeeCalculatorTest`, `FinanceIT` |
+| Multa e juros configuráveis (fotografados na emissão) | ✅ | ✅ | `EncargosCalculatorTest`, `FinanceiroIT` |
 | Inadimplência, demonstrativo de débitos, histórico de contatos, acordos | ✅ | ✅ | `CobrancaIT` |
-| Fornecedores e contratos (vigência, reajuste, alertas, histórico) | ✅ | ✅ | `OperationsIT` |
-| Ocorrências (SLA, interações internas/públicas, indicadores) | ✅ | ✅ | `OperationsIT` |
-| Comunicados (público-alvo, e-mail, leitura) e notificações internas | ✅ | ✅ | `OperationsIT` |
-| Assembleias (convocação, presença, procuração, votação ponderada, deliberações, ata) | ✅ | ✅ | `OperationsIT` |
-| Documentos (validação de conteúdo, acesso autenticado, visibilidade para moradores) | ✅ | ✅ | `OperationsIT` |
-| Relatórios (13) com exportação PDF/Excel/CSV auditada | ✅ | ✅ | `ReportsDashboardPortalIT` |
-| Painel gerencial (filtro por condomínio e período, série de 12 meses) | ✅ | ✅ | `ReportsDashboardPortalIT` |
-| Portal do morador (unidades, cobranças, comunicados, documentos, ocorrências, assembleias, agenda) | ✅ | ✅ | `ReportsDashboardPortalIT` |
-| Lembretes diários (contratos, aprovações, cobranças a vencer) | ✅ | (sino) | `OperationsIT` |
+| Fornecedores e contratos (vigência, reajuste, alertas, histórico) | ✅ | ✅ | `OperacoesIT` |
+| Ocorrências (SLA, interações internas/públicas, indicadores) | ✅ | ✅ | `OperacoesIT` |
+| Comunicados (público-alvo, e-mail, leitura) e notificações internas | ✅ | ✅ | `OperacoesIT` |
+| Assembleias (convocação, presença, procuração, votação ponderada, deliberações, ata) | ✅ | ✅ | `OperacoesIT` |
+| Documentos (validação de conteúdo, acesso autenticado, visibilidade para moradores) | ✅ | ✅ | `OperacoesIT` |
+| Relatórios (13) com exportação PDF/Excel/CSV auditada | ✅ | ✅ | `RelatoriosPainelPortalIT` |
+| Painel gerencial (filtro por condomínio e período, série de 12 meses) | ✅ | ✅ | `RelatoriosPainelPortalIT` |
+| Portal do morador (unidades, cobranças, comunicados, documentos, ocorrências, assembleias, agenda) | ✅ | ✅ | `RelatoriosPainelPortalIT` |
+| Lembretes diários (contratos, aprovações, cobranças a vencer) | ✅ | (sino) | `OperacoesIT` |
 | Auditoria | ✅ | ✅ | vários |
-| **Fechamento mensal** (bloqueio de período, conferência, fotografia de saldos, reabertura justificada) | ✅ | ✅ | `PeriodClosingIT` |
-| **Extrato OFX** (importação idempotente, conciliação automática inequívoca, casar/desfazer/ignorar/lançar tarifa) | ✅ | ✅ | `StatementImportIT`, `OfxParserTest`, `StatementMatcherTest` |
+| **Fechamento mensal** (bloqueio de período, conferência, fotografia de saldos, reabertura justificada) | ✅ | ✅ | `FechamentoPeriodoIT` |
+| **Extrato OFX** (importação idempotente, conciliação automática inequívoca, casar/desfazer/ignorar/lançar tarifa) | ✅ | ✅ | `ImportacaoExtratoIT`, `OfxParserTest`, `ConciliacaoExtratoMatcherTest` |
 | **Retorno de cobrança CNAB 240** (baixa automática, multa/juros, pendências, sem duplicidade) | ✅ | ✅ | `RetornoBancarioIT`, `Cnab240ReturnParserTest` |
-| **Reservas de áreas comuns** (regras por área, aprovação, taxa → cobrança, inadimplente, portal) | ✅ | ✅ | `ReservationIT` |
-| **Portaria** (pré-autorização com código, entrada/saída, aviso ao morador, anonimização LGPD) | ✅ | ✅ | `VisitorIT` |
-| **Indicadores** (projeção de caixa por vencimentos, despesas fora do padrão) | ✅ | ✅ | `InsightIT`, `InsightCalculatorTest` |
+| **Reservas de áreas comuns** (regras por área, aprovação, taxa → cobrança, inadimplente, portal) | ✅ | ✅ | `ReservaIT` |
+| **Portaria** (pré-autorização com código, entrada/saída, aviso ao morador, anonimização LGPD) | ✅ | ✅ | `PortariaIT` |
+| **Indicadores** (projeção de caixa por vencimentos, despesas fora do padrão) | ✅ | ✅ | `IndicadorIT`, `IndicadorCalculatorTest` |
 | **Limite por IP na autenticação** | ✅ | — | `AuthRateLimitFilterTest` |
 
 ## Verificação final
 
 - `mvn test`: **141 testes, 0 falhas** (unitários + integração contra PostgreSQL 16 real).
-- `ng test`: **20 testes, 0 falhas**. `ng build` de produção sem erros.
+- `ng test`: **23 testes, 0 falhas**. `ng build` de produção sem erros.
 - `scripts/e2e_validation.py`: **19 verificações OK** contra a API em execução (instância isolada, 28/10/2026).
 - Percurso ponta a ponta pelo proxy do frontend contra o banco local (estrutura → financeiro → cobrança → operações → relatórios/PDF → painel).
-- **Não verificado nesta máquina:** aparência no navegador (sem ferramenta de navegador na sessão), envio SMTP real, `docker compose up` e os scripts de backup (dependem de Docker).
+- Navegador (Playwright): todas as telas administrativas e o portal abertos com a API real, sem erros de console
+  nem respostas de erro da API (29/10/2026, após a padronização em português).
+- **Não verificado nesta máquina:** envio SMTP real, `docker compose up` e os scripts de backup (dependem de Docker).
 
 ## Pendências conhecidas (não implementadas)
 
@@ -69,3 +71,9 @@ _Atualizado em 28/10/2026._ Legenda: ✅ concluído e testado · 🟡 parcial ·
 | Correção monetária por índice (IPCA/IGP-M) | Premissa P03: sem índice automático. |
 | Importação de pessoas avulsas por planilha | A importação de unidades já cadastra os proprietários. |
 | Armazenamento em nuvem (S3) | Porta `FileStorage` pronta; implementação local em disco. |
+
+## Padronização em português (29/10/2026)
+
+Código, rotas da API, DTOs, mensagens e frontend passaram para o português no padrão do TekPonto (nome de negócio
+em português + sufixo técnico em inglês). Banco de dados sem alterações: as entidades mapeiam explicitamente as
+tabelas e colunas existentes. Detalhes, mapa de nomes e itens mantidos em inglês: [GLOSSARIO.md](GLOSSARIO.md).

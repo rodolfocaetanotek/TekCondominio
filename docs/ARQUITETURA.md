@@ -101,21 +101,33 @@ síndico, subsíndico, conselheiro, funcionário do condomínio, proprietário, 
 
 ```
 br.com.tekcondo
-├── shared/                 # infraestrutura transversal
+├── comum/                  # infraestrutura transversal
 │   ├── config/             # OpenAPI, Jackson, propriedades
-│   ├── security/           # JWT, filtros, CurrentUser, AccessService (autorização por permissão/condomínio)
-│   ├── exception/          # GlobalExceptionHandler (RFC 9457 ProblemDetail), exceções de domínio
-│   ├── web/                # PageResponse, utilidades de paginação/ordenação
+│   ├── security/           # SecurityConfig, JWT, filtros, UsuarioAtual
+│   ├── exception/          # GlobalExceptionHandler (RFC 9457 ProblemDetail), ApiException
+│   ├── web/                # PaginaResponse, PaginaRequests (paginação e ordenação)
+│   ├── persistence/        # AuditableEntity
+│   ├── io/                 # leitura de CSV
 │   └── validation/         # validadores de CPF/CNPJ/CEP
-├── audit/                  # AuditLog: entity, repository, service, controller
-├── identity/               # auth, users, roles, permissions, refresh tokens
-├── organization/           # tenants (administradoras)
-├── condominium/            # condomínios
-├── structure/ (próximo)    # blocos e unidades
-├── people/ (próximo)       # pessoas e ocupações
-├── finance/ ...            # módulos financeiros
-└── ...
+├── acesso/                 # login, usuários, papéis, refresh tokens; autorizacao/ (AcessoService, Permissao)
+├── administradora/         # tenants (administradoras)
+├── auditoria/              # trilha de auditoria
+├── notificacao/            # notificações internas
+├── integracao/             # banco (CNAB/OFX), e-mail, armazenamento de arquivos
+├── condominio/             # condomínios
+├── estrutura/              # blocos e unidades
+├── pessoa/                 # pessoas e vínculos com unidades
+├── financeiro/             # lançamentos, baixas, plano de contas, tesouraria, orçamento, fechamento, extratos
+├── indicador/              # indicadores e projeção de caixa
+├── cobranca/               # rateios, inadimplência, acordos, retorno bancário
+├── fornecedor/             # fornecedores e contratos
+├── comunicado/  assembleia/  documento/  ocorrencia/  reserva/  portaria/
+├── relatorio/  painel/  portal/
+└── rotina/                 # jobs agendados (lembretes diários, retenção de dados pessoais)
 ```
+
+Nomes de pacotes, classes, rotas e campos seguem o padrão em português descrito em [GLOSSARIO.md](GLOSSARIO.md);
+tabelas e colunas do banco continuam com os nomes originais, mapeados explicitamente nas entidades.
 
 Cada módulo de negócio segue: `controller` → `service` → `repository`, com `entity`, `dto` e `mapper`.
 Regras de negócio ficam **somente** nos services/entidades; controllers apenas traduzem HTTP.
@@ -140,19 +152,20 @@ Regras de negócio ficam **somente** nos services/entidades; controllers apenas 
 - Access token fica **em memória** no SPA (não em localStorage) → reduz impacto de XSS.
 - CSRF: a API usa `Authorization: Bearer` (não enviado automaticamente pelo navegador); o único endpoint por
   cookie (`/auth/refresh`) é protegido por `SameSite=Strict` + verificação de `Origin`.
-- **Permissões** (`Permission` enum `MODULO_ACAO`) agrupadas em **papéis** (`role`). A atribuição
+- **Permissões** (enum `Permissao`, códigos `MODULO_ACAO`) agrupadas em **papéis** (`role`). A atribuição
   (`user_role`) tem escopo **organização inteira** (`condominium_id` nulo) ou **um condomínio**.
   Uma mesma pessoa pode ser síndica em um condomínio e moradora em outro.
 - Permissões são carregadas do banco a cada requisição (não ficam no token) → revogação imediata.
-- `AccessService.require(permission, condominiumId)` em todo service; listas usam `AccessScope`
+- `AcessoService.exigir(permissao, idCondominio)` em todo service; listas usam `EscopoAcesso`
   (organização inteira ou conjunto de condomínios permitidos).
 
 ### 4.6 Padrões de API
 
 - Versionamento em URL `/api/v1/...`; JSON; datas ISO‑8601; dinheiro como string decimal.
-- Paginação: `?page=0&size=20&sort=name,asc` (campos de ordenação em lista branca) → `PageResponse`.
-- Erros: `application/problem+json` (RFC 9457) com `code`, `detail` em pt‑BR e `errors[]` por campo.
-- Concorrência: `version` no corpo do `PUT`; conflito → **409**.
+- Paginação: `?pagina=0&tamanho=20&ordem=nome,asc` (campos de ordenação em lista branca) → `PaginaResponse`
+  (`conteudo`, `pagina`, `tamanho`, `totalElementos`, `totalPaginas`).
+- Erros: `application/problem+json` (RFC 9457) com `codigo`, `detail` em pt‑BR e `erros[]` (`campo`, `mensagem`).
+- Concorrência: `versao` no corpo do `PUT`; conflito → **409**.
 - Códigos: 200/201/204, 400 validação, 401 não autenticado, 403 sem permissão, 404 inexistente/fora do tenant,
   409 conflito/duplicidade, 422 regra de negócio, 423 conta bloqueada, 429 excesso de tentativas.
 
