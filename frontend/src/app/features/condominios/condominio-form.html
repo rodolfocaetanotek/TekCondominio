@@ -112,6 +112,11 @@
           <mat-form-field class="span-3">
             <mat-label>CEP</mat-label>
             <input matInput formControlName="cep" tcMascara="cep" inputmode="numeric" placeholder="00000-000" />
+            @if (cep.buscando()) {
+              <mat-hint>Buscando endereço…</mat-hint>
+            } @else if (cep.naoEncontrado()) {
+              <mat-hint>CEP não encontrado</mat-hint>
+            }
             <mat-error><tc-erro-campo [controle]="form.controls.endereco.controls.cep" /></mat-error>
           </mat-form-field>
           <mat-form-field class="span-9">
@@ -121,7 +126,7 @@
           </mat-form-field>
           <mat-form-field class="span-3">
             <mat-label>Número</mat-label>
-            <input matInput formControlName="numero" />
+            <input matInput id="condominio-numero" formControlName="numero" />
             <mat-error><tc-erro-campo [controle]="form.controls.endereco.controls.numero" /></mat-error>
           </mat-form-field>
           <mat-form-field class="span-4">

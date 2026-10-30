@@ -369,3 +369,18 @@ Continuam em inglês no frontend:
   `AuthService`/`AuthController` do backend e o caminho `/api/v1/auth`), `Login`, `login`/`logout`, `token`, `api`,
   `http`, `fb`, `form`, `dialog`, `ref`, `router`, `snackBar`, `data` (injeção de `MAT_DIALOG_DATA`), `req`/`res`/`err`
   dos interceptores e `backend`/`fixture` dos testes.
+
+## Consulta de CEP (integrada da `main` em 30/10/2026)
+
+A busca de endereço pelo CEP chegou na `main` com nomes em inglês e foi padronizada ao entrar nesta branch.
+
+| Antes | Agora |
+|---|---|
+| pacote `integration.zipcode` | `integracao.cep` |
+| `ZipCodeController` (`GET /api/v1/zip-codes/{zipCode}`) | `CepController` (`GET /api/v1/ceps/{cep}`) |
+| `ZipCodeAddress(zipCode, street, district, city, state)` | `EnderecoCep(cep, logradouro, bairro, cidade, uf)` |
+| `ViaCepService.find` | `ViaCepService.buscar` (ViaCEP é nome do provedor, fica como está) |
+| `shared/zip-code.ts`: `ZipCodeService`, `zipCodeLookup`, `searching`/`notFound` | `comum/cep.ts`: `CepService`, `buscaCep`, `buscando`/`naoEncontrado` |
+
+Os campos de `EnderecoCep` seguem os nomes do grupo de endereço do formulário (`Endereco`), então o
+preenchimento usa as mesmas chaves dos dois lados.

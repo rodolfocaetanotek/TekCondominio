@@ -51,8 +51,8 @@ _Atualizado em 28/10/2026._ Legenda: ✅ concluído e testado · 🟡 parcial ·
 
 ## Verificação final
 
-- `mvn test`: **141 testes, 0 falhas** (unitários + integração contra PostgreSQL 16 real).
-- `ng test`: **23 testes, 0 falhas**. `ng build` de produção sem erros.
+- `mvn test`: **144 testes, 0 falhas** (unitários + integração contra PostgreSQL 16 real).
+- `ng test`: **26 testes, 0 falhas**. `ng build` de produção sem erros.
 - `scripts/e2e_validation.py`: **19 verificações OK** contra a API em execução (instância isolada, 28/10/2026).
 - Percurso ponta a ponta pelo proxy do frontend contra o banco local (estrutura → financeiro → cobrança → operações → relatórios/PDF → painel).
 - Navegador (Playwright): todas as telas administrativas e o portal abertos com a API real, sem erros de console

@@ -21,6 +21,7 @@ import { aplicarErrosServidor } from '../../comum/formularios/erros-servidor';
 import { ConfirmacaoDialog, DadosConfirmacaoDialog } from '../../comum/ui/confirmacao-dialog';
 import { EstadoVazio } from '../../comum/ui/estado-vazio';
 import { CabecalhoPagina } from '../../comum/ui/cabecalho-pagina';
+import { buscaCep } from '../../comum/cep';
 import {
   UFS,
   ROTULOS_SITUACAO_CONDOMINIO,
@@ -106,6 +107,7 @@ export class CondominioForm implements OnInit {
       uf: [''],
     }),
   });
+  protected readonly cep = buscaCep(this.form.controls.endereco, 'condominio-numero');
 
   ngOnInit(): void {
     const id = this.id();

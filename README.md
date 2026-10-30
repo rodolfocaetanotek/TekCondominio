@@ -131,8 +131,8 @@ Agende o backup diário (cron), copie para fora do servidor e **teste a restaura
 ## Testes
 
 ```bash
-cd backend  && mvn test                    # 141 testes (unitários + integração com PostgreSQL real)
-cd frontend && npx ng test --watch=false   # 23 testes (Vitest)
+cd backend  && mvn test                    # 144 testes (unitários + integração com PostgreSQL real)
+cd frontend && npx ng test --watch=false   # 26 testes (Vitest)
 ```
 
 **Validação ponta a ponta** contra a API em execução (cria uma administradora nova e percorre condomínio → rateio →

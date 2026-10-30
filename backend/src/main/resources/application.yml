@@ -40,6 +40,10 @@ spring:
   threads:
     virtual:
       enabled: true
+  http:
+    client:
+      connect-timeout: 2s
+      read-timeout: 3s
 
 server:
   port: ${TEKCONDO_PORT:8080}
